@@ -7,7 +7,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float rotationSpeed = 10f; // для поворота к AimTarget
+    [SerializeField] private float rotationSpeed = 10f;
 
     [Header("Animation")]
     [SerializeField] private string speedParam = "Speed";
@@ -17,7 +17,7 @@ public class PlayerController : MonoBehaviour
     private PlayerControls controls;
     private Camera mainCamera;
     private Vector2 moveInput;
-    private Transform aimTarget; // объект, за которым поворачиваемся (управляется AimController)
+    private Transform aimTarget;
 
     void Start()
     {
@@ -32,9 +32,12 @@ public class PlayerController : MonoBehaviour
         mainCamera = Camera.main;
         controls = new PlayerControls();
 
-        // Отключаем авто-поворот агента
         agent.updateRotation = false;
         agent.speed = moveSpeed;
+        // Отключаем автоматическое торможение, чтобы агент не тормозил сам при потере пути
+        agent.autoBraking = false;
+        // Увеличиваем ускорение для более резвого старта/остановки (можно подстроить под ощущения)
+        agent.acceleration = 20f;
     }
 
     private void OnEnable()
@@ -42,7 +45,6 @@ public class PlayerController : MonoBehaviour
         controls.Enable();
         controls.Player.Move.performed += OnMove;
         controls.Player.Move.canceled += OnMove;
-        // Можно добавить кнопку для взаимодействия, если нужна (например, подбирать предметы)
         controls.Player.Interact.performed += OnInteract;
     }
 
@@ -66,8 +68,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnInteract(InputAction.CallbackContext context)
     {
-        // Оставим пустым, взаимодействие будет через триггер оружия
-        // Но можно оставить для подбора предметов и т.п.
+        // Пусто — взаимодействие обрабатывается через триггер оружия
     }
 
     private void Update()
@@ -81,7 +82,8 @@ public class PlayerController : MonoBehaviour
     {
         if (moveInput == Vector2.zero)
         {
-            agent.ResetPath();
+            // Если нет ввода, останавливаем агента мгновенно
+            agent.velocity = Vector3.zero;
             return;
         }
 
@@ -94,18 +96,14 @@ public class PlayerController : MonoBehaviour
         right.Normalize();
 
         Vector3 moveDirection = (forward * moveInput.y + right * moveInput.x).normalized;
-        Vector3 targetPosition = transform.position + moveDirection * moveSpeed * Time.deltaTime;
+        Vector3 desiredVelocity = moveDirection * moveSpeed;
 
-        // Используем агента для перемещения с учётом препятствий
-        if (agent.isOnNavMesh)
-        {
-            agent.SetDestination(targetPosition);
-        }
+        // Назначаем желаемую скорость агенту. Навигационный меш сам ограничит движение через препятствия.
+        agent.velocity = desiredVelocity;
     }
 
     private void HandleRotation()
     {
-        // Если есть aimTarget, плавно поворачиваемся к нему (например, когда атакуем)
         if (aimTarget != null)
         {
             Vector3 direction = aimTarget.position - transform.position;
@@ -118,23 +116,20 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Если aimTarget нет, поворачиваемся в направлении движения
-        if (moveInput != Vector2.zero)
+        // Поворот по направлению движения (только когда есть ввод)
+        if (moveInput != Vector2.zero && agent.velocity.magnitude > 0.1f)
         {
-            Vector3 moveDir = (mainCamera.transform.forward * moveInput.y + mainCamera.transform.right * moveInput.x);
-            moveDir.y = 0;
-            if (moveDir != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(moveDir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-            }
+            Vector3 moveDir = agent.velocity.normalized;
+            Quaternion targetRotation = Quaternion.LookRotation(moveDir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
     }
 
     private void UpdateAnimation()
     {
-        float speed = agent.velocity.magnitude / agent.speed;
-        //animator.SetFloat(speedParam, speed);
+        float speed = agent.velocity.magnitude / moveSpeed;
+        // Раскомментируйте, если аниматор использует параметр Speed
+        // animator.SetFloat(speedParam, speed);
     }
 
     public void StopMovement()

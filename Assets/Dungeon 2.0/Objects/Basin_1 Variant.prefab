@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8388164815509705627}
   - component: {fileID: 1128373177071384030}
   - component: {fileID: 2903047773596209672}
+  - component: {fileID: 6928611874347520773}
   m_Layer: 0
   m_Name: Basin_1 Variant
   m_TagString: Untagged
@@ -91,3 +92,30 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &6928611874347520773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4122196661719156990}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 909c70cd717c5f044b6aa7ba89829296, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestructibleObject
+  Destructble:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 3036811270283620869, guid: 43119c9f634f5624e8d17cf6d7e90123, type: 3}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2

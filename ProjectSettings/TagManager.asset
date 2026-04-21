@@ -11,6 +11,7 @@ TagManager:
   - Stena
   - Door2
   - Room
+  - DammageObject
   layers:
   - Default
   - TransparentFX
@@ -19,7 +20,7 @@ TagManager:
   - Water
   - UI
   - Room
-  - 
+  - Player
   - 
   - 
   - 
