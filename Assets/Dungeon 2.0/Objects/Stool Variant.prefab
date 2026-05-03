@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8840249979908645533}
   - component: {fileID: 4994358170278874099}
   - component: {fileID: 6884378688546242533}
+  - component: {fileID: -8339993111865700873}
   m_Layer: 0
   m_Name: Stool Variant
   m_TagString: Untagged
@@ -102,18 +103,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 909c70cd717c5f044b6aa7ba89829296, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DestructibleObject
-  Destructble:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3036811270283620869, guid: 43119c9f634f5624e8d17cf6d7e90123, type: 3}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+  Destructeffect: {fileID: 5114818472164748499, guid: 2e5208a94c50fe9429ce36d25de5354e, type: 3}
+  _color: {r: 0.65882355, g: 0.4784314, b: 0.29411766, a: 1}
+--- !u!65 &-8339993111865700873
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4874982232159043692}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.5665364, y: 0.56300926, z: 0.5312377}
+  m_Center: {x: -0.01765187, y: 0.28056473, z: -0.0000002682209}

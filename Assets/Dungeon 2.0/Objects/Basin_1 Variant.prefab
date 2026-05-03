@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1128373177071384030}
   - component: {fileID: 2903047773596209672}
   - component: {fileID: 6928611874347520773}
+  - component: {fileID: 1592612027810833333}
   m_Layer: 0
   m_Name: Basin_1 Variant
   m_TagString: Untagged
@@ -104,18 +105,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 909c70cd717c5f044b6aa7ba89829296, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DestructibleObject
-  Destructble:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3036811270283620869, guid: 43119c9f634f5624e8d17cf6d7e90123, type: 3}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+  Destructeffect: {fileID: 5114818472164748499, guid: 2e5208a94c50fe9429ce36d25de5354e, type: 3}
+  _color: {r: 0.2784314, g: 0.16470589, b: 0.13725491, a: 1}
+--- !u!65 &1592612027810833333
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4122196661719156990}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.1354523, y: 0.70973384, z: 1.1565797}
+  m_Center: {x: 0.0006341338, y: 0.35486686, z: 0.0034309328}

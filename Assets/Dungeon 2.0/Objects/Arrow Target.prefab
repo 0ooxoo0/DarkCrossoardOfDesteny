@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7420991937503360688}
   - component: {fileID: 1971471606091356278}
   - component: {fileID: -2562057266454048194}
+  - component: {fileID: 5658434004217639812}
   m_Layer: 0
   m_Name: Arrow Target
   m_TagString: Untagged
@@ -105,18 +106,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 909c70cd717c5f044b6aa7ba89829296, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  Destructble:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3036811270283620869, guid: 43119c9f634f5624e8d17cf6d7e90123, type: 3}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+  Destructeffect: {fileID: 5114818472164748499, guid: 2e5208a94c50fe9429ce36d25de5354e, type: 3}
+  _color: {r: 0.32941177, g: 0.2, b: 0.16862746, a: 1}
+--- !u!65 &5658434004217639812
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2660108958589986649}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.61846876, y: 0.7701065, z: 0.56723464}
+  m_Center: {x: 0.005973175, y: 0.385053, z: 0.014353454}

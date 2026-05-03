@@ -2,7 +2,8 @@ using UnityEngine;
 
 public class EffectCollor : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public Color _color;
+    public 
     void Start()
     {
         
