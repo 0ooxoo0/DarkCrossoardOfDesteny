@@ -2,19 +2,21 @@ using UnityEngine;
 
 public class HarvestableObject : MonoBehaviour, IInteractable
 {
-    [Header("Основные параметры")]
+    [Header("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
     [SerializeField] private ResourceType resourceType;
     [SerializeField] private int objectLevel = 1;
     [SerializeField] private float maxHealth = 100f;
     private float currentHealth;
 
-    [Header("Визуальные эффекты")]
-    [SerializeField] private GameObject destroyEffectPrefab; // Эффект при уничтожении
+    [Header("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
+    [SerializeField] private GameObject destroyEffectPrefab; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    [Header("Настройки дропа")]
-    [SerializeField] private Transform dropSpawnPoint; // Точка появления предмета (если null - позиция объекта)
+    [Header("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ")]
+    [SerializeField] private Transform dropSpawnPoint; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ null - пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 
     private bool isDead = false;
+
+    public event System.Action<float> Damaged;
 
     private void Start()
     {
@@ -26,7 +28,8 @@ public class HarvestableObject : MonoBehaviour, IInteractable
         if (isDead) return;
 
         currentHealth -= damage;
-        Debug.Log($"{gameObject.name} получил урон {damage}, осталось {currentHealth} HP");
+        Damaged?.Invoke(damage);
+        Debug.Log($"{gameObject.name} пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ {damage}, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ {currentHealth} HP");
 
         if (currentHealth <= 0f)
         {
@@ -39,11 +42,11 @@ public class HarvestableObject : MonoBehaviour, IInteractable
         if (isDead) return;
         isDead = true;
 
-        // Визуальный эффект
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (destroyEffectPrefab != null)
             Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
 
-        // Создание дропа
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         GameObject itemPrefab = DropManager.GetDropItem(resourceType, objectLevel);
         if (itemPrefab != null)
         {
@@ -51,7 +54,7 @@ public class HarvestableObject : MonoBehaviour, IInteractable
             Instantiate(itemPrefab, spawnPos, Quaternion.identity);
         }
 
-        // Уничтожение объекта
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Destroy(gameObject);
     }
 
