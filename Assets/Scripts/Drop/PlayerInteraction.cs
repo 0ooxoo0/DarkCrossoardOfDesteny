@@ -1,86 +1,122 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerInteraction : MonoBehaviour
 {
-    [Header("Настройки атаки")]
+    [Header("РџР°СЂР°РјРµС‚СЂС‹ Р°С‚Р°РєРё")]
     [SerializeField] private float attackDamage = 25f;
-    [SerializeField] private float attackRange = 3f; // Для геймпада (сфера)
-    [SerializeField] private float mouseRayDistance = 50f; // Для мыши
+    [SerializeField] private float attackRange = 2.5f;
+    [SerializeField] private float attackAngle = 150f;
+    [SerializeField] private float hitDelay = 0.3f;
+    [SerializeField] private float attackCooldown = 0.7f;
 
-    [Header("Ссылки")]
+    [Header("РЎСЃС‹Р»РєРё")]
     [SerializeField] private Camera playerCamera;
-    [SerializeField] private Transform attackOrigin; // Точка, откуда идёт атака (например, центр персонажа)
+    [SerializeField] private Transform attackOrigin;
 
-    private void Update()
+    private PlayerController playerController;
+    private PlayerControls controls;
+    private float nextAttackTime;
+    private bool isAttacking;
+
+    private void Awake()
     {
-        // Обработка ввода с мыши
-        if (Input.GetMouseButtonDown(0)) // ЛКМ
-        {
-            TryInteractWithMouse();
-        }
-
-        // Обработка ввода с геймпада (например, кнопка "A" на Xbox контроллере)
-        if (Input.GetButtonDown("Fire1")) // Можно назначить "Fire1" и на кнопку геймпада
-        {
-            TryInteractWithGamepad();
-        }
+        playerController = GetComponent<PlayerController>();
+        if (playerCamera == null) playerCamera = Camera.main;
+        controls = new PlayerControls();
     }
 
-    // Взаимодействие мышью: пускаем луч из камеры через курсор
-    private void TryInteractWithMouse()
+    private void OnEnable()
     {
-        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
+        controls.Enable();
+        controls.Player.Attack.performed += OnAttack;
+    }
 
-        if (Physics.Raycast(ray, out hit, mouseRayDistance))
+    private void OnDisable()
+    {
+        controls.Player.Attack.performed -= OnAttack;
+        controls.Disable();
+    }
+
+    private void OnAttack(InputAction.CallbackContext context)
+    {
+        if (Time.time < nextAttackTime || isAttacking) return;
+        if (playerController == null) return;
+
+        Vector3 aimPoint = GetAimPoint();
+        playerController.FaceTowards(aimPoint, 0.45f);
+
+        if (!playerController.PlayAttackAnimation()) return;
+
+        isAttacking = true;
+        nextAttackTime = Time.time + attackCooldown;
+        StartCoroutine(AttackRoutine());
+    }
+
+    private Vector3 GetAimPoint()
+    {
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera == null) return transform.position + transform.forward * attackRange;
+
+        if (Mouse.current != null)
         {
-            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
-            if (interactable != null)
+            Ray ray = playerCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, ~(1 << gameObject.layer)))
             {
-                interactable.TakeDamage(attackDamage, hit.point);
-                Debug.Log($"Атакован объект {hit.collider.name} мышью");
+                return hit.point;
+            }
+
+            Plane groundPlane = new Plane(Vector3.up, new Vector3(0f, transform.position.y, 0f));
+            if (groundPlane.Raycast(ray, out float enter))
+            {
+                return ray.GetPoint(enter);
             }
         }
+
+        return transform.position + transform.forward * attackRange;
     }
 
-    // Взаимодействие с геймпада: сфера вокруг точки атаки
-    private void TryInteractWithGamepad()
+    private IEnumerator AttackRoutine()
     {
-        Vector3 center = attackOrigin != null ? attackOrigin.position : transform.position;
-        Collider[] hits = Physics.OverlapSphere(center, attackRange);
+        yield return new WaitForSeconds(hitDelay);
 
-        IInteractable closest = null;
-        float minDist = float.MaxValue;
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        forward.Normalize();
 
-        foreach (var col in hits)
+        Vector3 origin = attackOrigin != null
+            ? attackOrigin.position
+            : transform.position + forward * 0.5f;
+        float halfAngleCos = Mathf.Cos(attackAngle * 0.5f * Mathf.Deg2Rad);
+        Collider[] hits = Physics.OverlapSphere(origin, attackRange, ~0, QueryTriggerInteraction.Ignore);
+        HashSet<IInteractable> damaged = new HashSet<IInteractable>();
+
+        foreach (Collider hit in hits)
         {
-            IInteractable interactable = col.GetComponent<IInteractable>();
-            if (interactable != null)
+            IInteractable interactable = hit.GetComponentInParent<IInteractable>();
+            if (interactable == null || damaged.Contains(interactable)) continue;
+
+            Vector3 toTarget = hit.transform.position - origin;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude > 0.0001f &&
+                Vector3.Dot(forward, toTarget.normalized) < halfAngleCos)
             {
-                float dist = Vector3.Distance(center, col.transform.position);
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    closest = interactable;
-                }
+                continue;
             }
+
+            damaged.Add(interactable);
+            interactable.TakeDamage(attackDamage, hit.bounds.ClosestPoint(origin));
         }
 
-        if (closest != null)
-        {
-            closest.TakeDamage(attackDamage, center);
-            Debug.Log($"Атакован объект геймпадом");
-        }
+        isAttacking = false;
     }
 
-    // Визуализация радиуса атаки в редакторе
     private void OnDrawGizmosSelected()
     {
-        if (attackOrigin != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(attackOrigin.position, attackRange);
-        }
+        Vector3 origin = attackOrigin != null ? attackOrigin.position : transform.position;
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(origin, attackRange);
     }
 }

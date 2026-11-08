@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Animation")]
     [SerializeField] private string speedParam = "Speed";
+    [SerializeField] private string attackTrigger = "Attack";
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -18,6 +19,8 @@ public class PlayerController : MonoBehaviour
     private Camera mainCamera;
     private Vector2 moveInput;
     private Transform aimTarget;
+    private float attackAimTimer;
+    private Vector3 attackAimPoint;
 
     void Start()
     {
@@ -34,9 +37,9 @@ public class PlayerController : MonoBehaviour
 
         agent.updateRotation = false;
         agent.speed = moveSpeed;
-        // Отключаем автоматическое торможение, чтобы агент не тормозил сам при потере пути
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         agent.autoBraking = false;
-        // Увеличиваем ускорение для более резвого старта/остановки (можно подстроить под ощущения)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         agent.acceleration = 20f;
     }
 
@@ -68,7 +71,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnInteract(InputAction.CallbackContext context)
     {
-        // Пусто — взаимодействие обрабатывается через триггер оружия
+        // пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     }
 
     private void Update()
@@ -82,12 +85,12 @@ public class PlayerController : MonoBehaviour
     {
         if (moveInput == Vector2.zero)
         {
-            // Если нет ввода, останавливаем агента мгновенно
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             agent.velocity = Vector3.zero;
             return;
         }
 
-        // Направление относительно камеры
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 forward = mainCamera.transform.forward;
         Vector3 right = mainCamera.transform.right;
         forward.y = 0;
@@ -98,12 +101,25 @@ public class PlayerController : MonoBehaviour
         Vector3 moveDirection = (forward * moveInput.y + right * moveInput.x).normalized;
         Vector3 desiredVelocity = moveDirection * moveSpeed;
 
-        // Назначаем желаемую скорость агенту. Навигационный меш сам ограничит движение через препятствия.
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         agent.velocity = desiredVelocity;
     }
 
     private void HandleRotation()
     {
+        if (attackAimTimer > 0f)
+        {
+            attackAimTimer -= Time.deltaTime;
+            Vector3 attackDirection = attackAimPoint - transform.position;
+            attackDirection.y = 0f;
+            if (attackDirection.sqrMagnitude > 0.0001f)
+            {
+                Quaternion attackRotation = Quaternion.LookRotation(attackDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, attackRotation, rotationSpeed * Time.deltaTime);
+            }
+            return;
+        }
+
         if (aimTarget != null)
         {
             Vector3 direction = aimTarget.position - transform.position;
@@ -116,7 +132,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Поворот по направлению движения (только когда есть ввод)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
         if (moveInput != Vector2.zero && agent.velocity.magnitude > 0.1f)
         {
             Vector3 moveDir = agent.velocity.normalized;
@@ -128,8 +144,26 @@ public class PlayerController : MonoBehaviour
     private void UpdateAnimation()
     {
         float speed = agent.velocity.magnitude / moveSpeed;
-        // Раскомментируйте, если аниматор использует параметр Speed
-        // animator.SetFloat(speedParam, speed);
+        animator.SetFloat(speedParam, Mathf.Clamp01(speed));
+    }
+
+    public void FaceTowards(Vector3 worldPoint, float duration)
+    {
+        attackAimPoint = worldPoint;
+        attackAimTimer = duration;
+    }
+
+    public bool PlayAttackAnimation()
+    {
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        if (state.IsName("Attack") && state.normalizedTime < 0.95f)
+        {
+            return false;
+        }
+
+        animator.ResetTrigger(attackTrigger);
+        animator.SetTrigger(attackTrigger);
+        return true;
     }
 
     public void StopMovement()

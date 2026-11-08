@@ -4916,7 +4916,7 @@ Animator:
   m_GameObject: {fileID: 4621653112199636550}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: d49c65de9fce66146b5d0e164b1f9d2d, type: 3}
-  m_Controller: {fileID: 9100000, guid: f551bf2e7708b274785462f5f80d25ff, type: 2}
+  m_Controller: {fileID: 9100000, guid: d72ac30c17265054499cbbf60f69b7ee, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -4956,7 +4956,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
   attackDamage: 25
-  attackRange: 3
+  attackRange: 2.5
   mouseRayDistance: 50
   playerCamera: {fileID: 0}
   attackOrigin: {fileID: 5896964559091555316}

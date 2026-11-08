@@ -2,9 +2,9 @@ using UnityEngine;
 
 public class Enemy1 : MonoBehaviour
 {
-    [Header("Ссылки")]
+    [Header("РЎСЃС‹Р»РєРё")]
     [SerializeField] private HarvestableObject harvestable;
-    [SerializeField] private GameObject healthBarPrefab; // Префаб HealthBar
+    [SerializeField] private GameObject healthBarPrefab;
 
     private HealthBar healthBar;
     private float maxHealth = 100f;
@@ -14,7 +14,6 @@ public class Enemy1 : MonoBehaviour
     {
         currentHealth = maxHealth;
 
-        // Создаём HealthBar только если указан префаб
         if (healthBarPrefab != null)
         {
             GameObject barObj = Instantiate(healthBarPrefab, transform.position, Quaternion.identity);
@@ -22,11 +21,20 @@ public class Enemy1 : MonoBehaviour
             healthBar.Initialize(transform, maxHealth);
         }
 
-        // Подписываемся на событие получения урона (можно через события, здесь упрощённо)
-        // В реальном проекте лучше использовать события или вызывать из HarvestableObject
+        if (harvestable != null)
+        {
+            harvestable.Damaged += OnTakeDamage;
+        }
     }
 
-    // Этот метод должен вызываться из HarvestableObject при TakeDamage
+    private void OnDestroy()
+    {
+        if (harvestable != null)
+        {
+            harvestable.Damaged -= OnTakeDamage;
+        }
+    }
+
     public void OnTakeDamage(float damage)
     {
         currentHealth -= damage;
@@ -37,7 +45,6 @@ public class Enemy1 : MonoBehaviour
         {
             if (healthBar != null)
                 healthBar.Hide();
-            // Смерть обрабатывается в HarvestableObject
         }
     }
 }

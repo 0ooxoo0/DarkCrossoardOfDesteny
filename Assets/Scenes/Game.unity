@@ -46243,7 +46243,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &541204166
 Transform:
   m_ObjectHideFlags: 0
@@ -97709,15 +97709,77 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4fcd6d1f4a9d1524bbf67569dd91d0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  nameMassive: []
-  Eyebrows: []
-  Eye: []
-  Mouths: []
-  M_BottomBody: []
-  M_Head: []
-  M_TopBody: []
-  _FacialHair: []
-  _Hair: []
+  nameMassive:
+  - "\u0411\u0440\u043E\u0432\u0438"
+  - "\u0413\u043B\u0430\u0437\u0430"
+  - "\u0413\u0443\u0431\u044B"
+  - "\u041D\u043E\u0433\u0438"
+  - "\u0413\u043E\u043B\u043E\u0432\u0430"
+  - "\u0422\u0435\u043B\u043E"
+  - "\u0411\u043E\u0440\u043E\u0434\u0430"
+  - "\u041F\u0440\u0438\u0447\u0435\u0441\u043A\u0430"
+  - "\u0426\u0432\u0435\u0442\u0430"
+  Eyebrows:
+  - {fileID: 191864062}
+  - {fileID: 1741635899}
+  - {fileID: 1922046888}
+  - {fileID: 1740390065}
+  - {fileID: 1088783665}
+  Eye:
+  - {fileID: 1111158894}
+  - {fileID: 567330257}
+  - {fileID: 1574533715}
+  - {fileID: 689420350}
+  - {fileID: 554192957}
+  Mouths:
+  - {fileID: 1867742498}
+  - {fileID: 1695396697}
+  - {fileID: 96801729}
+  - {fileID: 1375094559}
+  - {fileID: 963012188}
+  M_BottomBody:
+  - {fileID: 461486505}
+  - {fileID: 1535900410}
+  - {fileID: 537773049}
+  - {fileID: 24647645}
+  - {fileID: 27700901}
+  - {fileID: 116971301}
+  - {fileID: 158338230}
+  M_Head:
+  - {fileID: 73055950}
+  - {fileID: 1288954001}
+  - {fileID: 1838981586}
+  M_TopBody:
+  - {fileID: 1657021842}
+  - {fileID: 426333349}
+  - {fileID: 1068026061}
+  - {fileID: 502641475}
+  - {fileID: 2056413743}
+  - {fileID: 2083172559}
+  - {fileID: 1642143033}
+  - {fileID: 2017529113}
+  - {fileID: 751219234}
+  _FacialHair:
+  - {fileID: 468316633}
+  - {fileID: 38622897}
+  - {fileID: 421909306}
+  - {fileID: 1434981159}
+  - {fileID: 2142028347}
+  - {fileID: 1918711242}
+  - {fileID: 553485207}
+  - {fileID: 1984665785}
+  _Hair:
+  - {fileID: 1618362514}
+  - {fileID: 289993986}
+  - {fileID: 1094099743}
+  - {fileID: 1323666455}
+  - {fileID: 516812865}
+  - {fileID: 292042971}
+  - {fileID: 1728911934}
+  - {fileID: 1455474440}
+  - {fileID: 1231603783}
+  - {fileID: 87979449}
+  - {fileID: 31855445}
   _Material: {fileID: 0}
   color: []
   ActiveArray: []
@@ -113222,7 +113284,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1357571647
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -137051,7 +137113,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1618362515
 Transform:
   m_ObjectHideFlags: 0
@@ -172346,7 +172408,7 @@ SkinnedMeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: f2ee7d2ed1f424a47a67bd0dbe5ceb84, type: 2}
+  - {fileID: 2100000, guid: 8bbc525d39bfd0c4fa3434b14d79f6d3, type: 2}
   - {fileID: 2100000, guid: bfb0835dcb5653d40956a4576b667f2d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
@@ -184202,6 +184264,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5854201483630845358, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5854201483630845358, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+      propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5854201483630845358, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
