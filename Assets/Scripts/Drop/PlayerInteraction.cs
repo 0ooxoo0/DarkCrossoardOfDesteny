@@ -63,6 +63,7 @@ public class PlayerInteraction : MonoBehaviour
         if (Mouse.current != null)
         {
             Ray ray = playerCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+            
             if (Physics.Raycast(ray, out RaycastHit hit, 100f, ~(1 << gameObject.layer)))
             {
                 return hit.point;
