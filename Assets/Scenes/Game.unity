@@ -184413,6 +184413,10 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 2797467021992692300, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+      propertyPath: hitboxStart
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797467021992692300, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: rotationSpeed
       value: 10
       objectReference: {fileID: 0}
@@ -189927,7 +189931,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1 &1736020985794540359
 GameObject:
   m_ObjectHideFlags: 0

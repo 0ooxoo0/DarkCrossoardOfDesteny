@@ -1,6 +1,9 @@
 ﻿<Solution>
+  <Project Path="AllIn1VfxAssmebly.csproj" />
   <Project Path="Unity.AI.Navigation.Samples.csproj" />
+  <Project Path="AllIn1VfxDemoScriptAssemblies.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="AllIn1VfxTexDemoAssembly.csproj" />
   <Project Path="Unity.AI.Navigation.Samples.Initialization.Editor.csproj" />
 </Solution>
