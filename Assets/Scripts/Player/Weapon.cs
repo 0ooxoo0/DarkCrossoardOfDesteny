@@ -4,45 +4,55 @@ public class Weapon : MonoBehaviour
 {
     [Header("Damage Settings")]
     [SerializeField] private float damage = 25f;
-    [SerializeField] private float attackCooldown = 0.5f; // минимальный интервал между нанесением урона одному объекту
+    [SerializeField] private float attackCooldown = 0.5f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    [SerializeField] private bool damageInteractables = false;
 
     private bool canDealDamage = true;
     private float lastAttackTime;
+    private Collider hitboxCollider;
 
-    // Этот метод вызывается из анимации (Animation Event) для активации коллайдера
+    public void SetHitboxActive(bool active)
+    {
+        if (hitboxCollider == null) hitboxCollider = GetComponent<Collider>();
+        if (hitboxCollider != null) hitboxCollider.enabled = active;
+        gameObject.SetActive(active);
+    }
+
+    // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Animation Event) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     public void EnableCollider()
     {
         canDealDamage = true;
-        GetComponent<Collider>().enabled = true;
+        SetHitboxActive(true);
     }
 
     public void DisableCollider()
     {
-        GetComponent<Collider>().enabled = false;
+        SetHitboxActive(false);
     }
 
     private void OnTriggerEnter(Collider other)
     {
+        if (!damageInteractables) return;
         if (!canDealDamage) return;
 
-        // Проверяем, есть ли на объекте интерфейс IInteractable
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ IInteractable
         IInteractable interactable = other.GetComponent<IInteractable>();
         if (interactable != null)
         {
-            // Проверяем кулдаун для предотвращения многократного урона за один взмах
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             if (Time.time - lastAttackTime < attackCooldown) return;
 
             lastAttackTime = Time.time;
             Vector3 hitPoint = other.ClosestPoint(transform.position);
             interactable.TakeDamage(damage, hitPoint);
 
-            // Вывод в консоль
-            Debug.Log($"<color=cyan>Игрок ударил {other.name} | Тип: {interactable.GetResourceType()} | Урон: {damage}</color>");
+            // пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            Debug.Log($"<color=cyan>пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ {other.name} | пїЅпїЅпїЅ: {interactable.GetResourceType()} | пїЅпїЅпїЅпїЅ: {damage}</color>");
 
-            // Дополнительно можно вызвать эффект удара, звук и т.д.
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅ пїЅ.пїЅ.
         }
     }
 
-    // Если нужно, чтобы урон наносился при каждом кадре нахождения в триггере, можно использовать OnTriggerStay
-    // Но лучше ограничить кулдауном
+    // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OnTriggerStay
+    // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 }

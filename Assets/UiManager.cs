@@ -46,8 +46,8 @@ public class UiManager : MonoBehaviour
         if (uiPanel != null) uiPanel.SetActive(true);
 
         Time.timeScale = 0f;
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        //Cursor.lockState = CursorLockMode.None;
+        //Cursor.visible = true;
 
         if (playerController != null) playerController.enabled = false;
         if (playerInteraction != null) playerInteraction.enabled = false;
@@ -60,8 +60,8 @@ public class UiManager : MonoBehaviour
         if (uiPanel != null) uiPanel.SetActive(false);
 
         Time.timeScale = 1f;
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        //Cursor.lockState = CursorLockMode.Locked;
+        //Cursor.visible = false;
 
         if (playerController != null) playerController.enabled = true;
         if (playerInteraction != null) playerInteraction.enabled = true;

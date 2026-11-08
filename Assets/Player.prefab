@@ -4943,6 +4943,10 @@ MonoBehaviour:
   moveSpeed: 20
   rotationSpeed: 7
   speedParam: Speed
+  attackTrigger: Attack
+  hitboxStart: 0.15
+  hitboxEnd: 0.55
+  weapon: {fileID: 7312054840095821453}
 --- !u!114 &3473364565530580050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4972,13 +4976,14 @@ GameObject:
   - component: {fileID: 5101599732096040055}
   - component: {fileID: 3002178399237666915}
   - component: {fileID: 3217953594279070232}
+  - component: {fileID: 7312054840095821453}
   m_Layer: 0
   m_Name: Cube
-  m_TagString: Untagged
+  m_TagString: DammageObject
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5896964559091555316
 Transform:
   m_ObjectHideFlags: 0
@@ -5009,7 +5014,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5854201483630845358}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -5071,6 +5076,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7312054840095821453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5854201483630845358}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0216d7ca6122a5b4c9ad3c8252d85742, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Weapon
+  damage: 25
+  attackCooldown: 0.5
+  damageInteractables: 0
 --- !u!1 &8968799080534296243
 GameObject:
   m_ObjectHideFlags: 0

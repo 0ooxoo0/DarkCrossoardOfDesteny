@@ -13,6 +13,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private string speedParam = "Speed";
     [SerializeField] private string attackTrigger = "Attack";
 
+    [Header("Attack")]
+    [SerializeField] private float hitboxStart = 0.15f;
+    [SerializeField] private float hitboxEnd = 0.55f;
+    [SerializeField] private Weapon weapon;
+
     private NavMeshAgent agent;
     private Animator animator;
     private PlayerControls controls;
@@ -21,6 +26,10 @@ public class PlayerController : MonoBehaviour
     private Transform aimTarget;
     private float attackAimTimer;
     private Vector3 attackAimPoint;
+    private bool isAttacking;
+    private bool attackStateEntered;
+    private bool hitboxActive;
+    private float attackElapsed;
 
     void Start()
     {
@@ -41,6 +50,9 @@ public class PlayerController : MonoBehaviour
         agent.autoBraking = false;
         // ����������� ��������� ��� ����� ������� ������/��������� (����� ���������� ��� ��������)
         agent.acceleration = 20f;
+
+        if (weapon == null) weapon = GetComponentInChildren<Weapon>(true);
+        if (weapon != null) weapon.SetHitboxActive(false);
     }
 
     private void OnEnable()
@@ -76,6 +88,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        UpdateAttackState();
         HandleMovement();
         HandleRotation();
         UpdateAnimation();
@@ -83,6 +96,12 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovement()
     {
+        if (isAttacking)
+        {
+            agent.velocity = Vector3.zero;
+            return;
+        }
+
         if (moveInput == Vector2.zero)
         {
             // ���� ��� �����, ������������� ������ ���������
@@ -153,13 +172,62 @@ public class PlayerController : MonoBehaviour
         attackAimTimer = duration;
     }
 
+    private void UpdateAttackState()
+    {
+        if (!isAttacking)
+        {
+            SetWeaponHitbox(false);
+            return;
+        }
+
+        attackElapsed += Time.deltaTime;
+
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        if (!state.IsName("Attack"))
+        {
+            // The attack state may not be active yet during the transition.
+            if (attackStateEntered || attackElapsed > 0.3f) EndAttack();
+            return;
+        }
+
+        attackStateEntered = true;
+        SetWeaponHitbox(state.normalizedTime >= hitboxStart && state.normalizedTime <= hitboxEnd);
+
+        if (state.normalizedTime >= 0.95f)
+        {
+            EndAttack();
+        }
+    }
+
+    private void EndAttack()
+    {
+        isAttacking = false;
+        attackStateEntered = false;
+        attackElapsed = 0f;
+        SetWeaponHitbox(false);
+        ResumeMovement();
+    }
+
+    private void SetWeaponHitbox(bool active)
+    {
+        if (hitboxActive == active) return;
+        hitboxActive = active;
+        if (weapon != null) weapon.SetHitboxActive(active);
+    }
+
     public bool PlayAttackAnimation()
     {
         AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
-        if (state.IsName("Attack") && state.normalizedTime < 0.95f)
+        if (isAttacking || (state.IsName("Attack") && state.normalizedTime < 0.95f))
         {
             return false;
         }
+
+        isAttacking = true;
+        attackStateEntered = false;
+        attackElapsed = 0f;
+        SetWeaponHitbox(false);
+        StopMovement();
 
         animator.ResetTrigger(attackTrigger);
         animator.SetTrigger(attackTrigger);
