@@ -46,32 +46,90 @@ public class Garderob : MonoBehaviour
 
     public void Next(int i)
     {
-        if (ActiveArray[index] != null && index! < 0)
+
+        Debug.Log("1");
+        if (ActiveArray[index] != null && index > -1)
             ActiveArray[index].SetActive(false);
+        else
+            Debug.Log("1.1");
+
+        Debug.Log("2");
+        Debug.Log("index " + index);
         index +=i;
+        Debug.Log("index " + index);
         if (index >= ActiveArray.Count)
             index = 0;
+        else
+            Debug.Log("2.1");
         if (index < 0)
             index = ActiveArray.Count-1;
+        else
+            Debug.Log("3.1");
 
-        if (ActiveArray[index] != null && index! < 0)
+        Debug.Log("3");
+        if (ActiveArray[index] != null && index > -1)
             ActiveArray[index].SetActive(true);
+        else
+            Debug.Log("4.1");
+        Debug.Log("4");
     }
 
     public void NextMassive(int i)
     {
-            int _index = _ArrayList.IndexOf(ActiveArray);
+        Debug.Log("1");
+        int _index = _ArrayList.IndexOf(ActiveArray);
         _index+=i;
         if (_index >= _ArrayList.Count)
             _index = 0;
         if (_index < 0)
             _index = _ArrayList.Count-1;
 
-        if (_ArrayList[_index] != null && _index! < 0)
+        Debug.Log("2"); 
+        if (_ArrayList[_index] == null)
+        {
+            Debug.LogError("Masive Name ненайдено");
+            Debug.Log("2.1");
+        }
+        else
+            Debug.LogError("Masive Name найден");
+
+        if (_index > 0)
+        {
+            Debug.LogError("index<0");
+            Debug.Log("2.2");
+        }
+        else
+            Debug.LogError("index>0");
+
+        if (_ArrayList[_index] != null && _index > -1)
+        {
+            Debug.Log("3");
             ActiveArray = _ArrayList[_index];
-        Debug.Log("NameMassive _index = "+_index);
-        if (_ArrayList[_index] != null && _index!<0)
+            Debug.Log("4");
             text.text = nameMassive[_index];
+
+            Debug.Log("5");
+        }
+        else
+        {
+            if (_ArrayList[_index] == null)
+            {
+                Debug.LogError("Masive Name ненайдено");
+                Debug.Log("5.1");
+            }
+            if (_index! < 0)
+            {
+                Debug.LogError("index<0");
+                Debug.Log("5.2");
+            }
+
+            Debug.Log("6");
+        }
+        Debug.Log("NameMassive _index = "+ nameMassive[_index] + " || " + _index);
+
+        Debug.Log("7");
+        Debug.Log("nameMassive: "+text.text +"||"+ nameMassive[_index]);
+
     }
 }
 
