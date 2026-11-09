@@ -14,8 +14,11 @@ public class Weapon : MonoBehaviour
     public void SetHitboxActive(bool active)
     {
         if (hitboxCollider == null) hitboxCollider = GetComponent<Collider>();
+
+        // false только выключает collider: Cube должен оставаться активным
+        // для кулаков, а мечом управляет WeaponManager.
+        if (active && !gameObject.activeSelf) gameObject.SetActive(true);
         if (hitboxCollider != null) hitboxCollider.enabled = active;
-        gameObject.SetActive(active);
     }
 
     // ���� ����� ���������� �� �������� (Animation Event) ��� ��������� ����������

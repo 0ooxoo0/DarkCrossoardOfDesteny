@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float hitboxStart = 0.15f;
     [SerializeField] private float hitboxEnd = 0.55f;
     [SerializeField] private Weapon weapon;
+    [SerializeField] private WeaponManager weaponManager;
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -210,10 +211,24 @@ public class PlayerController : MonoBehaviour
 
     private void SetWeaponHitbox(bool active)
     {
+        // При useAnimationEvents = true этот путь полностью отключён:
+        // хитбоксом управляет AnimationEventRelay.
+        if (weaponManager != null && weaponManager.UseAnimationEvents) return;
+
         if (hitboxActive == active) return;
         hitboxActive = active;
-        if (weapon != null) weapon.SetHitboxActive(active);
+
+        if (weaponManager != null) weaponManager.SetHitboxActive(active);
+        else if (weapon != null) weapon.SetHitboxActive(active);
     }
+
+    public void ResetHitboxState()
+    {
+        hitboxActive = false;
+        if (weaponManager == null && weapon != null) weapon.SetHitboxActive(false);
+    }
+
+    public bool IsAttacking => isAttacking;
 
     public bool PlayAttackAnimation()
     {
