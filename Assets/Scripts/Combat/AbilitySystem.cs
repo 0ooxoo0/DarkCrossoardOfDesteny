@@ -17,6 +17,7 @@ public class AbilitySystem : MonoBehaviour
 
     [SerializeField] private WeaponManager weaponManager;
     [SerializeField] private PlayerController playerController;
+    [SerializeField] private List<AbilityData> globalAbilities = new List<AbilityData>();
 
     private static readonly Key[] SlotKeys =
     {
@@ -25,6 +26,7 @@ public class AbilitySystem : MonoBehaviour
 
     private readonly AbilityData[] abilities = new AbilityData[SlotCount];
     private readonly float[] cooldownEnd = new float[SlotCount];
+    private readonly List<AbilityData> weaponAbilities = new List<AbilityData>();
 
     private UiManager uiManager;
     private Coroutine activeAbility;
@@ -34,6 +36,7 @@ public class AbilitySystem : MonoBehaviour
         if (weaponManager == null) weaponManager = GetComponent<WeaponManager>();
         if (playerController == null) playerController = GetComponent<PlayerController>();
         uiManager = FindFirstObjectByType<UiManager>();
+        RebuildSlots();
     }
 
     private void Update()
@@ -51,14 +54,77 @@ public class AbilitySystem : MonoBehaviour
 
     public void SetAbilities(List<AbilityData> list)
     {
+        weaponAbilities.Clear();
+        if (list != null) weaponAbilities.AddRange(list);
+        RebuildSlots();
+    }
+
+    public void SetGlobalAbilities(List<AbilityData> list)
+    {
+        globalAbilities.Clear();
+        if (list != null) globalAbilities.AddRange(list);
+        RebuildSlots();
+    }
+
+    private void RebuildSlots()
+    {
+        AbilityData[] next = new AbilityData[SlotCount];
+
+        for (int i = 0; i < SlotCount && i < weaponAbilities.Count; i++)
+            next[i] = weaponAbilities[i];
+
+        if (globalAbilities != null)
+        {
+            foreach (AbilityData ability in globalAbilities)
+            {
+                if (ability == null) continue;
+
+                int slot = HotkeyToSlot(ability.hotkey);
+                if (slot < 0) slot = FirstFreeSlot(next);
+                if (slot >= 0) next[slot] = ability;
+            }
+        }
+
+        AbilityData[] oldAbilities = (AbilityData[])abilities.Clone();
+        float[] oldCooldown = (float[])cooldownEnd.Clone();
+
         for (int i = 0; i < SlotCount; i++)
         {
-            abilities[i] = list != null && i < list.Count ? list[i] : null;
-            cooldownEnd[i] = 0f;
+            abilities[i] = next[i];
+            int oldIndex = IndexOf(oldAbilities, next[i]);
+            cooldownEnd[i] = oldIndex >= 0 ? oldCooldown[oldIndex] : 0f;
         }
 
         OnAbilitiesChanged?.Invoke();
     }
+
+    private static int HotkeyToSlot(KeyCode hotkey)
+    {
+        int index = (int)hotkey - (int)KeyCode.Alpha1;
+        return index >= 0 && index < SlotCount ? index : -1;
+    }
+
+    private static int FirstFreeSlot(AbilityData[] array)
+    {
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (array[i] == null) return i;
+        }
+        return -1;
+    }
+
+    private static int IndexOf(AbilityData[] array, AbilityData value)
+    {
+        if (value == null) return -1;
+
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (array[i] == value) return i;
+        }
+        return -1;
+    }
+
+    public bool ActivateAbility(int index) => TryActivate(index);
 
     public AbilityData GetAbility(int index)
     {
@@ -101,6 +167,10 @@ public class AbilitySystem : MonoBehaviour
 
     private bool TryActivate(int index)
     {
+        if (index < 0 || index >= SlotCount) return false;
+        if (Time.timeScale <= 0f) return false;
+        if (uiManager != null && uiManager.IsOpen) return false;
+
         AbilityData ability = GetAbility(index);
         if (ability == null) return false;
         if (activeAbility != null) return false;

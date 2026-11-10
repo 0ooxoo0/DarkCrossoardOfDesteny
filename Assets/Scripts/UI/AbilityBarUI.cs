@@ -150,7 +150,7 @@ public class AbilityBarUI : MonoBehaviour
 
         Image background = root.GetComponent<Image>();
         background.color = new Color(0.08f, 0.08f, 0.08f, 0.9f);
-        background.raycastTarget = false;
+        background.raycastTarget = true;
 
         GameObject iconGo = new GameObject(
             "Icon",

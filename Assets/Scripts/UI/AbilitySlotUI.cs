@@ -1,8 +1,9 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class AbilitySlotUI : MonoBehaviour
+public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] private Image icon;
     [SerializeField] private Image cooldownOverlay;
@@ -10,6 +11,7 @@ public class AbilitySlotUI : MonoBehaviour
     [SerializeField] private TMP_Text cooldownLabel;
 
     private Color iconBaseColor = Color.white;
+    private int slotIndex;
 
     // Используется и setup-скриптом (prefab), и рантайм-fallback в AbilityBarUI.
     public void SetVisualReferences(Image iconImage, Image overlayImage, TMP_Text keyText, TMP_Text cooldownText)
@@ -22,6 +24,8 @@ public class AbilitySlotUI : MonoBehaviour
 
     public void SetAbility(AbilityData ability, int slotIndex, KeyCode hotkey)
     {
+        this.slotIndex = slotIndex;
+
         if (icon != null)
         {
             if (ability != null && ability.icon != null)
@@ -81,6 +85,14 @@ public class AbilitySlotUI : MonoBehaviour
             color.a = available ? 1f : 0.4f;
             keyLabel.color = color;
         }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left) return;
+
+        AbilitySystem system = FindFirstObjectByType<AbilitySystem>();
+        if (system != null) system.ActivateAbility(slotIndex);
     }
 
     private static string GetKeyLabel(KeyCode hotkey, int slotIndex)
