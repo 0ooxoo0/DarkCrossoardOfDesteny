@@ -42,6 +42,14 @@ public static class WeaponAssetSetup
     private const string FistsOverridePath = OverridesDir + "/Fists.overrideController";
     private const string SwordOverridePath = OverridesDir + "/Sword.overrideController";
     private const string AbilitySlotPrefabPath = UiDir + "/AbilitySlot.prefab";
+    private const string WeaponSlotPrefabPath = UiDir + "/WeaponSlot.prefab";
+    private const string ItemsDir = CombatRoot + "/Items";
+    private const string SwordItemPath = ItemsDir + "/SwordItem.asset";
+    private const string FistsItemPath = ItemsDir + "/FistsItem.asset";
+    private const string SwordIconPath =
+        "Assets/Ideals/Menu/UI/Clean Vector Icons/T_5_sword_.png";
+    private const string MagicIconPath =
+        "Assets/Ideals/Menu/UI/Clean Vector Icons/T_3_magic_fire_.png";
 
     [MenuItem("Tools/Combat/1. Create Weapon Assets")]
     public static void CreateAssets()
@@ -51,6 +59,7 @@ public static class WeaponAssetSetup
         EnsureFolder(AbilitiesDir);
         EnsureFolder(OverridesDir);
         EnsureFolder(UiDir);
+        EnsureFolder(ItemsDir);
 
         RuntimeAnimatorController baseController =
             AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(BaseControllerPath);
@@ -103,6 +112,7 @@ public static class WeaponAssetSetup
         PlayerAbilityAssets abilities = CreateAbilityAssets();
         CreateWeaponAssets(fistsOverride, swordOverride, abilities);
         CreateAbilitySlotPrefab();
+        CreateWeaponSlotPrefab();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -241,6 +251,7 @@ public static class WeaponAssetSetup
         swordSlash.cooldown = 1.2f;
         swordSlash.hotkey = KeyCode.Alpha1;
         swordSlash.requiredWeapon = WeaponType.Sword;
+        swordSlash.icon = AssetDatabase.LoadAssetAtPath<Sprite>(SwordIconPath);
         swordSlash.damageTags = new List<string> { "DammageObject" };
         EditorUtility.SetDirty(swordSlash);
 
@@ -251,6 +262,7 @@ public static class WeaponAssetSetup
         magicBurst.cooldown = 3f;
         magicBurst.hotkey = KeyCode.Alpha2;
         magicBurst.requiredWeapon = WeaponType.Any;
+        magicBurst.icon = AssetDatabase.LoadAssetAtPath<Sprite>(MagicIconPath);
         magicBurst.damageTags = new List<string> { "DammageObject" };
         magicBurst.damageLayers = ~0;
         magicBurst.magicRange = 2.5f;
@@ -287,7 +299,7 @@ public static class WeaponAssetSetup
         sword.animatorOverride = swordOverride;
         sword.useAnimationEvents = true;
         sword.damageTags = new List<string> { "DammageObject" };
-        sword.abilities = new List<AbilityData> { abilities.SwordSlash, abilities.MagicBurst };
+        sword.abilities = new List<AbilityData> { abilities.SwordSlash };
         sword.weaponModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SwordModelPath);
         sword.weaponLocalPosition = Vector3.zero;
         sword.weaponLocalEulerAngles = Vector3.zero;
@@ -300,6 +312,35 @@ public static class WeaponAssetSetup
             Debug.LogWarning("[WeaponAssetSetup] Не найдена модель меча: " + SwordModelPath);
 
         EditorUtility.SetDirty(sword);
+
+        CreateItemAssets(fists, sword);
+    }
+
+    private static void CreateItemAssets(WeaponData fists, WeaponData sword)
+    {
+        ItemData swordItem = CreateOrLoadAsset<ItemData>(SwordItemPath);
+        swordItem.itemId = "sword_item";
+        swordItem.itemName = "Меч";
+        swordItem.description = "Одноручный меч.";
+        swordItem.icon = AssetDatabase.LoadAssetAtPath<Sprite>(SwordIconPath);
+        swordItem.type = ItemType.Weapon;
+        swordItem.stackable = false;
+        swordItem.maxStackSize = 1;
+        swordItem.consumable = false;
+        swordItem.weaponData = sword;
+        EditorUtility.SetDirty(swordItem);
+
+        ItemData fistsItem = CreateOrLoadAsset<ItemData>(FistsItemPath);
+        fistsItem.itemId = "fists_item";
+        fistsItem.itemName = "Кулаки";
+        fistsItem.description = "Без оружия.";
+        fistsItem.icon = null;
+        fistsItem.type = ItemType.Weapon;
+        fistsItem.stackable = false;
+        fistsItem.maxStackSize = 1;
+        fistsItem.consumable = false;
+        fistsItem.weaponData = fists;
+        EditorUtility.SetDirty(fistsItem);
     }
 
     private static void CreateAbilitySlotPrefab()
@@ -319,6 +360,7 @@ public static class WeaponAssetSetup
 
         Image background = root.GetComponent<Image>();
         background.color = new Color(0.08f, 0.08f, 0.08f, 0.9f);
+        background.raycastTarget = true;
 
         GameObject iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         iconGo.transform.SetParent(root.transform, false);
@@ -376,6 +418,59 @@ public static class WeaponAssetSetup
         slotUi.SetVisualReferences(iconImage, overlayImage, keyLabel, cooldownLabel);
 
         PrefabUtility.SaveAsPrefabAsset(root, AbilitySlotPrefabPath);
+        UnityEngine.Object.DestroyImmediate(root);
+    }
+
+    private static void CreateWeaponSlotPrefab()
+    {
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(WeaponSlotPrefabPath) != null)
+            return;
+
+        GameObject root = new GameObject(
+            "WeaponSlot",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(WeaponSlotUI));
+
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.sizeDelta = new Vector2(96f, 96f);
+
+        Image background = root.GetComponent<Image>();
+        background.color = new Color(0.08f, 0.08f, 0.08f, 0.9f);
+        background.raycastTarget = true;
+
+        GameObject iconGo = new GameObject(
+            "Icon",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        iconGo.transform.SetParent(root.transform, false);
+
+        RectTransform iconRect = iconGo.GetComponent<RectTransform>();
+        iconRect.anchorMin = Vector2.zero;
+        iconRect.anchorMax = Vector2.one;
+        iconRect.offsetMin = new Vector2(8f, 8f);
+        iconRect.offsetMax = new Vector2(-8f, -8f);
+
+        Image iconImage = iconGo.GetComponent<Image>();
+        iconImage.raycastTarget = false;
+
+        TMP_Text nameLabel = CreateText(
+            root.transform,
+            "NameLabel",
+            new Vector2(0.5f, 0f),
+            new Vector2(0.5f, 0f),
+            new Vector2(96f, 22f),
+            new Vector2(0f, 12f),
+            TextAlignmentOptions.Center,
+            12f,
+            false);
+
+        WeaponSlotUI slotUi = root.GetComponent<WeaponSlotUI>();
+        slotUi.SetVisualReferences(iconImage, nameLabel, background);
+
+        PrefabUtility.SaveAsPrefabAsset(root, WeaponSlotPrefabPath);
         UnityEngine.Object.DestroyImmediate(root);
     }
 
