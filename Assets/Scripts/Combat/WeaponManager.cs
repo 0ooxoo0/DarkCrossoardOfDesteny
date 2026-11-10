@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +28,8 @@ public class WeaponManager : MonoBehaviour
     [SerializeField] private WeaponData startingWeapon;
 
     public WeaponData CurrentWeapon => currentWeapon;
+
+    public event Action<WeaponData> OnWeaponEquipped;
 
     public bool UseAnimationEvents => currentWeapon != null && currentWeapon.useAnimationEvents;
 
@@ -71,7 +74,7 @@ public class WeaponManager : MonoBehaviour
             if (garderob != null) garderob.OnWeaponChanged += EquipWeapon;
         }
 
-        if (startingWeapon != null) EquipWeapon(startingWeapon);
+        if (startingWeapon != null && currentWeapon == null) EquipWeapon(startingWeapon);
     }
 
     private void OnDestroy()
@@ -144,6 +147,8 @@ public class WeaponManager : MonoBehaviour
 
         ApplyHitbox(false);
         if (playerController != null) playerController.ResetHitboxState();
+
+        OnWeaponEquipped?.Invoke(weapon);
     }
 
     /// <summary>
