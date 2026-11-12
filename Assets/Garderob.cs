@@ -7,6 +7,14 @@ using UnityEngine;
 
 public class Garderob : MonoBehaviour
 {
+    // Единственные новые публичные члены: событие выбора оружия и его вызов.
+    public event Action<WeaponData> OnWeaponChanged;
+
+    public void EquipWeapon(WeaponData weapon)
+    {
+        OnWeaponChanged?.Invoke(weapon);
+    }
+
     //public List<Fase> _Fase = new List<Fase>();
     //public List<Body> _Body = new List<Body>();
     [SerializeField] private List<string> nameMassive;

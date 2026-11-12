@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Default Local Group
+  m_GUID: 31b6a2c9ee915e54da399b369f71ec58
+  m_SerializeEntries:
+  - m_GUID: 47cc770c37d29c946a253647676c80cc
+    m_Address: Assets/Assets/Stylized Medieval Kingdom URP/Prefabs/Buildings/Building
+      10_1 Variant.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c7fc7ae0a5fd9bf45ab94d0dea72b0c6
+    m_Address: Assets/Assets/Stylized Medieval Kingdom URP/Prefabs/Plants/Rock_Formation_1
+      Variant.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e8e4aed914da9844a9d53cec3dc8f5ad
+    m_Address: Assets/Assets/Stylized Medieval Kingdom URP/Prefabs/Buildings/Windmill
+      Variant.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 1ecc6bf56a5f8fd418b1577cf328d90f, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: a18a2ecf08cf065408a4b5463784c962, type: 2}
+    - {fileID: 11400000, guid: 88467841bd9734446b7694eaa96e85ca, type: 2}

@@ -6,6 +6,8 @@ using UnityEngine;
 public class InventorySaveData
 {
     public List<InventorySlotSaveData> slots = new List<InventorySlotSaveData>();
+    public string equippedWeaponId;
+    public string weaponSlotItemId;
 }
 
 [System.Serializable]
@@ -19,10 +21,21 @@ public class InventorySaveSystem : MonoBehaviour
 {
     [SerializeField] private Inventory inventory;
 
+    [Header("Weapon")]
+    [SerializeField] private WeaponSlotUI weaponSlot;
+    [SerializeField] private WeaponManager weaponManager;
+    [SerializeField] private List<WeaponData> allWeapons = new List<WeaponData>();
+    [SerializeField] private bool loadOnStart;
+
     [Header("Item Database")]
     [SerializeField] private List<ItemData> allItems = new List<ItemData>(); // Перетащите сюда ВСЕ предметы из проекта
 
     private string savePath;
+
+    private void Start()
+    {
+        if (loadOnStart) LoadInventory();
+    }
 
     private void Awake()
     {
@@ -33,28 +46,55 @@ public class InventorySaveSystem : MonoBehaviour
     // Сохранение инвентаря
     public void SaveInventory()
     {
-        if (inventory == null) return;
+        if (inventory == null && weaponManager == null && weaponSlot == null) return;
 
-        var saveData = new InventorySaveData();
-
-        for (int i = 0; i < inventory.GetSlotCount(); i++)
+        InventorySaveData saveData = null;
+        if (File.Exists(savePath))
         {
-            var slot = inventory.GetSlot(i);
-            var slotSaveData = new InventorySlotSaveData();
-
-            if (slot.itemData != null)
+            try
             {
-                slotSaveData.itemId = slot.itemData.itemId;
-                slotSaveData.quantity = slot.quantity;
+                saveData = JsonUtility.FromJson<InventorySaveData>(File.ReadAllText(savePath));
             }
-            else
+            catch
             {
-                slotSaveData.itemId = "";
-                slotSaveData.quantity = 0;
+                saveData = null;
             }
-
-            saveData.slots.Add(slotSaveData);
         }
+
+        if (saveData == null) saveData = new InventorySaveData();
+        if (saveData.slots == null) saveData.slots = new List<InventorySlotSaveData>();
+
+        if (inventory != null)
+        {
+            saveData.slots.Clear();
+
+            for (int i = 0; i < inventory.GetSlotCount(); i++)
+            {
+                InventorySlot slot = inventory.GetSlot(i);
+                InventorySlotSaveData slotSaveData = new InventorySlotSaveData();
+
+                if (slot != null && slot.itemData != null)
+                {
+                    slotSaveData.itemId = slot.itemData.itemId;
+                    slotSaveData.quantity = slot.quantity;
+                }
+                else
+                {
+                    slotSaveData.itemId = "";
+                    slotSaveData.quantity = 0;
+                }
+
+                saveData.slots.Add(slotSaveData);
+            }
+        }
+
+        if (weaponManager != null && weaponManager.CurrentWeapon != null)
+            saveData.equippedWeaponId = weaponManager.CurrentWeapon.weaponId;
+        else if (weaponSlot != null && weaponSlot.OwnedWeapon != null)
+            saveData.equippedWeaponId = weaponSlot.OwnedWeapon.weaponId;
+
+        if (weaponSlot != null && !weaponSlot.IsDisplayOnly && weaponSlot.OwnedItem != null)
+            saveData.weaponSlotItemId = weaponSlot.OwnedItem.itemId;
 
         string json = JsonUtility.ToJson(saveData, true);
         File.WriteAllText(savePath, json);
@@ -73,30 +113,41 @@ public class InventorySaveSystem : MonoBehaviour
         try
         {
             string json = File.ReadAllText(savePath);
-            var saveData = JsonUtility.FromJson<InventorySaveData>(json);
+            InventorySaveData saveData = JsonUtility.FromJson<InventorySaveData>(json);
 
-            // Очищаем инвентарь
-            ClearInventory();
-
-            // Загружаем данные
-            for (int i = 0; i < saveData.slots.Count && i < inventory.GetSlotCount(); i++)
+            if (saveData == null)
             {
-                var slotData = saveData.slots[i];
+                Debug.LogWarning("Save file is empty or invalid");
+                return;
+            }
 
-                if (!string.IsNullOrEmpty(slotData.itemId))
+            if (inventory != null)
+            {
+                ClearInventory();
+
+                if (saveData.slots != null)
                 {
-                    ItemData itemData = FindItemById(slotData.itemId);
-                    if (itemData != null)
+                    for (int i = 0; i < saveData.slots.Count && i < inventory.GetSlotCount(); i++)
                     {
-                        // Добавляем предмет
-                        inventory.AddItem(itemData, slotData.quantity);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Item with ID {slotData.itemId} not found!");
+                        InventorySlotSaveData slotData = saveData.slots[i];
+
+                        if (!string.IsNullOrEmpty(slotData.itemId))
+                        {
+                            ItemData itemData = FindItemById(slotData.itemId);
+                            if (itemData != null)
+                            {
+                                inventory.AddItem(itemData, slotData.quantity);
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"Item with ID {slotData.itemId} not found!");
+                            }
+                        }
                     }
                 }
             }
+
+            RestoreWeapon(saveData);
 
             Debug.Log("Inventory loaded successfully!");
         }
@@ -107,11 +158,40 @@ public class InventorySaveSystem : MonoBehaviour
     }
 
     // Поиск предмета в списке
+    private void RestoreWeapon(InventorySaveData saveData)
+    {
+        if (weaponSlot != null && !weaponSlot.IsDisplayOnly)
+        {
+            ItemData slotItem = FindItemById(saveData.weaponSlotItemId);
+            weaponSlot.RestoreOwnedItem(slotItem);
+        }
+
+        WeaponData weapon = FindWeaponById(saveData.equippedWeaponId);
+        if (weapon == null && weaponSlot != null)
+            weapon = weaponSlot.OwnedWeapon;
+
+        if (weapon != null && weaponManager != null)
+            weaponManager.EquipWeapon(weapon);
+    }
+
+    private WeaponData FindWeaponById(string weaponId)
+    {
+        if (string.IsNullOrEmpty(weaponId) || allWeapons == null) return null;
+
+        foreach (WeaponData weapon in allWeapons)
+        {
+            if (weapon != null && weapon.weaponId == weaponId) return weapon;
+        }
+        return null;
+    }
+
     private ItemData FindItemById(string itemId)
     {
+        if (allItems == null) return null;
+
         foreach (var item in allItems)
         {
-            if (item.itemId == itemId)
+            if (item != null && item.itemId == itemId)
                 return item;
         }
         return null;

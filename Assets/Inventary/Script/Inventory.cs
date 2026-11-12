@@ -201,6 +201,34 @@ public class Inventory : MonoBehaviour
         OnInventoryChanged?.Invoke(this);
     }
 
+    public InventorySlot TakeSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slots.Count) return null;
+
+        InventorySlot taken = slots[slotIndex];
+        slots[slotIndex] = new InventorySlot(null, 0);
+        OnInventoryChanged?.Invoke(this);
+        return taken;
+    }
+
+    public bool SetSlot(int slotIndex, ItemData item, int count)
+    {
+        if (slotIndex < 0 || slotIndex >= slots.Count) return false;
+
+        if (item == null || count <= 0)
+        {
+            slots[slotIndex] = new InventorySlot(null, 0);
+        }
+        else
+        {
+            int max = Mathf.Max(1, item.maxStackSize);
+            slots[slotIndex] = new InventorySlot(item, Mathf.Clamp(count, 1, max));
+        }
+
+        OnInventoryChanged?.Invoke(this);
+        return true;
+    }
+
     public InventorySlot GetSlot(int index)
     {
         if (index < 0 || index >= slots.Count) return null;

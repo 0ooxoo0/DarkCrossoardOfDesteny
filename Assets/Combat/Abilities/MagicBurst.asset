@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d598df4aee489714e89dbb02da91911f, type: 3}
+  m_Name: MagicBurst
+  m_EditorClassIdentifier: Assembly-CSharp::AbilityData
+  abilityId: magic_burst
+  displayName: "\u041C\u0430\u0433\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0432\u0437\u0440\u044B\u0432"
+  icon: {fileID: 21300000, guid: e32b8056f5f2eb741bec42f791c7f1b5, type: 3}
+  hotkey: 50
+  type: 1
+  cooldown: 3
+  vfxPrefab: {fileID: 0}
+  castAnimation: {fileID: 0}
+  requiredWeapon: 0
+  damageTags:
+  - DammageObject
+  damageLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  magicRange: 2.5
+  magicRadius: 2
+  magicSpawnDistance: 1.5
+  vfxDelay: 0.2
+  vfxLifetime: 2
+  magicHitboxLifetime: 0.2

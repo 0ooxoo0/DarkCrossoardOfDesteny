@@ -238,15 +238,17 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragHa
 
         InventorySlotUI targetSlot = null;
         GameObject trashArea = null;
+        WeaponSlotUI weaponSlot = null;
 
         foreach (RaycastResult result in results)
         {
             if (targetSlot == null)
-                targetSlot = result.gameObject.GetComponent<InventorySlotUI>();
+                targetSlot = result.gameObject.GetComponentInParent<InventorySlotUI>();
+            if (weaponSlot == null)
+                weaponSlot = result.gameObject.GetComponentInParent<WeaponSlotUI>();
             if (trashArea == null)
                 trashArea = result.gameObject;
 
-            if (targetSlot != null && trashArea != null) break;
         }
 
         if (targetSlot != null && targetSlot != this)
@@ -254,7 +256,11 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragHa
             Debug.Log($"Moving item from slot {slotIndex} to slot {targetSlot.slotIndex}");
             inventory.MoveItem(slotIndex, targetSlot.slotIndex);
         }
-        else if (trashArea.tag == "TrashArea")
+        else if (weaponSlot != null)
+        {
+            if (!weaponSlot.TryAccept(this)) ReturnToOriginalPosition();
+        }
+        else if (trashArea != null && trashArea.CompareTag("TrashArea"))
         {
             ShowDropConfirmation();
         }

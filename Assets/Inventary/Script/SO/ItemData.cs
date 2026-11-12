@@ -25,4 +25,7 @@ public class ItemData : ScriptableObject
 
     [Header("Usage")]
     public bool consumable = false;
+
+    [Header("Weapon")]
+    public WeaponData weaponData;
 }
