@@ -4858,6 +4858,9 @@ GameObject:
   - component: {fileID: 8940506487072268590}
   - component: {fileID: 2797467021992692300}
   - component: {fileID: 3473364565530580050}
+  - component: {fileID: 7359351532270535140}
+  - component: {fileID: 4103899246082561591}
+  - component: {fileID: 2246605590019494017}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -4947,6 +4950,7 @@ MonoBehaviour:
   hitboxStart: 0.15
   hitboxEnd: 0.55
   weapon: {fileID: 7312054840095821453}
+  weaponManager: {fileID: 7359351532270535140}
 --- !u!114 &3473364565530580050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4961,9 +4965,60 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
   attackDamage: 25
   attackRange: 2.5
-  mouseRayDistance: 50
+  attackAngle: 150
+  hitDelay: 0.3
+  attackCooldown: 0.7
   playerCamera: {fileID: 0}
   attackOrigin: {fileID: 5896964559091555316}
+--- !u!114 &7359351532270535140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 123e6c0fbaf744440bbf3d235959b821, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponManager
+  animator: {fileID: 8940506487072268590}
+  playerController: {fileID: 2797467021992692300}
+  abilitySystem: {fileID: 4103899246082561591}
+  fistWeapon: {fileID: 7312054840095821453}
+  baseController: {fileID: 9100000, guid: d72ac30c17265054499cbbf60f69b7ee, type: 2}
+  baseAttackClip: {fileID: 190365492218098281, guid: b4ed12fcea5716a4b88a664cf716cfc6, type: 3}
+  rightHand: {fileID: 2186707679935301323}
+  startingWeapon: {fileID: 11400000, guid: d65852f5b49641d47aa67796aaf57fa3, type: 2}
+--- !u!114 &4103899246082561591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8123e40f6a9e6e04488bc2a69a0f61e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AbilitySystem
+  weaponManager: {fileID: 7359351532270535140}
+  playerController: {fileID: 2797467021992692300}
+  globalAbilities:
+  - {fileID: 11400000, guid: c61269d46d55f6048b20951643ede0b6, type: 2}
+--- !u!114 &2246605590019494017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e70ec276489f8c40961444c73e56de4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimationEventRelay
+  weaponManager: {fileID: 7359351532270535140}
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0
@@ -5190,5 +5245,10 @@ PrefabInstance:
 --- !u!4 &1958606268307075305 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d49c65de9fce66146b5d0e164b1f9d2d, type: 3}
+  m_PrefabInstance: {fileID: 2064029046386628354}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2186707679935301323 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -9008227882331336247, guid: d49c65de9fce66146b5d0e164b1f9d2d, type: 3}
   m_PrefabInstance: {fileID: 2064029046386628354}
   m_PrefabAsset: {fileID: 0}

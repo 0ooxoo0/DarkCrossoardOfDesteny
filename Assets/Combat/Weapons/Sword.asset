@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80d00be04003764438e9940e28947625, type: 3}
+  m_Name: Sword
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponId: sword
+  displayName: "\u041C\u0435\u0447"
+  animatorOverride: {fileID: 22100000, guid: a49c7a3206c0d5540a571907cbb6f280, type: 2}
+  type: 2
+  useAnimationEvents: 1
+  abilities:
+  - {fileID: 11400000, guid: d6eddb96a7af9bc43b71ce7858b5e703, type: 2}
+  damageTags:
+  - DammageObject
+  weaponModelPrefab: {fileID: 8814540712764912406, guid: 1805d6341d9e84543af925e938a8f160, type: 3}
+  weaponLocalPosition: {x: 0, y: 0, z: 0}
+  weaponLocalEulerAngles: {x: 0, y: 0, z: 0}
+  weaponLocalScale: {x: 1, y: 1, z: 1}
+  hitboxLocalPosition: {x: 0, y: 0, z: 0}
+  hitboxLocalEulerAngles: {x: 0, y: 0, z: 0}
+  hitboxSize: {x: 0.15, y: 0.15, z: 1.2}
