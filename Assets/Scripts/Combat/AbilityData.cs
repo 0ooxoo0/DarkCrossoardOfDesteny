@@ -23,6 +23,28 @@ public class AbilityData : ScriptableObject
     public AnimationClip castAnimation;
     public WeaponType requiredWeapon = WeaponType.Any;
 
+    [Header("Cultivation Requirements")]
+    [Tooltip("Если включено, способность требует активный Дао и его уровень.")]
+    [SerializeField] private bool useRequiredDao;
+    [SerializeField] private DaoType requiredDaoType = DaoType.Sword;
+    [Tooltip("0 — без требования к уровню Дао.")]
+    [Min(0)] public int requiredDaoLevel;
+    [Tooltip("0 — без требования к реалму; иначе сравнивается CurrentRealmIndex.")]
+    [Min(0)] public int requiredRealmIndex;
+    [Tooltip("0 — способность бесплатна.")]
+    [Min(0)] public int qiCost;
+
+    /// <summary>null — способность не привязана к Дао. В инспекторе задаётся парой useRequiredDao + requiredDaoType.</summary>
+    public DaoType? requiredDao
+    {
+        get => useRequiredDao ? requiredDaoType : (DaoType?)null;
+        set
+        {
+            useRequiredDao = value.HasValue;
+            if (value.HasValue) requiredDaoType = value.Value;
+        }
+    }
+
     [Header("Damage")]
     [Tooltip("Сейчас используется только первый тег (по умолчанию DammageObject). Список оставлен для расширения.")]
     public List<string> damageTags = new List<string> { "DammageObject" };

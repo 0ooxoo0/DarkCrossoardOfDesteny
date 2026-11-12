@@ -31,6 +31,10 @@ public class CultivationRealm : ScriptableObject
     [Tooltip("Базовый шанс успеха для этого реалма. Отрицательное значение = взять из CultivationSystem.")]
     [SerializeField, Range(-1f, 1f)] private float baseBreakthroughChance = -1f;
 
+    [Header("VFX (опционально)")]
+    [Tooltip("Короткий всплеск при успешном прорыве. Пусто = использовать префаб BreakthroughSequence.")]
+    [SerializeField] private GameObject vfxPrefab;
+
     public string RealmName => realmName;
     public string RealmNameChinese => realmNameChinese;
     public string Description => description;
@@ -42,6 +46,7 @@ public class CultivationRealm : ScriptableObject
     public int RequiredComprehension => Mathf.Max(0, requiredComprehension);
     public IReadOnlyList<string> RequiredMaterials => requiredMaterials;
     public float BaseBreakthroughChance => baseBreakthroughChance;
+    public GameObject VfxPrefab => vfxPrefab;
 
     /// <summary>Используется setup-скриптом и runtime-заглушкой конфига.</summary>
     public void Setup(string name, string nameChinese, string desc, int index, int stages,

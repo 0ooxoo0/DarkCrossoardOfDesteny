@@ -30,6 +30,7 @@ public class DaoSystem : MonoBehaviour
     private readonly Dictionary<DaoType, int> levels = new Dictionary<DaoType, int>();
     private readonly Dictionary<DaoType, int> points = new Dictionary<DaoType, int>();
     private readonly HashSet<DaoType> unlocked = new HashSet<DaoType>();
+    private readonly Dictionary<string, TechniqueData> learnedTechniques = new Dictionary<string, TechniqueData>();
     private bool nearAltar;
 
     public event Action<DaoType, int> OnDaoLevelChanged;
@@ -37,6 +38,8 @@ public class DaoSystem : MonoBehaviour
     public event Action<DaoType> OnDaoUnlocked;
     /// <summary>(dao, points, pointsPerLevel)</summary>
     public event Action<DaoType, int, int> OnDaoPointsChanged;
+    /// <summary>Свиток или иной источник добавил технику в изученные.</summary>
+    public event Action<TechniqueData> OnTechniqueLearned;
 
     public DaoType? ActiveDao => hasActiveDao ? activeDaoType : (DaoType?)null;
     public bool CanSwitchAnywhere { get => canSwitchAnywhere; set => canSwitchAnywhere = value; }
@@ -71,6 +74,7 @@ public class DaoSystem : MonoBehaviour
         levels.Clear();
         points.Clear();
         unlocked.Clear();
+        learnedTechniques.Clear();
         EnsureDictionaries();
 
         if (unlockedAtStart != null)
@@ -140,6 +144,70 @@ public class DaoSystem : MonoBehaviour
     public void UnlockDao(DaoType type)
     {
         Unlock(type, true);
+    }
+
+    /// <summary>Добавить технику в изученные (свиток). Уровень/реалм при этом могут быть ещё не достигнуты.</summary>
+    public bool AddLearnedTechnique(TechniqueData technique)
+    {
+        if (technique == null || string.IsNullOrEmpty(technique.TechniqueId)) return false;
+
+        if (!IsDaoUnlocked(technique.DaoType))
+        {
+            Debug.LogWarning("[DaoSystem] Нельзя изучить технику закрытого Дао: " + technique.DaoType);
+            return false;
+        }
+
+        if (learnedTechniques.ContainsKey(technique.TechniqueId))
+        {
+            learnedTechniques[technique.TechniqueId] = technique;
+            return false;
+        }
+
+        learnedTechniques[technique.TechniqueId] = technique;
+        OnTechniqueLearned?.Invoke(technique);
+        return true;
+    }
+
+    public bool HasLearnedTechnique(TechniqueData technique)
+    {
+        return technique != null && !string.IsNullOrEmpty(technique.TechniqueId) &&
+               learnedTechniques.ContainsKey(technique.TechniqueId);
+    }
+
+    public bool HasLearnedTechnique(string techniqueId)
+    {
+        return !string.IsNullOrEmpty(techniqueId) && learnedTechniques.ContainsKey(techniqueId);
+    }
+
+    public List<TechniqueData> GetLearnedTechniques()
+    {
+        return new List<TechniqueData>(learnedTechniques.Values);
+    }
+
+    public string[] GetLearnedTechniqueIds()
+    {
+        return new List<string>(learnedTechniques.Keys).ToArray();
+    }
+
+    public TechniqueData GetTechniqueById(string techniqueId)
+    {
+        if (string.IsNullOrEmpty(techniqueId)) return null;
+        if (learnedTechniques.TryGetValue(techniqueId, out TechniqueData learned) && learned != null)
+            return learned;
+
+        if (daoPaths == null) return null;
+        for (int i = 0; i < daoPaths.Count; i++)
+        {
+            var path = daoPaths[i];
+            if (path == null) continue;
+            var techniques = path.Techniques;
+            for (int j = 0; j < techniques.Count; j++)
+            {
+                if (techniques[j] != null && techniques[j].TechniqueId == techniqueId)
+                    return techniques[j];
+            }
+        }
+        return null;
     }
 
     private void Unlock(DaoType type, bool notify)
@@ -239,6 +307,11 @@ public class DaoSystem : MonoBehaviour
     /// <summary>Восстановление уровней/очков/разблокировки из сохранения.</summary>
     public void RestoreState(int[] levelsIn, int[] pointsIn, int unlockedMask, int activeIndex)
     {
+        RestoreState(levelsIn, pointsIn, unlockedMask, activeIndex, null);
+    }
+
+    public void RestoreState(int[] levelsIn, int[] pointsIn, int unlockedMask, int activeIndex, string[] learnedIds)
+    {
         EnsureDictionaries();
 
         for (int i = 0; i < DaoTypeInfo.All.Length; i++)
@@ -259,6 +332,19 @@ public class DaoSystem : MonoBehaviour
                 unlocked.Remove(type);
                 levels[type] = 0;
                 points[type] = 0;
+            }
+        }
+
+        learnedTechniques.Clear();
+        if (learnedIds != null)
+        {
+            for (int i = 0; i < learnedIds.Length; i++)
+            {
+                string id = learnedIds[i];
+                if (string.IsNullOrEmpty(id)) continue;
+                TechniqueData technique = GetTechniqueById(id);
+                if (technique != null)
+                    learnedTechniques[id] = technique;
             }
         }
 
@@ -300,12 +386,20 @@ public class DaoSystem : MonoBehaviour
             if (!IsTechniqueAvailable(technique, level, realmIndex)) continue;
             result.Add(technique);
         }
+
+        // Свиток мог открыть технику раньше уровня/реалма — она всё равно доступна.
+        foreach (var learned in learnedTechniques.Values)
+        {
+            if (learned == null || learned.DaoType != activeDaoType) continue;
+            if (!result.Contains(learned)) result.Add(learned);
+        }
         return result;
     }
 
     public bool IsTechniqueAvailable(TechniqueData technique)
     {
         if (technique == null) return false;
+        if (HasLearnedTechnique(technique)) return true;
         int realmIndex = cultivation != null ? cultivation.CurrentRealmIndex : 0;
         return IsTechniqueAvailable(technique, GetLevel(technique.DaoType), realmIndex);
     }
@@ -333,6 +427,11 @@ public class DaoSystem : MonoBehaviour
                     result.Add(techniques[j]);
             }
         }
+
+        foreach (var learned in learnedTechniques.Values)
+        {
+            if (learned != null && !result.Contains(learned)) result.Add(learned);
+        }
         return result;
     }
 
@@ -346,6 +445,11 @@ public class DaoSystem : MonoBehaviour
         for (int i = 0; i < techniques.Count; i++)
         {
             if (techniques[i] != null) result.Add(techniques[i]);
+        }
+
+        foreach (var learned in learnedTechniques.Values)
+        {
+            if (learned != null && learned.DaoType == type && !result.Contains(learned)) result.Add(learned);
         }
         return result;
     }

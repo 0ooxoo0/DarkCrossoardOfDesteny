@@ -235,6 +235,87 @@ public class Inventory : MonoBehaviour
         return slots[index];
     }
 
+    public int CountItemsWithTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag)) return 0;
+
+        int total = 0;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (slot?.itemData == null) continue;
+
+            var tags = slot.itemData.breakthroughTags;
+            if (tags == null) continue;
+            if (tags.Contains(tag)) total += slot.quantity;
+        }
+        return total;
+    }
+
+    public bool HasItemsWithTags(IReadOnlyList<string> tags, bool requireAll = false)
+    {
+        if (tags == null || tags.Count == 0) return true;
+
+        if (requireAll)
+        {
+            for (int i = 0; i < tags.Count; i++)
+            {
+                if (CountItemsWithTag(tags[i]) <= 0) return false;
+            }
+            return true;
+        }
+
+        for (int i = 0; i < tags.Count; i++)
+        {
+            if (CountItemsWithTag(tags[i]) > 0) return true;
+        }
+        return false;
+    }
+
+    public bool HasAnyItemWithTags(IReadOnlyList<string> tags)
+    {
+        return HasItemsWithTags(tags, false);
+    }
+
+    public bool HasAllItemsWithTags(IReadOnlyList<string> tags)
+    {
+        return HasItemsWithTags(tags, true);
+    }
+
+    public int RemoveItemsByTags(IReadOnlyList<string> tags, int countPerTag = 1)
+    {
+        if (tags == null || tags.Count == 0 || countPerTag <= 0) return 0;
+
+        int removed = 0;
+        HashSet<string> processed = new HashSet<string>();
+
+        for (int t = 0; t < tags.Count; t++)
+        {
+            string tag = tags[t];
+            if (string.IsNullOrWhiteSpace(tag) || !processed.Add(tag)) continue;
+
+            int remaining = countPerTag;
+            for (int i = 0; i < slots.Count && remaining > 0; i++)
+            {
+                var slot = slots[i];
+                if (slot?.itemData == null) continue;
+
+                var itemTags = slot.itemData.breakthroughTags;
+                if (itemTags == null || !itemTags.Contains(tag)) continue;
+
+                int take = Mathf.Min(remaining, slot.quantity);
+                slot.RemoveItem(take);
+                remaining -= take;
+                removed += take;
+            }
+        }
+
+        if (removed > 0)
+            OnInventoryChanged?.Invoke(this);
+
+        return removed;
+    }
+
     public int GetSlotCount()
     {
         return slots.Count;

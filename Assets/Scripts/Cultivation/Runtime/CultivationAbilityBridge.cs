@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Мост к AbilitySystem: TechniqueData → AbilityData и регистрация в слотах 1–5.
-/// Чужие скрипты не меняются — используются только публичные SetGlobalAbilities/OnAbilityActivated.
+/// Мост к AbilitySystem: TechniqueData → AbilityData и регистрация в слотах 4–5.
+/// Техники хранятся отдельным списком и не затирают globalAbilities (магию оружия).
 /// </summary>
 [DisallowMultipleComponent]
 public class CultivationAbilityBridge : MonoBehaviour
@@ -43,38 +43,138 @@ public class CultivationAbilityBridge : MonoBehaviour
         techniquesById.Clear();
     }
 
-    /// <summary>Кладёт технику в свободный слот хотбара (клавиши 1–5).</summary>
+    /// <summary>Кладёт технику в свободный слот 4–5.</summary>
     public void RegisterTechnique(TechniqueData technique)
     {
-        if (technique == null) return;
+        AssignTechnique(technique);
+    }
+
+    /// <summary>Назначить технику в слот 4–5 (индексы 3–4). -1 = первый свободный.</summary>
+    public bool AssignTechnique(TechniqueData technique, int slotIndex = -1)
+    {
+        if (technique == null) return false;
 
         if (technique.Kind == TechniqueKind.Passive)
         {
             Debug.Log("[Cultivation] " + technique.DisplayName + " — пассивная техника, в слот не кладётся.");
-            return;
+            return false;
         }
 
         if (abilitySystem == null)
         {
             Debug.LogWarning("[Cultivation] На игроке нет AbilitySystem — технику некуда положить.");
-            return;
+            return false;
         }
 
-        if (techniquesById.ContainsKey(technique.TechniqueId))
+        if (dao != null && !dao.IsDaoUnlocked(technique.DaoType))
         {
-            OnTechniqueRegistered?.Invoke(technique);
-            return;
+            Debug.LogWarning("[Cultivation] Дао " + technique.DaoType + " не открыт — технику нельзя назначить.");
+            return false;
         }
 
-        AbilityData data = ToAbilityData(technique);
-        if (data == null) return;
+        int slot = slotIndex;
+        if (slot < 3 || slot >= AbilitySystem.SlotCount)
+            slot = FindFreeTechniqueSlot();
+        if (slot < 0)
+        {
+            Debug.Log("[Cultivation] Слоты 4–5 заняты, технику некуда положить.");
+            return false;
+        }
 
+        AbilityData data = FindRuntimeAbility(technique.TechniqueId);
+        if (data == null)
+        {
+            data = ToAbilityData(technique);
+            if (data == null) return false;
+            runtimeAbilities.Add(data);
+        }
+
+        RemoveOtherAtSlot(slot, data);
+        data.hotkey = SlotToKey(slot);
         techniquesById[technique.TechniqueId] = technique;
-        runtimeAbilities.Add(data);
-        abilitySystem.SetGlobalAbilities(runtimeAbilities);
+
+        abilitySystem.SetTechniqueAbilities(runtimeAbilities);
 
         OnTechniqueRegistered?.Invoke(technique);
-        Debug.Log("[Cultivation] " + technique.DisplayName + " добавлена в хотбар (AbilitySystem).");
+        Debug.Log("[Cultivation] " + technique.DisplayName + " назначена в слот " + (slot + 1) + " (AbilitySystem).");
+        return true;
+    }
+
+    public void UnassignTechnique(TechniqueData technique)
+    {
+        if (technique == null) return;
+
+        for (int i = runtimeAbilities.Count - 1; i >= 0; i--)
+        {
+            AbilityData data = runtimeAbilities[i];
+            if (data == null || data.abilityId != technique.TechniqueId) continue;
+
+            runtimeAbilities.RemoveAt(i);
+            techniquesById.Remove(technique.TechniqueId);
+            Destroy(data);
+            break;
+        }
+
+        if (abilitySystem != null)
+            abilitySystem.SetTechniqueAbilities(runtimeAbilities);
+    }
+
+    private AbilityData FindRuntimeAbility(string techniqueId)
+    {
+        for (int i = 0; i < runtimeAbilities.Count; i++)
+        {
+            if (runtimeAbilities[i] != null && runtimeAbilities[i].abilityId == techniqueId)
+                return runtimeAbilities[i];
+        }
+        return null;
+    }
+
+    private int FindFreeTechniqueSlot()
+    {
+        for (int slot = 3; slot < AbilitySystem.SlotCount; slot++)
+        {
+            bool used = false;
+            for (int i = 0; i < runtimeAbilities.Count; i++)
+            {
+                if (runtimeAbilities[i] != null && HotkeyToSlot(runtimeAbilities[i].hotkey) == slot)
+                {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) return slot;
+        }
+        return -1;
+    }
+
+    private void RemoveOtherAtSlot(int slot, AbilityData keep)
+    {
+        for (int i = runtimeAbilities.Count - 1; i >= 0; i--)
+        {
+            AbilityData candidate = runtimeAbilities[i];
+            if (candidate == null)
+            {
+                runtimeAbilities.RemoveAt(i);
+                continue;
+            }
+            if (candidate == keep) continue;
+            if (HotkeyToSlot(candidate.hotkey) != slot) continue;
+
+            runtimeAbilities.RemoveAt(i);
+            techniquesById.Remove(candidate.abilityId);
+            Destroy(candidate);
+        }
+    }
+
+    private static int HotkeyToSlot(KeyCode hotkey)
+    {
+        int index = (int)hotkey - (int)KeyCode.Alpha1;
+        return index >= 0 && index < AbilitySystem.SlotCount ? index : -1;
+    }
+
+    private static KeyCode SlotToKey(int slot)
+    {
+        return (KeyCode)((int)KeyCode.Alpha1 + Mathf.Clamp(slot, 0, AbilitySystem.SlotCount - 1));
     }
 
     private AbilityData ToAbilityData(TechniqueData technique)
@@ -92,15 +192,33 @@ public class CultivationAbilityBridge : MonoBehaviour
         data.vfxPrefab = technique.VfxPrefab;
         data.castAnimation = technique.CastAnimationClip;
 
+        data.requiredDao = technique.DaoType;
+        data.requiredDaoLevel = technique.RequiredDaoLevel;
+        data.requiredRealmIndex = technique.RequiredRealmIndex;
+        data.qiCost = technique.QiCost;
+        data.requiredWeapon = ResolveRequiredWeapon(technique);
+
         return data;
     }
 
     private static bool IsMeleeTechnique(TechniqueData technique)
     {
-        if (technique.Kind != TechniqueKind.Active) return false;
+        if (technique.Kind == TechniqueKind.Passive) return false;
+        if (technique.Kind == TechniqueKind.Aura) return false;
         return technique.DaoType == DaoType.Sword ||
                technique.DaoType == DaoType.Fist ||
                technique.DaoType == DaoType.Body;
+    }
+
+    private static WeaponType ResolveRequiredWeapon(TechniqueData technique)
+    {
+        switch (technique.DaoType)
+        {
+            case DaoType.Sword: return WeaponType.Sword;
+            case DaoType.Fist:
+            case DaoType.Body: return WeaponType.Fists;
+            default: return WeaponType.Any;
+        }
     }
 
     private void Subscribe()
@@ -118,15 +236,8 @@ public class CultivationAbilityBridge : MonoBehaviour
 
     private void HandleAbilityActivated(int slot, AbilityData ability)
     {
+        // Ци списывается в AbilitySystem.TryActivate до установки КД.
+        // Здесь оставлена только страховка от повторного списания.
         if (ability == null || qi == null) return;
-        if (!techniquesById.TryGetValue(ability.abilityId, out TechniqueData technique) || technique == null) return;
-
-        if (!qi.HasQi(technique.QiCost))
-        {
-            Debug.LogWarning("[Cultivation] " + technique.DisplayName + ": не хватает Ци (" + technique.QiCost + ").");
-            return;
-        }
-
-        qi.Spend(technique.QiCost);
     }
 }

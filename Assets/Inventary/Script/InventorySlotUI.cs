@@ -19,6 +19,9 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragHa
     [Header("Drag Settings")]
     [SerializeField] private GameObject dragIcon;
 
+    [Header("Cultivation")]
+    [SerializeField] private CultivationItemBridge cultivationItemBridge;
+
     [Header("Sound Settings")]
     private string UsePotionSound = "UsePotionSound";
     private string UseQuestSound = "UseQuestSound";
@@ -55,6 +58,9 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragHa
         if (background == null) background = GetComponent<Image>();
 
         FindAndAssignDragIcon();
+
+        if (cultivationItemBridge == null)
+            cultivationItemBridge = FindFirstObjectByType<CultivationItemBridge>(FindObjectsInactive.Include);
     }
 
     private void FindAndAssignDragIcon()
@@ -324,6 +330,21 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragHa
                 case ItemType.Potion:
                     PlaySound(UsePotionSound);
                     inventory.RemoveItem(slotIndex, 1);
+                    break;
+                case ItemType.Pill:
+                case ItemType.Scroll:
+                case ItemType.DaoSeed:
+                    if (cultivationItemBridge == null)
+                        cultivationItemBridge = FindFirstObjectByType<CultivationItemBridge>(FindObjectsInactive.Include);
+
+                    if (cultivationItemBridge != null &&
+                        cultivationItemBridge.TryUse(currentSlot.itemData, inventory, slotIndex))
+                        PlaySound(UsePotionSound);
+                    else
+                        Debug.Log("ѕредмет нельз€ использовать сейчас: " + currentSlot.itemData.itemName);
+                    break;
+                case ItemType.BreakthroughMaterial:
+                    Debug.Log("ћатериал дл€ прорыва используетс€ автоматически при попытке прорыва.");
                     break;
                 case ItemType.Weapon:
                     Debug.Log($"Equipping weapon: {currentSlot.itemData.itemName}");

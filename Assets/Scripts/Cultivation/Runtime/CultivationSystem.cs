@@ -52,6 +52,8 @@ public class CultivationSystem : MonoBehaviour
     public event Action<CultivationRealm, int> OnStageChanged;
     public event Action<int, int> OnExperienceQiChanged;
     public event Action<BreakthroughResult> OnBreakthroughAttempted;
+    /// <summary>(реалм, в котором был совершён успешный прорыв) — для списания материалов.</summary>
+    public event Action<CultivationRealm> OnBreakthroughSucceeded;
     public event Action<int> OnComprehensionChanged;
     /// <summary>Множитель скорости изучения техник — для AbilitySystem (Промт B).</summary>
     public event Action<float> OnTechniqueLearningChanged;
@@ -243,8 +245,10 @@ public class CultivationSystem : MonoBehaviour
         BreakthroughResult result;
         if (UnityEngine.Random.value <= ComputeSuccessChance())
         {
+            CultivationRealm attemptedRealm = CurrentRealm;
             AdvanceStage();
             result = BreakthroughResult.Success;
+            OnBreakthroughSucceeded?.Invoke(attemptedRealm);
         }
         else
         {

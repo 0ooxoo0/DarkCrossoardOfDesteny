@@ -15,6 +15,7 @@ public class CultivationSnapshot
     public int unlockedMask;
     public int[] daoLevels = new int[5];
     public int[] daoPoints = new int[5];
+    public string[] learnedTechniqueIds = new string[0];
 }
 
 /// <summary>
@@ -55,6 +56,8 @@ public static class CultivationStateCache
                 snapshot.daoLevels[i] = dao.GetLevel(DaoTypeInfo.All[i]);
                 snapshot.daoPoints[i] = dao.GetPoints(DaoTypeInfo.All[i]);
             }
+
+            snapshot.learnedTechniqueIds = dao.GetLearnedTechniqueIds();
         }
 
         if (qi != null)
@@ -68,7 +71,8 @@ public static class CultivationStateCache
         cultivation.RestoreState(snapshot.realmIndex, snapshot.stage, snapshot.experienceQi, snapshot.comprehension);
 
         if (dao != null)
-            dao.RestoreState(snapshot.daoLevels, snapshot.daoPoints, snapshot.unlockedMask, snapshot.activeDaoIndex);
+            dao.RestoreState(snapshot.daoLevels, snapshot.daoPoints, snapshot.unlockedMask,
+                snapshot.activeDaoIndex, snapshot.learnedTechniqueIds);
 
         if (qi != null)
             qi.SetCurrent(snapshot.qi);
