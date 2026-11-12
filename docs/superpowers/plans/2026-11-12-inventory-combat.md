@@ -254,6 +254,7 @@ if (weapon.weaponMaterialOverride != null)
     foreach (Renderer renderer in weaponModelInstance.GetComponentsInChildren<Renderer>(true))
     {
         Material[] materials = renderer.sharedMaterials;
+        if (materials == null || materials.Length == 0) continue;
         for (int i = 0; i < materials.Length; i++)
             materials[i] = weapon.weaponMaterialOverride;
         renderer.sharedMaterials = materials;
@@ -295,6 +296,7 @@ public void StopCastAnimation()
 
     RestoreWeaponController();
     DestroyCastOverride();
+    SuppressHitbox = false;
     ApplyHitbox(false);
 
     if (playerController != null)
@@ -327,14 +329,18 @@ git commit -m "feat(combat): add default weapon and cast control"
 
 ---
 
-### Task 3: `WeaponSlotUI` и `Inventory.EquipWeaponFromSlot`/`UnequipWeapon`
+### Task 3: `WeaponSlotUI`, `ItemTooltipUI` и `Inventory.EquipWeaponFromSlot`/`UnequipWeapon`
 
 **Files:**
+- Create: `Assets/Inventary/Script/ItemTooltipUI.cs`
 - Modify: `Assets/Scripts/UI/WeaponSlotUI.cs`
 - Modify: `Assets/Inventary/Script/Inventory.cs`
 
 **Interfaces:**
 - Consumes: Task 1 helpers; Task 2 `DefaultWeapon`.
+- Produces: `ItemTooltipUI.Show(ItemData item, RectTransform anchor)`,
+  `Show(string title, string description, Sprite icon, RectTransform anchor)`,
+  `Hide()`.
 - Produces: `WeaponSlotUI.DisplayItem` (`ItemData`),
   `OwnedQuantity` (`int`), `HasOwnedItem` (`bool`),
   `EnsureInitialized()`, `TryAcceptItem(int sourceIndex, Inventory sourceInventory) -> bool`,
@@ -342,6 +348,52 @@ git commit -m "feat(combat): add default weapon and cast control"
   `ClearOwnedItem()`.
 - Produces: `Inventory.EquipWeaponFromSlot(int slotIndex) -> bool`,
   `Inventory.UnequipWeapon() -> bool`.
+
+> **Ruling (preflight):** `ItemTooltipUI` переносится из Task 4 в Task 3,
+> потому что `WeaponSlotUI` ссылается на этот тип, а Task 4, наоборот,
+> потребляет `Inventory.EquipWeaponFromSlot` из Task 3. Иначе задачи
+> образуют цикл и не компилируются по отдельности.
+
+- [ ] **Step 0: Создать `ItemTooltipUI.cs` (перенесено из Task 4 Step 1)**
+
+Глобальное пространство имён, `using TMPro; using UnityEngine; using UnityEngine.UI;`.
+
+Поля:
+
+```csharp
+[SerializeField] private Image icon;
+[SerializeField] private TMP_Text nameText;
+[SerializeField] private TMP_Text descriptionText;
+[SerializeField] private TMP_Text typeText;
+[SerializeField] private RectTransform root;
+private bool isShowing;
+```
+
+`Awake`: если `root == null` — `GetComponent<RectTransform>()`; у всех
+`Graphic` выставить `raycastTarget = false`; скрыть `root.gameObject`
+**только если `!isShowing`** (иначе первый `Show` на неактивном объекте
+активирует его, `Awake` тут же спрячет, и тултип не появится).
+
+`Show(ItemData item, RectTransform anchor)`:
+- `null` → `Hide()`;
+- заполнить иконку/название/описание/тип (`item.type.ToString()`);
+- вызвать `Show(item.itemName, item.description, item.icon, anchor)`
+  (именно `item.icon`, а не иконку самого тултипа).
+
+`Show(string title, string description, Sprite iconSprite, RectTransform anchor)`:
+- если `root == null` — `root = GetComponent<RectTransform>()`;
+- `isShowing = true;`
+- заполнить тексты (все поля проверить на `null`); иконка
+  `enabled = iconSprite != null`;
+- `root.gameObject.SetActive(true); root.SetAsLastSibling();`;
+- `LayoutRebuilder.ForceRebuildLayoutImmediate(root);` — иначе
+  `root.rect.width` может быть 0 при первом показе;
+- позиция: справа от `anchor` (`anchor.rect.width * 0.5f + root.rect.width * 0.5f + 8f`);
+  если правый край выходит за экран — слева; по вертикали выровнять по центру
+  `anchor`, затем ограничить экраном.
+
+`Hide()`: `isShowing = false;` если `root != null` —
+`root.gameObject.SetActive(false)`.
 
 - [ ] **Step 1: Добавить состояние и `EnsureInitialized` в `WeaponSlotUI`**
 
@@ -354,6 +406,7 @@ private bool subscribedWeapon;
 private bool subscribedInventory;
 private bool isFlushing;
 [SerializeField] private ItemTooltipUI tooltip;
+[SerializeField] private Button unequipButton;
 private WeaponData displayedWeapon;
 private bool appliedInitialWeapon;
 
@@ -385,6 +438,8 @@ public bool HasOwnedItem => ownedItem != null;
   `FindFirstObjectByType(..., FindObjectsInactive.Include)`;
 - подписывается на `weaponManager.OnWeaponEquipped` (флаг `subscribedWeapon`);
 - подписывается на `inventory.OnInventoryChanged` (флаг `subscribedInventory`);
+  обработчик вызывает **только** `TryFlushPendingReturns()`, не
+  `ApplyEquippedWeapon` — иначе смена оружия зациклится;
 - вызывает `ApplyEquippedWeapon(weaponManager.CurrentWeapon)` только один раз:
   при первом вызове с найденным `weaponManager` (`appliedInitialWeapon`).
   Если менеджер появился позже, применить его `CurrentWeapon` в момент
@@ -442,6 +497,18 @@ public bool TryAccept(InventorySlotUI source)
     (weapon != null ? weapon.displayName : string.Empty)`;
   - `isEquipped = weapon != null`.
 - `displayedWeapon = weapon; RefreshVisual(); TryFlushPendingReturns();`.
+
+В `RefreshVisual` добавить состояние кнопки «Снять»:
+
+```csharp
+if (unequipButton != null)
+{
+    // Не требуем isEquipped: оружие могло быть надето через гардероб,
+    // тогда ownedItem == null, но снять его всё равно можно.
+    unequipButton.interactable = weaponManager != null &&
+        weaponManager.CurrentWeapon != weaponManager.DefaultWeapon;
+}
+```
 
 `TryFlushPendingReturns()`:
 
@@ -520,6 +587,15 @@ public bool UnequipWeapon()
 
     slot.EnsureInitialized();
 
+    // Сначала проверяем fallback: иначе при отсутствии DefaultWeapon
+    // предмет уже вернётся в сетку, а старое оружие останется надетым.
+    WeaponData fallback = weaponManager.DefaultWeapon;
+    if (fallback == null)
+    {
+        Debug.LogWarning("[Inventory] Не задан DefaultWeapon для снятия оружия.");
+        return false;
+    }
+
     if (slot.OwnedItem != null)
     {
         int empty = FindFirstEmptySlot();
@@ -530,13 +606,6 @@ public bool UnequipWeapon()
         }
 
         if (!slot.ReturnOwnedItemToInventory(this, empty)) return false;
-    }
-
-    WeaponData fallback = weaponManager.DefaultWeapon;
-    if (fallback == null)
-    {
-        Debug.LogWarning("[Inventory] Не задан DefaultWeapon для снятия оружия.");
-        return false;
     }
 
     weaponManager.EquipWeapon(fallback);
@@ -578,58 +647,23 @@ git commit -m "feat(inventory): make weapon slot functional"
 
 ---
 
-### Task 4: Инвентарный UI и тултип
+### Task 4: Инвентарный UI и интеграция тултипа
 
 **Files:**
-- Create: `Assets/Inventary/Script/ItemTooltipUI.cs`
 - Modify: `Assets/Inventary/Script/InventoryUI.cs`
 - Modify: `Assets/Inventary/Script/InventorySlotUI.cs`
 
 **Interfaces:**
 - Consumes: Task 1 `Inventory.FindFirstEmptySlot`; Task 3
-  `Inventory.EquipWeaponFromSlot`.
-- Produces: `ItemTooltipUI.Show(ItemData item, RectTransform anchor)`,
-  `Show(string title, string description, Sprite icon, RectTransform anchor)`,
-  `Hide()`.
+  `Inventory.EquipWeaponFromSlot`, `ItemTooltipUI`.
 - Produces: `InventoryUI.EnsureInitialized()`, `descriptionText`, `tooltip`.
 - Produces: `InventorySlotUI.SetTooltip(ItemTooltipUI)`,
   `SetDescriptionText(TextMeshProUGUI)`.
 
-- [ ] **Step 1: Создать `ItemTooltipUI.cs`**
+- [ ] **Step 1: Проверить `ItemTooltipUI`**
 
-Глобальное пространство имён, `using TMPro; using UnityEngine; using UnityEngine.UI;`.
-
-Поля:
-
-```csharp
-[SerializeField] private Image icon;
-[SerializeField] private TMP_Text nameText;
-[SerializeField] private TMP_Text descriptionText;
-[SerializeField] private TMP_Text typeText;
-[SerializeField] private RectTransform root;
-```
-
-`Awake`: если `root == null` — `GetComponent<RectTransform>()`; скрыть
-`root.gameObject`; у всех `Graphic` выставить `raycastTarget = false`.
-
-`Show(ItemData item, RectTransform anchor)`:
-- `null` → `Hide()`;
-- заполнить иконку/название/описание/тип (`item.type.ToString()`);
-- вызвать `Show(item.itemName, item.description, item.icon, anchor)`
-  (именно `item.icon`, а не иконку самого тултипа).
-
-`Show(string title, string description, Sprite iconSprite, RectTransform anchor)`:
-- если `root == null` — `root = GetComponent<RectTransform>()`;
-- заполнить тексты (все поля проверить на `null`); иконка
-  `enabled = iconSprite != null`;
-- `root.gameObject.SetActive(true); root.SetAsLastSibling();`;
-- `LayoutRebuilder.ForceRebuildLayoutImmediate(root);` — иначе
-  `root.rect.width` может быть 0 при первом показе;
-- позиция: справа от `anchor` (`anchor.rect.width * 0.5f + root.rect.width * 0.5f + 8f`);
-  если правый край выходит за экран — слева; по вертикали выровнять по центру
-  `anchor`, затем ограничить экраном.
-
-`Hide()`: если `root != null` — `root.gameObject.SetActive(false)`.
+`Assets/Inventary/Script/ItemTooltipUI.cs` уже создан в Task 3 Step 0.
+Не создавать повторно; использовать его `Show`/`Hide`.
 
 - [ ] **Step 2: `InventoryUI.EnsureInitialized`**
 
@@ -651,6 +685,9 @@ private bool initialized;
 - найти `inventory` через `FindFirstObjectByType<Inventory>(FindObjectsInactive.Include)`;
 - если `inventory == null || slotPrefab == null || slotParent == null` —
   `Debug.LogWarning` и выход;
+- если `inventory.GetSlotCount() <= 0` — выход **без** `initialized = true`:
+  `Awake` мог отработать раньше `Inventory.Awake`, тогда `Start` повторит
+  инициализацию после инициализации слотов;
 - создать `slotUIs` по `inventory.GetSlotCount()`;
 - для каждого слота: `Instantiate(slotPrefab, slotParent)`,
   `Initialize(i, inventory)`, `SetTooltip(tooltip)`,
@@ -734,6 +771,9 @@ tooltip?.Hide();
 
 В `FindAndAssignDragIcon` обернуть
 `GameObject.FindGameObjectWithTag("DragIcon")` в `try/catch (UnityException)`.
+После поиска выставить `raycastTarget = false` у root `Image` **и** у
+дочерней картинки (или у всех `Graphic` в `dragIcon`) — иначе drag-icon
+перехватывает `RaycastAll` и drop на `TrashArea`/слот оружия не срабатывает.
 
 Добавить helper для картинки перетаскивания (root `DragIcon.prefab` тоже
 содержит `Image`, поэтому `GetComponentInChildren<Image>(true)` вернул бы
@@ -764,8 +804,24 @@ private static Image FindDragImage(GameObject dragIcon)
 В `OnEndDrag`:
 - если `EventSystem.current == null` — вернуть слот и выйти;
 - если `inventory == null` — вернуть слот и выйти;
-- заменить `trashArea.CompareTag("TrashArea")` на
-  `HasTag(trashArea, "TrashArea")`.
+- заменить `trashArea.CompareTag("TrashArea")` на проверку тега у объекта
+  **и его родителей** — подпись/дочерний Graphic мусорки может оказаться
+  первым результатом `RaycastAll`:
+
+```csharp
+private static bool HasTagInParents(GameObject target, string tagName)
+{
+    Transform current = target != null ? target.transform : null;
+    while (current != null)
+    {
+        if (HasTag(current.gameObject, tagName)) return true;
+        current = current.parent;
+    }
+    return false;
+}
+```
+
+В `OnEndDrag` использовать `HasTagInParents(trashArea, "TrashArea")`.
 
 - [ ] **Step 5: Проверить компиляцию**
 
@@ -1107,17 +1163,18 @@ public static bool AnyOpen { get; private set; }
 
 `EnterMenu` (только при `!AnyOpen`):
 - `Time.timeScale = 0f`;
-- `playerController.enabled = false`;
-- `playerInteraction.enabled = false`;
-- запомнить `uiManagerWasEnabled = uiManager.enabled`, выставить
-  `uiManager.enabled = false`;
+- если `playerController != null` — `playerController.enabled = false`;
+- если `playerInteraction != null` — `playerInteraction.enabled = false`;
+- если `uiManager != null` — запомнить `uiManagerWasEnabled = uiManager.enabled`
+  и выставить `uiManager.enabled = false`; иначе `uiManagerWasEnabled = false`;
 - `AnyOpen = true`.
 
 `CloseAll`:
 - скрыть обе панели;
 - `Time.timeScale = 1f`;
-- включить `playerController`/`playerInteraction`;
-- `uiManager.enabled = uiManagerWasEnabled`;
+- если `playerController != null` — включить;
+  если `playerInteraction != null` — включить;
+- если `uiManager != null` — `uiManager.enabled = uiManagerWasEnabled`;
 - `AnyOpen = false`.
 
 `OnDisable`/`OnDestroy` вызывают `CloseAll()`, если `AnyOpen`.
@@ -1175,13 +1232,14 @@ layout-компоненты). Поля:
 
 `SelectAbility(AbilityData ability)` — сохранить выбор и показать описание.
 
-`ShowDescription(AbilityData ability)` — текст:
+`ShowDescription(AbilityData ability)` — текст (`requiredWeapon` — enum
+`WeaponType`, не `WeaponData`):
 
 ```text
 <displayName>
 Тип: <type>
 Кулдаун: <cooldown> c
-Требуется: <requiredWeapon>
+Требуется: <requiredWeapon == WeaponType.Any ? "Любое" : requiredWeapon.ToString()>
 ```
 
 `OnDestroy` отписывается от `OnAbilitiesChanged`.
@@ -1239,14 +1297,20 @@ if (loadOnStart)
 - `RestoreOwnedItem(slotItem)` оставить;
 - `weaponManager.EquipWeapon(weapon)` оставить.
 
-- [ ] **Step 2: Проверить `SaveInventory` (изменений не требуется)**
+- [ ] **Step 2: Исправить `SaveInventory` — очищать старые id
 
-В текущем `InventorySaveSystem` уже есть нужная логика:
-`equippedWeaponId` берётся из `weaponManager.CurrentWeapon`, иначе из
-`weaponSlot.OwnedWeapon`; `weaponSlotItemId` пишется только для
-`!IsDisplayOnly` и `OwnedItem != null`. Оставить как есть. Если при
-реализации Task 3 поле `weaponSlotItemId` начнёт перезаписываться, вернуть
-приоритет текущего оружия.
+В текущем коде `weaponSlotItemId` пишется только при `OwnedItem != null`,
+поэтому после снятия оружия в файле остаётся старый id и при загрузке
+предмет восстанавливается в слот (дубликат). Перед условиями выставить:
+
+```csharp
+saveData.equippedWeaponId = string.Empty;
+saveData.weaponSlotItemId = string.Empty;
+```
+
+Затем существующие условия: `equippedWeaponId` — из
+`weaponManager.CurrentWeapon`, иначе из `weaponSlot.OwnedWeapon`;
+`weaponSlotItemId` — только для `!IsDisplayOnly` и `OwnedItem != null`.
 
 - [ ] **Step 3: Проверить компиляцию**
 
@@ -1413,6 +1477,12 @@ MagicBurst, FrostNova
 
 - [ ] **Step 5: Материалы**
 
+> **Ruling (preflight):** материалы создаются в `CreateAssets` **до** вызова
+> `CreateWeaponAssets` — иначе на первом запуске `SwordCrimson.mat`/
+> `SwordAzure.mat` ещё не существуют, и `weaponMaterialOverride` останется
+> `null`. Порядок: `EnsureFolder(MaterialsDir)` → клипы → способности →
+> материалы → `CreateWeaponAssets` → `CreateItemAssets`.
+
 Создать/обновить:
 
 ```csharp
@@ -1572,6 +1642,11 @@ git commit -m "feat(editor): wire three swords into scenes"
 
 - [ ] **Step 1: Каркас меню и теги**
 
+Нужны `using UnityEditor; using UnityEditor.Events;
+using UnityEditor.SceneManagement; using UnityEngine;
+using UnityEngine.SceneManagement; using UnityEngine.UI; using TMPro;`.
+Каркас:
+
 ```csharp
 [MenuItem("Tools/Combat/0. Full Setup")]
 public static void Run()
@@ -1629,13 +1704,19 @@ public static void Run()
 - `InventoryWeaponSlotPanel` — заголовок «Оружие», `WeaponSlot.prefab`,
   кнопка «Снять»;
 - `TestItemsPanel` — 3 кнопки «Добавить: Меч / Багровый / Лазурный»;
+  каждая кнопка — persistent call на `Inventory.AddTestItem` с
+  object-аргументом соответствующего `ItemData` (как в
+  `WeaponSceneSetup.CreateTestItemButton`, через `UnityEventTools`);
+  без этого кнопки в `Game.unity` будут пустыми;
 - кнопка «Закрыть» — persistent call на `CharacterMenuController.CloseAll`.
 
 `WeaponSlotUI` назначить:
 `inventory`, `weaponManager`, `saveSystem`, `displayOnly = false`,
-`weaponItems` — все 4 предмета, `tooltip` — `ItemTooltipUI`.
+`weaponItems` — все 4 предмета, `tooltip` — `ItemTooltipUI`,
+`unequipButton` — кнопка «Снять».
 
-Кнопка «Снять» — persistent call на `Inventory.UnequipWeapon`.
+Кнопка «Снять» — persistent call на `Inventory.UnequipWeapon`;
+`WeaponSlotUI.RefreshVisual` сам делает её неактивной на кулаках.
 
 - [ ] **Step 4: `SkillBookPanel` и `CharacterMenuController`**
 
@@ -1651,21 +1732,26 @@ public static void Run()
 
 - [ ] **Step 5: `TrashArea` и save-система**
 
-Создать `TrashArea` под `Canvas`:
+Создать `TrashArea` **под `InventoryPanel`** (а не под `Canvas`), чтобы
+зона не перехватывала клики, когда инвентарь закрыт:
 - `Image` 100×100 в правом нижнем углу, `raycastTarget = true`;
 - тег `TrashArea`;
-- подпись «Мусор».
+- подпись «Мусор» с `raycastTarget = false` — иначе подпись станет первым
+  результатом `RaycastAll`, и drop не увидит тег без проверки родителей
+  (в Task 4 добавлена `HasTagInParents`).
 
 `InventorySaveSystem`:
 - `inventory` = найденный `Inventory`;
 - `weaponSlot` = функциональный `WeaponSlotUI`;
 - `weaponManager` = найденный;
-- `allItems` — 4 предмета; `allWeapons` — 4 оружия;
+- `allItems` — 4 предмета, `allWeapons` — 4 оружия; через
+  `EnsureObjectInList`, чтобы не стереть существующие записи;
 - `loadOnStart = true`.
 
 `AbilitySystem`:
-- `globalAbilities` = `{ MagicBurst, FrostNova }`;
-- `defaultGlobalSlots` — размер 5, `[3] = MagicBurst`, `[4] = FrostNova`.
+- `globalAbilities` = `{ MagicBurst, FrostNova }` (ровно 2, через `SetObjectList`);
+- `defaultGlobalSlots` — явно `arraySize = 5`, `[3] = MagicBurst`,
+  `[4] = FrostNova` (0-based; hotkeys 4 и 5).
 
 - [ ] **Step 6: Сохранить сцену и проверить**
 
