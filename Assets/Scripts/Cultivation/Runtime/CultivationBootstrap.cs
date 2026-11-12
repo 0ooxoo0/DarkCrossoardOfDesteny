@@ -31,6 +31,7 @@ public class CultivationBootstrap : MonoBehaviour
     public CultivationCastController Caster { get; private set; }
     public CultivationAbilityBridge Bridge { get; private set; }
     public CultivationUIRoot UI { get; private set; }
+    public Inventory PlayerInventory { get; private set; }
 
     private float baseMaxQi;
 
@@ -87,7 +88,12 @@ public class CultivationBootstrap : MonoBehaviour
         UnsubscribeStateCapture();
 
         if (Cultivation != null)
+        {
             Cultivation.OnRealmBonusesChanged -= HandleRealmBonuses;
+            Cultivation.OnBreakthroughSucceeded -= HandleBreakthroughSucceeded;
+        }
+
+        UnsubscribeTechniqueEvents();
 
         if (instance == this) instance = null;
     }
@@ -160,12 +166,13 @@ public class CultivationBootstrap : MonoBehaviour
             Debug.Log("[Cultivation] Прогресс восстановлен.");
 
         SetupTechniqueOutput();
+        WireInventory();
         Aura.Initialize(Dao, Cultivation);
         SubscribeStateCapture();
 
         Debug.Log("[Cultivation] Подключено: " + Cultivation.GetProgressLabel() +
                   ", Ци " + Qi.Current + "/" + Qi.Max +
-                  (Bridge != null ? ", техники → AbilitySystem (хотбар 1–5)" : ", демо-каст (1–5)") +
+                  (Bridge != null ? ", техники → AbilitySystem (хотбар 4–5)" : ", демо-каст (1–5)") +
                   ". Tab — панель, M — медитация.");
     }
 
@@ -193,11 +200,12 @@ public class CultivationBootstrap : MonoBehaviour
             CultivationStateCache.TryRestore(Cultivation, Dao, Qi);
 
         SetupTechniqueOutput();
+        WireInventory();
         SubscribeStateCapture();
     }
 
     /// <summary>
-    /// Если на игроке есть AbilitySystem (Промт B) — техники уходят в его хотбар 1–5.
+    /// Если на игроке есть AbilitySystem (Промт B) — техники уходят в его слоты 4–5.
     /// Иначе включается демо-каст с собственной панелью.
     /// </summary>
     private void SetupTechniqueOutput()
@@ -208,13 +216,11 @@ public class CultivationBootstrap : MonoBehaviour
         {
             Bridge = AddOrGet<CultivationAbilityBridge>(Player);
             Bridge.Initialize(Dao, Qi, abilitySystem);
-            AutoRegisterStarterTechnique();
             return;
         }
 
         Caster = AddOrGet<CultivationCastController>(Player);
         Caster.Initialize(Dao, Qi, Cultivation, Meditation, Config.EnableDemoCasting, Config.DemoDealsDamage);
-        AutoAssignStarterTechnique();
     }
 
     /// <summary>Первый запуск: одна доступная техника сразу попадает в хотбар, чтобы нажать «1».</summary>
@@ -249,17 +255,86 @@ public class CultivationBootstrap : MonoBehaviour
         PlayerRealmBonusesChanged?.Invoke(qiBonus, hpBonus, regenBonus);
     }
 
+    /// <summary>Связка культивации с инвентарём: материалы прорыва и расходники.</summary>
+    private void WireInventory()
+    {
+        if (Cultivation == null) return;
+
+        if (PlayerInventory == null)
+            PlayerInventory = FindFirstObjectByType<Inventory>(FindObjectsInactive.Include);
+
+        Cultivation.HasBreakthroughMaterials = HasBreakthroughMaterials;
+        Cultivation.OnBreakthroughSucceeded -= HandleBreakthroughSucceeded;
+        Cultivation.OnBreakthroughSucceeded += HandleBreakthroughSucceeded;
+
+        if (PlayerInventory == null)
+        {
+            Debug.Log("[Cultivation] Inventory не найден — материалы прорыва и расходники отключены.");
+            return;
+        }
+
+        var itemBridge = AddOrGet<CultivationItemBridge>(Player);
+        itemBridge.Initialize(Qi, Cultivation, Dao, PlayerInventory);
+    }
+
+    private bool HasBreakthroughMaterials()
+    {
+        if (Cultivation == null) return false;
+
+        CultivationRealm realm = Cultivation.CurrentRealm;
+        if (realm == null) return false;
+
+        var materials = realm.RequiredMaterials;
+        if (materials == null || materials.Count == 0) return true;
+
+        return PlayerInventory != null && PlayerInventory.HasAllItemsWithTags(materials);
+    }
+
+    private void HandleBreakthroughSucceeded(CultivationRealm realm)
+    {
+        if (PlayerInventory == null || realm == null) return;
+
+        var materials = realm.RequiredMaterials;
+        if (materials == null || materials.Count == 0) return;
+
+        int removed = PlayerInventory.RemoveItemsByTags(materials, 1);
+        if (removed > 0)
+            Debug.Log("[Cultivation] Материалы прорыва списаны: " + removed);
+    }
+
     private void BuildUI()
     {
         if (CultivationUIRoot.Instance != null) return;
 
         UI = CultivationUIRoot.Create(Qi, Cultivation, Dao, Meditation, Breakthrough, Config,
             Caster, GetAssignHandler(), FindUiManager());
+        SubscribeTechniqueEvents();
+    }
+
+    private void SubscribeTechniqueEvents()
+    {
+        if (UI == null || UI.Techniques == null) return;
+        UI.Techniques.OnTechniqueAssignRequested -= HandleTechniqueAssignRequested;
+        UI.Techniques.OnTechniqueAssignRequested += HandleTechniqueAssignRequested;
+    }
+
+    private void UnsubscribeTechniqueEvents()
+    {
+        if (UI == null || UI.Techniques == null) return;
+        UI.Techniques.OnTechniqueAssignRequested -= HandleTechniqueAssignRequested;
+    }
+
+    private void HandleTechniqueAssignRequested(TechniqueData technique)
+    {
+        if (Bridge != null)
+            Bridge.AssignTechnique(technique);
+        else if (Caster != null)
+            Caster.Assign(technique);
     }
 
     private Action<TechniqueData> GetAssignHandler()
     {
-        if (Bridge != null) return technique => Bridge.RegisterTechnique(technique);
+        if (Bridge != null) return technique => Bridge.AssignTechnique(technique);
         if (Caster != null) return technique => Caster.Assign(technique);
         return null;
     }
@@ -294,6 +369,7 @@ public class CultivationBootstrap : MonoBehaviour
             Dao.OnDaoPointsChanged += HandleDaoPointsChangedCapture;
             Dao.OnActiveDaoChanged += HandleActiveDaoChangedCapture;
             Dao.OnDaoUnlocked += HandleDaoUnlockedCapture;
+            Dao.OnTechniqueLearned += HandleTechniqueLearnedCapture;
         }
 
         if (Qi != null)
@@ -316,6 +392,7 @@ public class CultivationBootstrap : MonoBehaviour
             Dao.OnDaoPointsChanged -= HandleDaoPointsChangedCapture;
             Dao.OnActiveDaoChanged -= HandleActiveDaoChangedCapture;
             Dao.OnDaoUnlocked -= HandleDaoUnlockedCapture;
+            Dao.OnTechniqueLearned -= HandleTechniqueLearnedCapture;
         }
 
         if (Qi != null)
@@ -335,6 +412,7 @@ public class CultivationBootstrap : MonoBehaviour
     private void HandleDaoPointsChangedCapture(DaoType type, int points, int cost) => CaptureState();
     private void HandleActiveDaoChangedCapture(DaoType type) => CaptureState();
     private void HandleDaoUnlockedCapture(DaoType type) => CaptureState();
+    private void HandleTechniqueLearnedCapture(TechniqueData technique) => CaptureState();
     private void HandleQiChangedCapture(int current, int max) => CaptureState();
 
     private static T AddOrGet<T>(GameObject target) where T : Component

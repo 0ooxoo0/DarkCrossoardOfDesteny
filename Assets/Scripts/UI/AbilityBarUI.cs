@@ -12,9 +12,17 @@ public class AbilityBarUI : MonoBehaviour
     [SerializeField] private GameObject slotPrefab;
     [SerializeField] private Canvas targetCanvas;
 
+    [Header("Cultivation")]
+    [SerializeField] private QiComponent qi;
+    [SerializeField] private DaoSystem dao;
+    [SerializeField] private CultivationSystem cultivation;
+
     private const int SlotCount = AbilitySystem.SlotCount;
 
     private readonly AbilitySlotUI[] slots = new AbilitySlotUI[SlotCount];
+    private bool subscribedQi;
+    private bool subscribedDao;
+    private bool subscribedCultivation;
 
     private void Start()
     {
@@ -30,6 +38,7 @@ public class AbilityBarUI : MonoBehaviour
             return;
         }
 
+        EnsureCultivationRefs();
         BuildPanel();
 
         if (abilitySystem != null)
@@ -43,28 +52,61 @@ public class AbilityBarUI : MonoBehaviour
     {
         if (abilitySystem != null)
             abilitySystem.OnAbilitiesChanged -= RefreshAbilities;
+
+        if (qi != null && subscribedQi) qi.OnQiChanged -= HandleQiChanged;
+        if (dao != null && subscribedDao)
+        {
+            dao.OnActiveDaoChanged -= HandleActiveDaoChanged;
+            dao.OnDaoLevelChanged -= HandleDaoLevelChanged;
+            dao.OnDaoUnlocked -= HandleDaoUnlocked;
+        }
+        if (cultivation != null && subscribedCultivation)
+        {
+            cultivation.OnRealmChanged -= HandleRealmChanged;
+            cultivation.OnStageChanged -= HandleStageChanged;
+        }
     }
 
     private void Update()
     {
         if (abilitySystem == null) return;
 
+        EnsureCultivationRefs();
+
         for (int i = 0; i < SlotCount; i++)
-        {
-            AbilitySlotUI slot = slots[i];
-            if (slot == null) continue;
+            RefreshSlotState(i);
+    }
 
-            AbilityData ability = abilitySystem.GetAbility(i);
-            float total = ability != null ? ability.cooldown : 0f;
+    private void RefreshSlotState(int i)
+    {
+        AbilitySlotUI slot = slots[i];
+        if (slot == null) return;
 
-            slot.SetCooldown(abilitySystem.GetCooldownRemaining(i), total);
-            slot.SetAvailable(abilitySystem.IsAbilityAvailable(i));
-        }
+        AbilityData ability = abilitySystem.GetAbility(i);
+        float total = ability != null ? ability.cooldown : 0f;
+
+        slot.SetCooldown(abilitySystem.GetCooldownRemaining(i), total);
+
+        bool available = abilitySystem.CanActivateAbility(i, out string reason);
+        slot.SetAvailable(available, reason);
+
+        int cost = ability != null ? Mathf.Max(0, ability.qiCost) : 0;
+        bool affordable = cost <= 0 || (qi != null && qi.HasQi(cost));
+        slot.SetQiCostState(affordable);
+    }
+
+    private void RefreshSlotStates()
+    {
+        if (abilitySystem == null) return;
+        for (int i = 0; i < SlotCount; i++)
+            RefreshSlotState(i);
     }
 
     private void RefreshAbilities()
     {
         if (abilitySystem == null) return;
+
+        EnsureCultivationRefs();
 
         for (int i = 0; i < SlotCount; i++)
         {
@@ -77,8 +119,61 @@ public class AbilityBarUI : MonoBehaviour
                 : (KeyCode)((int)KeyCode.Alpha1 + i);
 
             slot.SetAbility(ability, i, hotkey);
+            slot.SetCultivationBadges(ability, dao);
         }
     }
+
+    private void EnsureCultivationRefs()
+    {
+        if (qi == null) qi = FindFirstObjectByType<QiComponent>();
+        if (dao == null) dao = FindFirstObjectByType<DaoSystem>();
+        if (cultivation == null) cultivation = FindFirstObjectByType<CultivationSystem>();
+
+        if (qi != null && !subscribedQi)
+        {
+            qi.OnQiChanged += HandleQiChanged;
+            subscribedQi = true;
+        }
+
+        if (dao != null && !subscribedDao)
+        {
+            dao.OnActiveDaoChanged += HandleActiveDaoChanged;
+            dao.OnDaoLevelChanged += HandleDaoLevelChanged;
+            dao.OnDaoUnlocked += HandleDaoUnlocked;
+            subscribedDao = true;
+        }
+
+        if (cultivation != null && !subscribedCultivation)
+        {
+            cultivation.OnRealmChanged += HandleRealmChanged;
+            cultivation.OnStageChanged += HandleStageChanged;
+            subscribedCultivation = true;
+        }
+    }
+
+    private void HandleQiChanged(int current, int max) => RefreshSlotStates();
+
+    private void HandleActiveDaoChanged(DaoType type)
+    {
+        RefreshAbilities();
+        RefreshSlotStates();
+    }
+
+    private void HandleDaoLevelChanged(DaoType type, int level)
+    {
+        RefreshAbilities();
+        RefreshSlotStates();
+    }
+
+    private void HandleDaoUnlocked(DaoType type)
+    {
+        RefreshAbilities();
+        RefreshSlotStates();
+    }
+
+    private void HandleRealmChanged(CultivationRealm realm) => RefreshSlotStates();
+
+    private void HandleStageChanged(CultivationRealm realm, int stage) => RefreshSlotStates();
 
     private void BuildPanel()
     {

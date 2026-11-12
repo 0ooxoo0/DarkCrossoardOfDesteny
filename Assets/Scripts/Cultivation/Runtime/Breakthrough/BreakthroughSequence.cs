@@ -121,6 +121,10 @@ public class BreakthroughSequence : MonoBehaviour
         BreakthroughResult result = cultivation.TryBreakthrough();
         string message = BuildMessage(result, chance);
         OnBreakthroughResult?.Invoke(result, message);
+
+        // Второй, короткий всплеск уже в новом реалме.
+        if (result == BreakthroughResult.Success)
+            SpawnVfx();
     }
 
     private string BuildMessage(BreakthroughResult result, float chance)
@@ -142,6 +146,13 @@ public class BreakthroughSequence : MonoBehaviour
     private void SpawnVfx()
     {
         Color color = ResolveDaoColor();
+
+        CultivationRealm realm = cultivation != null ? cultivation.CurrentRealm : null;
+        if (realm != null && realm.VfxPrefab != null)
+        {
+            Instantiate(realm.VfxPrefab, transform.position, Quaternion.identity);
+            return;
+        }
 
         if (breakthroughVfxPrefab != null)
         {

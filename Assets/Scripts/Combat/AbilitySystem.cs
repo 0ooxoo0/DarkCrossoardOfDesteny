@@ -14,10 +14,19 @@ public class AbilitySystem : MonoBehaviour
 
     public event Action OnAbilitiesChanged;
     public event Action<int, AbilityData> OnAbilityActivated;
+    /// <summary>(слот, способность, причина) — способность не запущена из-за Ци/Дао/реалма/оружия.</summary>
+    public event Action<int, AbilityData, string> OnAbilityActivationBlocked;
 
     [SerializeField] private WeaponManager weaponManager;
     [SerializeField] private PlayerController playerController;
     [SerializeField] private List<AbilityData> globalAbilities = new List<AbilityData>();
+
+    [Header("Cultivation")]
+    [SerializeField] private QiComponent qi;
+    [SerializeField] private DaoSystem dao;
+    [SerializeField] private CultivationSystem cultivation;
+
+    private readonly List<AbilityData> techniqueAbilities = new List<AbilityData>();
 
     private static readonly Key[] SlotKeys =
     {
@@ -35,6 +44,7 @@ public class AbilitySystem : MonoBehaviour
     {
         if (weaponManager == null) weaponManager = GetComponent<WeaponManager>();
         if (playerController == null) playerController = GetComponent<PlayerController>();
+        EnsureCultivationRefs();
         uiManager = FindFirstObjectByType<UiManager>();
         RebuildSlots();
     }
@@ -66,11 +76,21 @@ public class AbilitySystem : MonoBehaviour
         RebuildSlots();
     }
 
+    /// <summary>Техники Дао. Хранятся отдельно, чтобы не затирать globalAbilities (магию оружия).</summary>
+    public void SetTechniqueAbilities(List<AbilityData> list)
+    {
+        techniqueAbilities.Clear();
+        if (list != null) techniqueAbilities.AddRange(list);
+        RebuildSlots();
+    }
+
     private void RebuildSlots()
     {
         AbilityData[] next = new AbilityData[SlotCount];
 
-        for (int i = 0; i < SlotCount && i < weaponAbilities.Count; i++)
+        // Базовые атаки оружия — слоты 1–3.
+        int weaponCount = Mathf.Min(3, weaponAbilities.Count);
+        for (int i = 0; i < weaponCount; i++)
             next[i] = weaponAbilities[i];
 
         if (globalAbilities != null)
@@ -83,6 +103,18 @@ public class AbilitySystem : MonoBehaviour
                 if (slot < 0) slot = FirstFreeSlot(next);
                 if (slot >= 0) next[slot] = ability;
             }
+        }
+
+        // Техники Дао — приоритетно слоты 4–5 (индексы 3–4), поверх магии.
+        for (int i = 0; i < techniqueAbilities.Count; i++)
+        {
+            AbilityData ability = techniqueAbilities[i];
+            if (ability == null) continue;
+
+            int slot = HotkeyToSlot(ability.hotkey);
+            if (slot < 3 || slot >= SlotCount)
+                slot = FirstFreeSlot(next, 3, SlotCount - 1);
+            if (slot >= 0) next[slot] = ability;
         }
 
         AbilityData[] oldAbilities = (AbilityData[])abilities.Clone();
@@ -107,6 +139,17 @@ public class AbilitySystem : MonoBehaviour
     private static int FirstFreeSlot(AbilityData[] array)
     {
         for (int i = 0; i < array.Length; i++)
+        {
+            if (array[i] == null) return i;
+        }
+        return -1;
+    }
+
+    private static int FirstFreeSlot(AbilityData[] array, int start, int end)
+    {
+        int from = Mathf.Max(0, start);
+        int to = Mathf.Min(array.Length - 1, end);
+        for (int i = from; i <= to; i++)
         {
             if (array[i] == null) return i;
         }
@@ -146,11 +189,129 @@ public class AbilitySystem : MonoBehaviour
 
     public bool IsAbilityAvailable(int index)
     {
+        return CanActivateAbility(index, out _);
+    }
+
+    /// <summary>Полная проверка перед кастом: слот, КД, оружие, Дао, реалм и Ци.</summary>
+    public bool CanActivateAbility(int index, out string reason)
+    {
+        reason = string.Empty;
+
+        if (index < 0 || index >= SlotCount)
+        {
+            reason = "Неверный слот";
+            return false;
+        }
+
         AbilityData ability = GetAbility(index);
-        if (ability == null) return false;
-        if (activeAbility != null) return false;
-        if (Time.time < cooldownEnd[index]) return false;
-        return IsWeaponCompatible(ability);
+        if (ability == null)
+        {
+            reason = "Пустой слот";
+            return false;
+        }
+
+        if (activeAbility != null)
+        {
+            reason = "Уже идёт другой каст";
+            return false;
+        }
+
+        if (Time.time < cooldownEnd[index])
+        {
+            reason = "Перезарядка";
+            return false;
+        }
+
+        if (!IsWeaponCompatible(ability))
+        {
+            reason = "Не подходит оружие";
+            return false;
+        }
+
+        if (playerController != null && playerController.IsAttacking)
+        {
+            reason = "Идёт атака";
+            return false;
+        }
+
+        return ValidateCultivation(ability, out reason);
+    }
+
+    private bool ValidateCultivation(AbilityData ability, out string reason)
+    {
+        reason = string.Empty;
+        EnsureCultivationRefs();
+
+        if (ability.requiredDao.HasValue)
+        {
+            DaoType required = ability.requiredDao.Value;
+
+            if (dao == null)
+            {
+                reason = "На игроке нет DaoSystem";
+                return false;
+            }
+
+            if (!dao.IsDaoUnlocked(required))
+            {
+                reason = "Дао не открыт: " + DaoTypeInfo.GetDisplayName(required);
+                return false;
+            }
+
+            if (!dao.ActiveDao.HasValue || dao.ActiveDao.Value != required)
+            {
+                reason = "Нужен активный Дао: " + DaoTypeInfo.GetDisplayName(required);
+                return false;
+            }
+
+            int requiredLevel = Mathf.Max(0, ability.requiredDaoLevel);
+            if (dao.GetLevel(required) < requiredLevel)
+            {
+                reason = "Нужен уровень Дао " + requiredLevel;
+                return false;
+            }
+        }
+
+        int requiredRealm = Mathf.Max(0, ability.requiredRealmIndex);
+        if (requiredRealm > 0)
+        {
+            if (cultivation == null)
+            {
+                reason = "На игроке нет CultivationSystem";
+                return false;
+            }
+
+            if (cultivation.CurrentRealmIndex < requiredRealm)
+            {
+                reason = "Нужен реалм " + (requiredRealm + 1);
+                return false;
+            }
+        }
+
+        int cost = Mathf.Max(0, ability.qiCost);
+        if (cost > 0)
+        {
+            if (qi == null)
+            {
+                reason = "На игроке нет QiComponent";
+                return false;
+            }
+
+            if (!qi.HasQi(cost))
+            {
+                reason = "Не хватает Ци: нужно " + cost;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void EnsureCultivationRefs()
+    {
+        if (qi == null) qi = GetComponent<QiComponent>();
+        if (dao == null) dao = GetComponent<DaoSystem>();
+        if (cultivation == null) cultivation = GetComponent<CultivationSystem>();
     }
 
     public void CancelCurrentAbility()
@@ -173,10 +334,22 @@ public class AbilitySystem : MonoBehaviour
 
         AbilityData ability = GetAbility(index);
         if (ability == null) return false;
-        if (activeAbility != null) return false;
-        if (playerController != null && playerController.IsAttacking) return false;
-        if (Time.time < cooldownEnd[index]) return false;
-        if (!IsWeaponCompatible(ability)) return false;
+
+        if (!CanActivateAbility(index, out string reason))
+        {
+            OnAbilityActivationBlocked?.Invoke(index, ability, reason);
+            return false;
+        }
+
+        int cost = Mathf.Max(0, ability.qiCost);
+        if (cost > 0)
+        {
+            if (qi == null || !qi.Spend(cost))
+            {
+                OnAbilityActivationBlocked?.Invoke(index, ability, "Не хватает Ци: нужно " + cost);
+                return false;
+            }
+        }
 
         cooldownEnd[index] = Time.time + ability.cooldown;
         OnAbilityActivated?.Invoke(index, ability);
