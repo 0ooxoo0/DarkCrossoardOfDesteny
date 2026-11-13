@@ -942,10 +942,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 92417558}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 50}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &8350382
 MonoBehaviour:
@@ -1009,7 +1009,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -8330,7 +8330,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: -24, y: -24}
-  m_SizeDelta: {x: 120, y: 152}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &92417559
 MonoBehaviour:
@@ -55969,6 +55969,7 @@ Transform:
   - {fileID: 1008376472}
   - {fileID: 156279635}
   - {fileID: 1140236888}
+  - {fileID: 706533330}
   m_Father: {fileID: 1413446444}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &655263614
@@ -60923,6 +60924,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e699721d0cee9774180356029dcccdd7, type: 3}
   m_PrefabInstance: {fileID: 706323643}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &706533329
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 706533330}
+  m_Layer: 7
+  m_Name: WeaponPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &706533330
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 706533329}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.1868265, y: 0.46516246, z: -0.7324367, w: -0.46071267}
+  m_LocalPosition: {x: -0, y: 0.03, z: -0.08}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 652061348}
+  m_LocalEulerAnglesHint: {x: 121.4, y: 162.7, z: -74.1}
 --- !u!1 &707453484
 GameObject:
   m_ObjectHideFlags: 0
@@ -65439,6 +65471,9 @@ MonoBehaviour:
   abilitySystem: {fileID: 32509306278097762}
   slotPrefab: {fileID: 2791852259401126376, guid: da08c6b3c8289b6469bc34f024cd4ad2, type: 3}
   targetCanvas: {fileID: 766535540}
+  qi: {fileID: 0}
+  dao: {fileID: 0}
+  cultivation: {fileID: 0}
 --- !u!1001 &768810654
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -155175,27 +155210,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_AnchorMin.x
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 96
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 96
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 212814888631851707, guid: 09a72e26193116d4498c8832989edd08, type: 3}
       propertyPath: m_LocalPosition.x
@@ -185723,6 +185758,10 @@ PrefabInstance:
       propertyPath: playerCamera
       value: 
       objectReference: {fileID: 330585545}
+    - target: {fileID: 3473364565530580050, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+      propertyPath: attackCooldown
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3478350923925142191, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_Layer
       value: 7
@@ -186114,7 +186153,7 @@ PrefabInstance:
     - target: {fileID: 7359351532270535140, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: rightHand
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 706533330}
     - target: {fileID: 7529066199595668002, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_Layer
       value: 7
