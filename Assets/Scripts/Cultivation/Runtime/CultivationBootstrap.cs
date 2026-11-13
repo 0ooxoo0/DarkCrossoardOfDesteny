@@ -281,6 +281,9 @@ public class CultivationBootstrap : MonoBehaviour
     {
         if (Cultivation == null) return false;
 
+        // Инвентаря в сцене нет — материалы не требуем: иначе прорыв невозможен в принципе.
+        if (PlayerInventory == null) return true;
+
         CultivationRealm realm = Cultivation.CurrentRealm;
         if (realm == null) return false;
 

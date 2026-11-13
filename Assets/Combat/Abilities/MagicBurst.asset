@@ -21,6 +21,11 @@ MonoBehaviour:
   vfxPrefab: {fileID: 0}
   castAnimation: {fileID: 0}
   requiredWeapon: 0
+  useRequiredDao: 1
+  requiredDaoType: 3
+  requiredDaoLevel: 1
+  requiredRealmIndex: 0
+  qiCost: 20
   damageTags:
   - DammageObject
   damageLayers:

@@ -54,6 +54,8 @@ public class AbilitySystem : MonoBehaviour
         if (Keyboard.current == null) return;
         if (Time.timeScale <= 0f) return;
         if (uiManager != null && uiManager.IsOpen) return;
+        // Панель культивации/техник перекрывает ввод 1–5.
+        if (CultivationUIRoot.Instance != null && CultivationUIRoot.Instance.IsInputBlocked) return;
 
         for (int i = 0; i < SlotCount; i++)
         {
