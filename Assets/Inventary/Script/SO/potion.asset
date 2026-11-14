@@ -12,12 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: potion
   m_EditorClassIdentifier: 
+  dataVersion: 1
   itemId: potion
   itemName: "\u0417\u0435\u043B\u044C\u0435 \u043B\u0435\u0447\u0435\u043D\u0438\u044F"
   description: "\u041E\u0431\u044B\u0447\u043D\u043E\u0435 \u0437\u0435\u043B\u044C\u0435
     \u043B\u0435\u0447\u0435\u043D\u0438\u044F"
   icon: {fileID: -1353786437, guid: f3cb6964e7639e545b5be2018c45b7f6, type: 3}
-  type: 1
-  stackable: 1
-  maxStackSize: 16
+  type: 2
+  stackable: 0
+  maxStackSize: 1
+  sellPrice: 0
+  useKind: 1
   consumable: 0
+  weaponData: {fileID: 0}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0

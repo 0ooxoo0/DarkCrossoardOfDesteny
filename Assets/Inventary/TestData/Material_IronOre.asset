@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
+  m_Name: Material_IronOre
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
+  itemId: test_material_iron_ore
+  itemName: "\u0416\u0435\u043B\u0435\u0437\u043D\u0430\u044F \u0440\u0443\u0434\u0430"
+  description: "\u041A\u0443\u0441\u043E\u043A \u0440\u0443\u0434\u044B \u0441 \u043F\u0440\u043E\u0436\u0438\u043B\u043A\u0430\u043C\u0438.
+    \u041F\u0440\u0438\u0433\u043E\u0434\u0438\u0442\u0441\u044F \u043A\u0443\u0437\u043D\u0435\u0446\u0443."
+  icon: {fileID: -1658850794, guid: cec82faa8fdf39f469d72f8170b9aff7, type: 3}
+  type: 4
+  stackable: 1
+  maxStackSize: 50
+  sellPrice: 1
+  useKind: 0
+  consumable: 0
+  weaponData: {fileID: 0}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0

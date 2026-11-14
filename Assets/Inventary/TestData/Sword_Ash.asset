@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
+  m_Name: Sword_Ash
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
+  itemId: test_sword_ash
+  itemName: "\u041F\u0435\u043F\u0435\u043B\u044C\u043D\u044B\u0439 \u043A\u043B\u0438\u043D\u043E\u043A"
+  description: "\u0422\u044F\u0436\u0451\u043B\u044B\u0439 \u043C\u0435\u0447 \u0438\u0437
+    \u043E\u0441\u0442\u044B\u0432\u0448\u0435\u0433\u043E \u043F\u0435\u043F\u043B\u0430.
+    \u041F\u0430\u0445\u043D\u0435\u0442 \u043A\u043E\u0441\u0442\u0440\u043E\u043C."
+  icon: {fileID: -2094690505, guid: cec82faa8fdf39f469d72f8170b9aff7, type: 3}
+  type: 0
+  stackable: 0
+  maxStackSize: 1
+  sellPrice: 12
+  useKind: 0
+  consumable: 0
+  weaponData: {fileID: 0}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0

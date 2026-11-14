@@ -12,13 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: Pill_Qi
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
   itemId: pill_qi
-  itemName: "Qi Pill"
-  description: "Restores 30 Qi."
+  itemName: Qi Pill
+  description: Restores 30 Qi.
   icon: {fileID: 0}
-  type: 3
+  type: 2
   stackable: 1
   maxStackSize: 20
+  sellPrice: 0
+  useKind: 2
   consumable: 1
   weaponData: {fileID: 0}
   breakthroughTags: []
