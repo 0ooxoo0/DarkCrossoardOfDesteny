@@ -2,14 +2,20 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
+/// <summary>Данные сохранения: слоты сетки, экипировка и слот оружия.</summary>
 [System.Serializable]
 public class InventorySaveData
 {
+    /// <summary>Версия схемы. 0 — старое сохранение без сетки инвентаря.</summary>
+    public int version;
+
     public List<InventorySlotSaveData> slots = new List<InventorySlotSaveData>();
     public string equippedWeaponId;
     public string weaponSlotItemId;
+    public List<EquippedItemSaveData> equippedItems = new List<EquippedItemSaveData>();
 }
 
+/// <summary>Один сохранённый слот сетки.</summary>
 [System.Serializable]
 public class InventorySlotSaveData
 {
@@ -17,6 +23,18 @@ public class InventorySlotSaveData
     public int quantity;
 }
 
+/// <summary>Один сохранённый предмет экипировки.</summary>
+[System.Serializable]
+public class EquippedItemSaveData
+{
+    public string itemId;
+    public int slotType;
+}
+
+/// <summary>
+/// Сохранение инвентаря в JSON. Для восстановления предметов нужен список
+/// allItems: по itemId находится сам ассет. Сетка и экипировка сохраняются вместе.
+/// </summary>
 public class InventorySaveSystem : MonoBehaviour
 {
     [SerializeField] private Inventory inventory;
@@ -28,14 +46,13 @@ public class InventorySaveSystem : MonoBehaviour
     [SerializeField] private bool loadOnStart;
 
     [Header("Item Database")]
-    [SerializeField] private List<ItemData> allItems = new List<ItemData>(); // ���������� ���� ��� �������� �� �������
+    [Tooltip("Все ItemData, которые могут встретиться в сохранении.")]
+    [SerializeField] private List<ItemData> allItems = new List<ItemData>();
 
     private string savePath;
 
-    private void Start()
-    {
-        if (loadOnStart) LoadInventory();
-    }
+    /// <summary>Актуальная версия схемы сохранения.</summary>
+    private const int CurrentVersion = 1;
 
     private void Awake()
     {
@@ -43,26 +60,20 @@ public class InventorySaveSystem : MonoBehaviour
         Debug.Log($"Save path: {savePath}");
     }
 
-    // ���������� ���������
+    private void Start()
+    {
+        if (loadOnStart) LoadInventory();
+    }
+
+    /// <summary>Собирает слоты, экипировку и оружие в JSON и пишет файл.</summary>
     public void SaveInventory()
     {
         if (inventory == null && weaponManager == null && weaponSlot == null) return;
 
-        InventorySaveData saveData = null;
-        if (File.Exists(savePath))
-        {
-            try
-            {
-                saveData = JsonUtility.FromJson<InventorySaveData>(File.ReadAllText(savePath));
-            }
-            catch
-            {
-                saveData = null;
-            }
-        }
-
-        if (saveData == null) saveData = new InventorySaveData();
+        InventorySaveData saveData = ReadExistingSave() ?? new InventorySaveData();
+        saveData.version = CurrentVersion;
         if (saveData.slots == null) saveData.slots = new List<InventorySlotSaveData>();
+        if (saveData.equippedItems == null) saveData.equippedItems = new List<EquippedItemSaveData>();
 
         if (inventory != null)
         {
@@ -73,18 +84,31 @@ public class InventorySaveSystem : MonoBehaviour
                 InventorySlot slot = inventory.GetSlot(i);
                 InventorySlotSaveData slotSaveData = new InventorySlotSaveData();
 
-                if (slot != null && slot.itemData != null)
+                if (slot != null && !slot.IsEmpty)
                 {
                     slotSaveData.itemId = slot.itemData.itemId;
                     slotSaveData.quantity = slot.quantity;
                 }
                 else
                 {
-                    slotSaveData.itemId = "";
+                    slotSaveData.itemId = string.Empty;
                     slotSaveData.quantity = 0;
                 }
 
                 saveData.slots.Add(slotSaveData);
+            }
+
+            saveData.equippedItems.Clear();
+
+            foreach (KeyValuePair<EquipmentSlotType, InventorySlot> pair in inventory.Equipped)
+            {
+                if (pair.Value == null || pair.Value.IsEmpty) continue;
+
+                saveData.equippedItems.Add(new EquippedItemSaveData
+                {
+                    itemId = pair.Value.itemData.itemId,
+                    slotType = (int)pair.Key
+                });
             }
         }
 
@@ -101,7 +125,7 @@ public class InventorySaveSystem : MonoBehaviour
         Debug.Log("Inventory saved!");
     }
 
-    // �������� ���������
+    /// <summary>Загружает сохранение: сетка, экипировка, оружие.</summary>
     public void LoadInventory()
     {
         if (!File.Exists(savePath))
@@ -123,16 +147,19 @@ public class InventorySaveSystem : MonoBehaviour
 
             if (inventory != null)
             {
-                ClearInventory();
-
-                if (saveData.slots != null)
+                // Старые сохранения (version 0) писались без сетки инвентаря.
+                // Их не применяем, иначе стартовые предметы будут стёрты пустым списком.
+                if (saveData.version >= CurrentVersion)
                 {
-                    for (int i = 0; i < saveData.slots.Count && i < inventory.GetSlotCount(); i++)
-                    {
-                        InventorySlotSaveData slotData = saveData.slots[i];
+                    inventory.ClearAllSlots();
 
-                        if (!string.IsNullOrEmpty(slotData.itemId))
+                    if (saveData.slots != null)
+                    {
+                        for (int i = 0; i < saveData.slots.Count && i < inventory.GetSlotCount(); i++)
                         {
+                            InventorySlotSaveData slotData = saveData.slots[i];
+                            if (string.IsNullOrEmpty(slotData.itemId)) continue;
+
                             ItemData itemData = FindItemById(slotData.itemId);
                             if (itemData != null)
                             {
@@ -147,6 +174,7 @@ public class InventorySaveSystem : MonoBehaviour
                 }
             }
 
+            if (saveData.version >= CurrentVersion) RestoreEquippedItems(saveData);
             RestoreWeapon(saveData);
 
             Debug.Log("Inventory loaded successfully!");
@@ -157,7 +185,26 @@ public class InventorySaveSystem : MonoBehaviour
         }
     }
 
-    // ����� �������� � ������
+    /// <summary>Возвращает экипировку из сохранения и сразу надевает оружие в руки.</summary>
+    private void RestoreEquippedItems(InventorySaveData saveData)
+    {
+        if (inventory == null || saveData == null || saveData.equippedItems == null) return;
+
+        for (int i = 0; i < saveData.equippedItems.Count; i++)
+        {
+            EquippedItemSaveData entry = saveData.equippedItems[i];
+            ItemData item = FindItemById(entry.itemId);
+            if (item == null) continue;
+
+            EquipmentSlotType slotType = (EquipmentSlotType)entry.slotType;
+            inventory.RestoreEquipped(slotType, item);
+
+            if (slotType == EquipmentSlotType.Weapon && weaponManager != null && item.weaponData != null)
+                weaponManager.EquipWeapon(item.weaponData);
+        }
+    }
+
+    /// <summary>Восстанавливает слот оружия и надетое оружие по старым полям сохранения.</summary>
     private void RestoreWeapon(InventorySaveData saveData)
     {
         if (weaponSlot != null && !weaponSlot.IsDisplayOnly)
@@ -178,8 +225,9 @@ public class InventorySaveSystem : MonoBehaviour
     {
         if (string.IsNullOrEmpty(weaponId) || allWeapons == null) return null;
 
-        foreach (WeaponData weapon in allWeapons)
+        for (int i = 0; i < allWeapons.Count; i++)
         {
+            WeaponData weapon = allWeapons[i];
             if (weapon != null && weapon.weaponId == weaponId) return weapon;
         }
         return null;
@@ -187,42 +235,43 @@ public class InventorySaveSystem : MonoBehaviour
 
     private ItemData FindItemById(string itemId)
     {
-        if (allItems == null) return null;
+        if (string.IsNullOrEmpty(itemId) || allItems == null) return null;
 
-        foreach (var item in allItems)
+        for (int i = 0; i < allItems.Count; i++)
         {
-            if (item != null && item.itemId == itemId)
-                return item;
+            ItemData item = allItems[i];
+            if (item != null && item.itemId == itemId) return item;
         }
         return null;
     }
 
-    // ������� ���������
-    private void ClearInventory()
+    private InventorySaveData ReadExistingSave()
     {
-        for (int i = 0; i < inventory.GetSlotCount(); i++)
+        if (!File.Exists(savePath)) return null;
+
+        try
         {
-            var slot = inventory.GetSlot(i);
-            if (slot.itemData != null)
-            {
-                inventory.RemoveItem(i, slot.quantity);
-            }
+            return JsonUtility.FromJson<InventorySaveData>(File.ReadAllText(savePath));
+        }
+        catch
+        {
+            return null;
         }
     }
 
-    // �������������� ����������
+    // Автосохранение при выходе и сворачивании.
     private void OnApplicationQuit() => SaveInventory();
     private void OnApplicationPause(bool pauseStatus) { if (pauseStatus) SaveInventory(); }
 
-    // �������� ����������
+    /// <summary>Удаляет файл сохранения.</summary>
     public void DeleteSave()
     {
-        if (File.Exists(savePath))
-        {
-            File.Delete(savePath);
-            Debug.Log("Save file deleted");
-        }
+        if (!File.Exists(savePath)) return;
+
+        File.Delete(savePath);
+        Debug.Log("Save file deleted");
     }
 
+    /// <summary>Есть ли файл сохранения.</summary>
     public bool SaveExists() => File.Exists(savePath);
 }
