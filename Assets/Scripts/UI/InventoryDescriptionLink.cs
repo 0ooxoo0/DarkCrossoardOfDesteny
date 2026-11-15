@@ -23,7 +23,7 @@ public class InventoryDescriptionLink : MonoBehaviour
 
         for (int i = 0; i < slots.Length; i++)
         {
-            if (slots[i] != null) slots[i].DescriptText = descriptionLabel;
+            if (slots[i] != null) slots[i].DescriptText = descriptionLabel.text;
         }
 
         applied = true;

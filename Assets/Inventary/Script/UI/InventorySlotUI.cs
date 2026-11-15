@@ -11,6 +11,8 @@ public class InventorySlotUI : MonoBehaviour,
     IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
     IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
+    public string DescriptText;
+
     [Header("Визуал")]
     [SerializeField] private Image icon;
     [SerializeField] private Image background;

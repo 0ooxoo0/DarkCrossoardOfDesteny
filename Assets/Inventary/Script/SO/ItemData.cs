@@ -20,7 +20,9 @@ public enum ItemType
     Quest = 3,
 
     /// <summary>Материалы, хлам и всё, что не попало в другие категории.</summary>
-    Misc = 4
+    Misc = 4,
+    /// <summary>???.</summary>
+    Scroll = 5
 }
 
 /// <summary>
