@@ -2,7 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// Применение расходников культивации из инвентаря: пилюли, свитки техник и семена Дао.
-/// Инвентарь не знает о Ци/Дао — он только передаёт предмет в этот мост.
+/// Инвентарь не знает о Ци/Дао — он лишь поднимает событие использования,
+/// а этот мост решает, что именно сделать с предметом.
 /// </summary>
 [DisallowMultipleComponent]
 public class CultivationItemBridge : MonoBehaviour
@@ -11,6 +12,8 @@ public class CultivationItemBridge : MonoBehaviour
     [SerializeField] private CultivationSystem cultivation;
     [SerializeField] private DaoSystem dao;
     [SerializeField] private Inventory inventory;
+
+    private Inventory subscribedInventory;
 
     public QiComponent Qi => qi;
     public CultivationSystem Cultivation => cultivation;
@@ -24,11 +27,19 @@ public class CultivationItemBridge : MonoBehaviour
         cultivation = cultivationSystem;
         dao = daoSystem;
         inventory = playerInventory;
+
+        Subscribe();
     }
 
     private void Awake()
     {
         EnsureReferences();
+        Subscribe();
+    }
+
+    private void OnDestroy()
+    {
+        Unsubscribe();
     }
 
     /// <summary>Использовать предмет из конкретного слота. Возвращает true, если предмет был потрачен.</summary>
@@ -37,6 +48,8 @@ public class CultivationItemBridge : MonoBehaviour
         if (item == null) return false;
 
         EnsureReferences();
+        Subscribe();
+
         Inventory targetInventory = sourceInventory != null ? sourceInventory : inventory;
         if (targetInventory == null) return false;
 
@@ -46,22 +59,29 @@ public class CultivationItemBridge : MonoBehaviour
 
         bool consume = false;
 
-        switch (item.type)
+        // Решение принимается по полю useKind, а не по категории ItemType:
+        // категория отвечает за сетку и экипировку, способ применения — за системы.
+        switch (item.useKind)
         {
-            case ItemType.Pill:
+            case ItemUseKind.Pill:
                 consume = ApplyPill(item);
                 break;
 
-            case ItemType.Scroll:
+            case ItemUseKind.Scroll:
                 consume = ApplyScroll(item);
                 break;
 
-            case ItemType.DaoSeed:
+            case ItemUseKind.DaoSeed:
                 consume = ApplyDaoSeed(item);
                 break;
 
-            case ItemType.BreakthroughMaterial:
+            case ItemUseKind.BreakthroughMaterial:
                 Debug.Log("[Cultivation] Материал прорыва не используется вручную.");
+                return false;
+
+            case ItemUseKind.Potion:
+                // Обычные зелья лечит система здоровья, которой пока нет.
+                Debug.Log("[Cultivation] Обычное зелье ждёт систему здоровья.");
                 return false;
 
             default:
@@ -82,7 +102,7 @@ public class CultivationItemBridge : MonoBehaviour
 
         if (qiAmount == 0 && experience == 0 && comprehension == 0)
         {
-            Debug.LogWarning("[Cultivation] Пилюля " + item.itemName + " не имеет эффекта.");
+            Debug.LogWarning("[Cultivation] Пилюля " + item.DisplayName + " не имеет эффекта.");
             return false;
         }
 
@@ -108,7 +128,7 @@ public class CultivationItemBridge : MonoBehaviour
 
         if (!applied)
         {
-            Debug.LogWarning("[Cultivation] Пилюля " + item.itemName + " не применилась: нет нужных систем.");
+            Debug.LogWarning("[Cultivation] Пилюля " + item.DisplayName + " не применилась: нет нужных систем.");
             return false;
         }
 
@@ -119,7 +139,7 @@ public class CultivationItemBridge : MonoBehaviour
     {
         if (item.technique == null)
         {
-            Debug.LogWarning("[Cultivation] У свитка " + item.itemName + " не назначена техника.");
+            Debug.LogWarning("[Cultivation] У свитка " + item.DisplayName + " не назначена техника.");
             return false;
         }
 
@@ -164,5 +184,27 @@ public class CultivationItemBridge : MonoBehaviour
         if (cultivation == null) cultivation = GetComponent<CultivationSystem>();
         if (dao == null) dao = GetComponent<DaoSystem>();
         if (inventory == null) inventory = FindFirstObjectByType<Inventory>(FindObjectsInactive.Include);
+    }
+
+    private void HandleItemUseRequested(ItemData item, Inventory sourceInventory, int slotIndex)
+    {
+        TryUse(item, sourceInventory, slotIndex);
+    }
+
+    private void Subscribe()
+    {
+        if (inventory == null || subscribedInventory == inventory) return;
+
+        Unsubscribe();
+        subscribedInventory = inventory;
+        subscribedInventory.OnItemUseRequested += HandleItemUseRequested;
+    }
+
+    private void Unsubscribe()
+    {
+        if (subscribedInventory == null) return;
+
+        subscribedInventory.OnItemUseRequested -= HandleItemUseRequested;
+        subscribedInventory = null;
     }
 }

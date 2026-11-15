@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09c81a3977a82841b3beb97c21d5d93, type: 3}
+  m_Name: InventoryTheme
+  m_EditorClassIdentifier: Assembly-CSharp::InventoryTheme
+  windowBackground: {r: 0.102, g: 0.086, b: 0.071, a: 0.97}
+  dimBackground: {r: 0, g: 0, b: 0, a: 0.72}
+  slotBackground: {r: 0.063, g: 0.055, b: 0.043, a: 1}
+  borderColor: {r: 0.29, g: 0.247, b: 0.208, a: 1}
+  highlightColor: {r: 0.788, g: 0.647, b: 0.361, a: 1}
+  textColor: {r: 0.91, g: 0.863, b: 0.784, a: 1}
+  mutedTextColor: {r: 0.639, g: 0.584, b: 0.502, a: 1}
+  placeholderColor: {r: 0.404, g: 0.243, b: 0.243, a: 1}
+  font: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  slotSize: {x: 88, y: 88}
+  slotSpacing: {x: 8, y: 8}

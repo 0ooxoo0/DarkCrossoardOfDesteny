@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class PlayerInteraction : MonoBehaviour
 {
@@ -15,6 +16,10 @@ public class PlayerInteraction : MonoBehaviour
     [Header("Ссылки")]
     [SerializeField] private Camera playerCamera;
     [SerializeField] private Transform attackOrigin;
+
+    [Header("Блокировка атаки")]
+    [Tooltip("Слои, попадание в которые отменяет атаку (Interactable, UI и т.п.)")]
+    [SerializeField] private LayerMask blockAttackLayers;
 
     private PlayerController playerController;
     private PlayerControls controls;
@@ -45,6 +50,8 @@ public class PlayerInteraction : MonoBehaviour
         if (Time.time < nextAttackTime || isAttacking) return;
         if (playerController == null) return;
 
+        if (IsAttackBlocked()) return;
+
         Vector3 aimPoint = GetAimPoint();
         playerController.FaceTowards(aimPoint, 0.45f);
 
@@ -55,6 +62,31 @@ public class PlayerInteraction : MonoBehaviour
         StartCoroutine(AttackRoutine());
     }
 
+    private bool IsAttackBlocked()
+    {
+        // 1) Стандартный UI (Canvas Screen Space Overlay) — коллайдеров нет,
+        //    ловим через EventSystem.
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return true;
+
+        // 2) UI/Interactable, у которых есть коллайдеры и они лежат на нужном слое.
+        if (blockAttackLayers.value == 0) return false;
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera == null || Mouse.current == null) return false;
+
+        Ray ray = playerCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        int mask = ~(1 << gameObject.layer); // игнорируем себя
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, mask, QueryTriggerInteraction.Ignore))
+        {
+            // Блокируем только если ПЕРВОЕ попадание — на «блокирующем» слое.
+            // Так объект за стеной не отменит атаку по стене.
+            return (blockAttackLayers.value & (1 << hit.collider.gameObject.layer)) != 0;
+        }
+
+        return false;
+    }
+
     private Vector3 GetAimPoint()
     {
         if (playerCamera == null) playerCamera = Camera.main;
@@ -63,7 +95,7 @@ public class PlayerInteraction : MonoBehaviour
         if (Mouse.current != null)
         {
             Ray ray = playerCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
-            
+
             if (Physics.Raycast(ray, out RaycastHit hit, 100f, ~(1 << gameObject.layer)))
             {
                 return hit.point;

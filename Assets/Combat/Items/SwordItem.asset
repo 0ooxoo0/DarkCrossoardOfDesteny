@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: SwordItem
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
   itemId: sword_item
   itemName: "\u041C\u0435\u0447"
   description: "\u041E\u0434\u043D\u043E\u0440\u0443\u0447\u043D\u044B\u0439 \u043C\u0435\u0447."
@@ -19,5 +20,13 @@ MonoBehaviour:
   type: 0
   stackable: 0
   maxStackSize: 1
+  sellPrice: 0
+  useKind: 0
   consumable: 0
   weaponData: {fileID: 11400000, guid: e560d6577ccc4c3418740fadee3121b4, type: 2}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0

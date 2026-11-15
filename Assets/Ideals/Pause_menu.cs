@@ -76,9 +76,9 @@ public class Pause_menu : MonoBehaviour
             active = true;
             time = 0.1f;
         }
-        if(active == true && Input.GetKeyDown(KeyCode.Escape) && time == 0)
+        if (active == true && Input.GetKeyDown(KeyCode.Escape) && time == 0)
         {
-            if (Settings.active == false && SettingsGraphic.active == false && SettingsVolume.active == false && Naviki.active == false && Karta.active == false)
+            if (!Settings.activeSelf && !SettingsGraphic.activeSelf && !SettingsVolume.activeSelf && !Naviki.activeSelf && !Karta.activeSelf)
             {
                 PauseMenu.SetActive(false);
                 Cursor.lockState = CursorLockMode.Locked;
@@ -87,27 +87,27 @@ public class Pause_menu : MonoBehaviour
                 time = 0.1f;
                 return;
             }
-            if(SettingsGraphic.active == true)
+            if (SettingsGraphic.activeSelf)
             {
                 SettingsGraphic.SetActive(false);
                 return;
             }
-            if(SettingsVolume.active == true)
+            if (SettingsVolume.activeSelf)
             {
                 SettingsVolume.SetActive(false);
                 return;
             }
-            if (Settings.active == true)
+            if (Settings.activeSelf)
             {
                 Settings.SetActive(false);
                 return;
             }
-            if (Naviki.active == true)
+            if (Naviki.activeSelf)
             {
                 Naviki.SetActive(false);
                 return;
             }
-            if (Karta.active == true)
+            if (Karta.activeSelf)
             {
                 Karta.SetActive(false);
                 return;

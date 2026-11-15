@@ -12,13 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: Material_OreJade
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
   itemId: mat_ore_jade
-  itemName: "Jade Ore"
-  description: "Breakthrough material: ore.jade."
+  itemName: Jade Ore
+  description: 'Breakthrough material: ore.jade.'
   icon: {fileID: 0}
-  type: 5
+  type: 4
   stackable: 1
   maxStackSize: 50
+  sellPrice: 0
+  useKind: 5
   consumable: 0
   weaponData: {fileID: 0}
   breakthroughTags:

@@ -12,13 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: Material_CoreBeast
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
   itemId: mat_core_beast
-  itemName: "Beast Core"
-  description: "Breakthrough material: core.beast."
+  itemName: Beast Core
+  description: 'Breakthrough material: core.beast.'
   icon: {fileID: 0}
-  type: 5
+  type: 4
   stackable: 1
   maxStackSize: 20
+  sellPrice: 0
+  useKind: 5
   consumable: 0
   weaponData: {fileID: 0}
   breakthroughTags:

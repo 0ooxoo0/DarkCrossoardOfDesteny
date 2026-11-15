@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
   m_Name: FistsItem
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
   itemId: fists_item
   itemName: "\u041A\u0443\u043B\u0430\u043A\u0438"
   description: "\u0411\u0435\u0437 \u043E\u0440\u0443\u0436\u0438\u044F."
@@ -19,5 +20,13 @@ MonoBehaviour:
   type: 0
   stackable: 0
   maxStackSize: 1
+  sellPrice: 0
+  useKind: 0
   consumable: 0
   weaponData: {fileID: 11400000, guid: d65852f5b49641d47aa67796aaf57fa3, type: 2}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0

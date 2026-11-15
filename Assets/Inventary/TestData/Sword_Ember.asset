@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6863d833dcf77354693d515385525ef6, type: 3}
+  m_Name: Sword_Ember
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  dataVersion: 1
+  itemId: test_sword_ember
+  itemName: "\u041A\u043B\u0438\u043D\u043E\u043A \u0430\u043B\u043E\u0439 \u0437\u0430\u0440\u0438"
+  description: "\u041B\u0451\u0433\u043A\u0438\u0439 \u043A\u043B\u0438\u043D\u043E\u043A
+    \u0441 \u0431\u0430\u0433\u0440\u043E\u0432\u044B\u043C \u043E\u0442\u0431\u043B\u0435\u0441\u043A\u043E\u043C
+    \u043D\u0430 \u043A\u0440\u043E\u043C\u043A\u0435."
+  icon: {fileID: -1849677193, guid: cec82faa8fdf39f469d72f8170b9aff7, type: 3}
+  type: 0
+  stackable: 0
+  maxStackSize: 1
+  sellPrice: 18
+  useKind: 0
+  consumable: 0
+  weaponData: {fileID: 0}
+  breakthroughTags: []
+  qiRestore: 0
+  experienceQiGain: 0
+  comprehensionGain: 0
+  technique: {fileID: 0}
+  unlocksDao: 0
