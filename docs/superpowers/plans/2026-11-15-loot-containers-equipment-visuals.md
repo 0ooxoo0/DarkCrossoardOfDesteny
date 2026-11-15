@@ -48,9 +48,9 @@ TextMeshPro, Input System, `NavMeshAgent`, `JsonUtility`.
    атаку, а атака по врагам и деревьям продолжает работать.
 3. **Курсор после меню.** После Esc и Alt мышь остаётся свободной и видимой,
    наведение на лут продолжает работать.
-4. **Подход.** Персонаж идёт с анимацией ходьбы, а не скользит; WASD отменяет;
-   по прибытии, таймауту и отмене скорость и `Speed` сбрасываются, персонаж не
-   «уезжает» и не застревает.
+4. **Подход.** Персонаж перемещается к контейнеру, а не стоит на месте; WASD
+   отменяет; по прибытии, таймауту и отмене скорость и `Speed` сбрасываются,
+   персонаж не «уезжает» и не застревает.
 5. **Полный инвентарь и выброс.** При нехватке места берётся часть, остаток остаётся;
    контейнер исчезает только при нуле; выброс удаляет предмет из инвентаря только
    после успешного создания контейнера (нет потерь и дублей).
@@ -135,7 +135,7 @@ Expected: 0 ошибок (старые чужие предупреждения �
 - [ ] **Step 6: Commit**
 
 ```bash
-git add Assets/Inventary/Script/SO/EquipmentSlotType.cs Assets/Inventary/Script/SO/ItemData.cs Assets/Inventary/Script/SO/ItemTypeInfo.cs Assets/Inventary/Script/Inventory.cs
+git add Assets/Inventary/Script/SO/EquipmentSlotType.cs Assets/Inventary/Script/SO/ItemData.cs Assets/Inventary/Script/SO/ItemTypeInfo.cs Assets/Inventary/Script/Inventory.cs Assets/Editor/InventorySetup.cs
 git commit -m "feat(inventory): add pants slot and explicit equipment slot"
 ```
 
@@ -192,7 +192,9 @@ public class PlayerEquipmentBridge : MonoBehaviour
 }
 ```
 
-- `OnEnable` подписывается на `OnItemEquipped`/`OnItemUnequipped` и вызывает `Sync`.
+- `OnEnable` подписывается на `OnItemEquipped`/`OnItemUnequipped`;
+  `Start` вызывает `Sync` (после всех `Awake`, чтобы не перезаписать визуалы
+  выключением по умолчанию). Оба метода null-safe.
 - `Sync`: для каждого слота `EquipmentSlotType` берёт `inventory.GetEquipped(slot)`
   и вызывает `visuals.Apply(slot, item != null ? item.equipVisualId : null)`.
 - `HandleEquipped`: `visuals.Apply(slot, item != null ? item.equipVisualId : null)`.
@@ -544,8 +546,7 @@ git commit -m "feat(loot): pickup controller with approach"
 
 **Interfaces:**
 - Consumes: `WorldLootContainer.Entries/OnChanged/OnEmptied`,
-  `LootPickupController.RequestTake/RequestTakeAll/OnStatus`, `LootTakeResult`,
-  `InventoryTheme`
+  `LootPickupController.RequestTake/RequestTakeAll/OnStatus`, `LootTakeResult`
 - Produces:
   - `LootRowUI.Bind(LootEntry entry, Action onTake)`
   - `LootPanelUI.Show(WorldLootContainer, Vector2 screenPoint)`, `Hide()`,
@@ -595,9 +596,11 @@ public class LootPanelUI : MonoBehaviour
 ```
 
 Поведение:
-- `Show`: запомнить контейнер, подписаться на `OnChanged`/`OnEmptied`,
-  `Refresh`, расположить панель, включить `root`/`CanvasGroup`
-  (`alpha = 1`, `blocksRaycasts = true`).
+- `Show`: если контейнер тот же и панель уже видима — только обновить позицию;
+  иначе запомнить контейнер, подписаться на `OnChanged`/`OnEmptied`, `Refresh`,
+  расположить панель, включить `root`/`CanvasGroup` (`alpha = 1`,
+  `blocksRaycasts = true`). Это позволяет вызывать `Show` каждый кадр для
+  слежения за сферой без пересборки строк.
 - `Refresh`: удалить старые строки, создать по `rowPrefab` на запись,
   `Bind(entry, () => Take(entry))`. Пустой контейнер → `Hide`.
 - `Take`: `LootTakeResult result = pickupController.RequestTake(container, entry);`
@@ -658,6 +661,7 @@ public class LootPointerController : MonoBehaviour
     [SerializeField] private Camera playerCamera;
     [SerializeField] private LootPanelUI panel;
     [SerializeField] private InventoryPanelUI inventoryPanel;
+    [SerializeField] private LootPickupController pickupController;
     [SerializeField] private LayerMask rayMask = ~0;
     [SerializeField] private float maxDistance = 100f;
     [SerializeField] private float hideDelay = 0.2f;
@@ -665,7 +669,8 @@ public class LootPointerController : MonoBehaviour
 ```
 
 `Update`:
-- инвентарь открыт → скрыть панель, `PointerGuard.IsBlockingAttack = true`, выйти;
+- инвентарь открыт или `pickupController.IsApproaching` → скрыть панель,
+  `PointerGuard.IsBlockingAttack = false`, выйти;
 - `Mouse.current == null` или нет камеры → скрыть, выйти;
 - луч из камеры; `Physics.Raycast(..., QueryTriggerInteraction.Collide)`;
   `GetComponentInParent<WorldLootContainer>()`;
@@ -828,6 +833,11 @@ git commit -m "feat(inventory): drop to world, delete and unarmed weapon"
   - Pants: шесть `M_*_Bottom`;
   - Accessory: `M_SlingBag`, `M_ArrowQuiver`, `M_Archer_Cape`, `M_Warlock_Cape`;
 - второй `M_Archer_Top` из `ArcherCapeTopBody` не регистрировать;
+- искать вещи по имени среди всех детей `BasicHero_M` (включая выключенные), а не
+  только по старому пути: повторный запуск сетапа не должен падать и не должен
+  переносить уже перенесённое;
+- если `EquipmentVisuals` уже существует — переиспользовать папки, а список
+  `CharacterEquipmentVisuals` очистить и заполнить заново (без дублей);
 - если объект не найден — `Debug.LogError` с путём и пропустить его, остальные
   визуалы продолжают работать;
 - все зарегистрированные объекты выключить;
@@ -915,7 +925,8 @@ git commit -m "feat(setup): test loot items and character visuals"
 - [ ] **Step 4: Компоненты игрока и связи**
 
 - `LootPointerController` на `Player`: `playerCamera = Camera.main`,
-  `panel`, `inventoryPanel`, `rayMask = ~0`, `maxDistance = 100`, `hideDelay = 0.2`;
+  `panel`, `inventoryPanel`, `pickupController`, `rayMask = ~0`,
+  `maxDistance = 100`, `hideDelay = 0.2`;
 - `LootPickupController` на `Player`: `inventory`, `agent`, `animator`,
   `speedParameter = "Speed"`, `pickupRange = 2.5`, `approachTimeout = 8`,
   `noProgressTimeout = 2`;
