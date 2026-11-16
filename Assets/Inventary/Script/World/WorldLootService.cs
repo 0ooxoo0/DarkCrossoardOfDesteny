@@ -87,13 +87,18 @@ public class WorldLootService : MonoBehaviour
     /// <summary>Ближайший непустой контейнер в радиусе или null.</summary>
     public WorldLootContainer FindNearest(Vector3 position, float radius)
     {
+        // Список созданных в рантайме не переживает загрузку сцены, поэтому
+        // ищем по сцене: так выброс рядом со стартовым контейнером тоже сливается.
+        WorldLootContainer[] containers = FindObjectsByType<WorldLootContainer>(
+            FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
         WorldLootContainer nearest = null;
         float bestSqr = radius * radius;
 
-        for (int i = 0; i < spawned.Count; i++)
+        for (int i = 0; i < containers.Length; i++)
         {
-            WorldLootContainer container = spawned[i];
-            if (container == null) continue;
+            WorldLootContainer container = containers[i];
+            if (container == null || container.IsEmpty) continue;
 
             float sqr = (container.transform.position - position).sqrMagnitude;
             if (sqr > bestSqr) continue;

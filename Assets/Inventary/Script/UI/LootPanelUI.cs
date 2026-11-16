@@ -45,7 +45,10 @@ public class LootPanelUI : MonoBehaviour
     private void Awake()
     {
         EnsureInitialized();
-        SetVisible(false);
+
+        // Если панель уже просят показать (Awake сработал при активации из Show),
+        // скрывать её нельзя — иначе первый показ тут же погаснет.
+        if (!IsVisible) SetVisible(false);
     }
 
     private void OnEnable()

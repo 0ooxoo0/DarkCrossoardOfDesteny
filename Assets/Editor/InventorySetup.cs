@@ -3,6 +3,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -19,6 +20,34 @@ public static class InventorySetup
     private const string ThemePath = TestDataFolder + "/InventoryTheme.asset";
     private const string SlotPrefabPath = PrefabFolder + "/InventorySlot.prefab";
     private const string EquipmentSlotPrefabPath = PrefabFolder + "/EquipmentSlot.prefab";
+    private const string LootRowPrefabPath = PrefabFolder + "/LootRow.prefab";
+    private const string LootContainerPrefabPath = PrefabFolder + "/WorldLootContainer.prefab";
+    private const string OutlineMaterialPath = "Assets/Inventary/Materials/OutlineMaterial.mat";
+    private const string ItemEffectPrefabPath = "Assets/Effects/ItemEffect.prefab";
+
+    private const string CharacterName = "BasicHero_M";
+    private const string VisualsRootName = "EquipmentVisuals";
+
+    private const string SwordWeaponPath = "Assets/Combat/Weapons/Sword.asset";
+    private const string FistsWeaponPath = "Assets/Combat/Weapons/Fists.asset";
+
+    private const string ArmorIconPath = "Assets/Ideals/Menu/UI/GUI_Parts/Icons/armor_icon.png";
+    private const string RingIconPath = "Assets/one-ring.jpg";
+    private const string BarbarianSwordSpritePath =
+        "Assets/barbarian-equipment-pictogram-suitable-illustrations-50863202_4.asset";
+    private const string BarbarianHelmetSpritePath =
+        "Assets/barbarian-equipment-pictogram-suitable-illustrations-50863202_0.asset";
+    private const string BarbarianPantsSpritePath =
+        "Assets/barbarian-equipment-pictogram-suitable-illustrations-50863202_2.asset";
+
+    private const string StarterContainerName = "[Loot] Starter";
+    private const string LootServiceName = "LootService";
+    private const string LootPanelName = "LootPanel";
+
+    private const float LootPanelWidth = 380f;
+    private const float LootPanelHeight = 360f;
+    private const float LootRowHeight = 52f;
+    private const float StarterLootDistance = 3f;
 
     private const string PanelName = "InventoryPanel";
     private const string CanvasName = "Canvas";
@@ -103,10 +132,11 @@ public static class InventorySetup
 
         List<ItemData> items = new List<ItemData>
         {
-            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Sword_Ash.asset"),
-            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Sword_Ember.asset"),
-            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Potion_Healing.asset"),
-            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Material_IronOre.asset")
+            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Weapon_BarbarianSword.asset"),
+            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Armor_Leather.asset"),
+            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Helmet_Mage.asset"),
+            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Pants_Leather.asset"),
+            AssetDatabase.LoadAssetAtPath<ItemData>(TestDataFolder + "/Accessory_Ring.asset")
         };
 
         BuildPanelInGameScene(theme, slotPrefab, equipmentPrefab, items);
@@ -176,43 +206,62 @@ public static class InventorySetup
 
     private static List<ItemData> CreateTestItems()
     {
-        List<Sprite> sprites = LoadSprites("Assets/Inventary/Image/InventoryItems/Items1.png");
+        Sprite armorIcon = LoadSprite(ArmorIconPath);
+        Sprite ringIcon = LoadSprite(RingIconPath);
+        Sprite swordIcon = LoadSprite(BarbarianSwordSpritePath);
+        Sprite helmetIcon = LoadSprite(BarbarianHelmetSpritePath);
+        Sprite pantsIcon = LoadSprite(BarbarianPantsSpritePath);
 
-        ItemData swordAsh = CreateOrUpdateItem(
-            TestDataFolder + "/Sword_Ash.asset",
-            "test_sword_ash",
-            "Пепельный клинок",
-            "Тяжёлый меч из остывшего пепла. Пахнет костром.",
-            ItemType.Weapon, ItemUseKind.None, 1, 12, sprites, 0);
+        // Меч переиспользует боевой Sword: анимации и хитбокс уже настроены под него.
+        WeaponData sword = AssetDatabase.LoadAssetAtPath<WeaponData>(SwordWeaponPath);
 
-        ItemData swordEmber = CreateOrUpdateItem(
-            TestDataFolder + "/Sword_Ember.asset",
-            "test_sword_ember",
-            "Клинок алой зари",
-            "Лёгкий клинок с багровым отблеском на кромке.",
-            ItemType.Weapon, ItemUseKind.None, 1, 18, sprites, 1);
+        ItemData swordItem = CreateOrUpdateItem(
+            TestDataFolder + "/Weapon_BarbarianSword.asset",
+            "loot_sword_barbarian",
+            "Меч варвара",
+            "Широкий клинок варвара. Тяжёлый, но честный.",
+            ItemType.Weapon, ItemUseKind.None, 1, 12,
+            swordIcon, EquipmentSlotType.Weapon, string.Empty, sword);
 
-        ItemData potion = CreateOrUpdateItem(
-            TestDataFolder + "/Potion_Healing.asset",
-            "test_potion_healing",
-            "Зелье лечения",
-            "Тёплая мутная жидкость. Пока не лечит: ждёт систему здоровья.",
-            ItemType.Consumable, ItemUseKind.Potion, 20, 4, sprites, 2);
+        ItemData armorItem = CreateOrUpdateItem(
+            TestDataFolder + "/Armor_Leather.asset",
+            "loot_armor_leather",
+            "Кожаная броня",
+            "Плотная кожаная куртка со следами старых починок.",
+            ItemType.Armor, ItemUseKind.None, 1, 20,
+            armorIcon, EquipmentSlotType.Armor, "M_Swordsman_Top", null);
 
-        ItemData ore = CreateOrUpdateItem(
-            TestDataFolder + "/Material_IronOre.asset",
-            "test_material_iron_ore",
-            "Железная руда",
-            "Кусок руды с прожилками. Пригодится кузнецу.",
-            ItemType.Misc, ItemUseKind.None, 50, 1, sprites, 3);
+        ItemData helmetItem = CreateOrUpdateItem(
+            TestDataFolder + "/Helmet_Mage.asset",
+            "loot_helmet_mage",
+            "Шапка мага",
+            "Мягкая шапка с вышитыми знаками. Пахнет травами.",
+            ItemType.Armor, ItemUseKind.None, 1, 15,
+            helmetIcon, EquipmentSlotType.Helmet, "M_Mage_Headwear", null);
 
-        return new List<ItemData> { swordAsh, swordEmber, potion, ore };
+        ItemData pantsItem = CreateOrUpdateItem(
+            TestDataFolder + "/Pants_Leather.asset",
+            "loot_pants_leather",
+            "Кожаные штаны",
+            "Штаны, удобные для долгой дороги.",
+            ItemType.Armor, ItemUseKind.None, 1, 10,
+            pantsIcon, EquipmentSlotType.Pants, "M_Swordsman_Bottom", null);
+
+        ItemData ringItem = CreateOrUpdateItem(
+            TestDataFolder + "/Accessory_Ring.asset",
+            "loot_accessory_ring",
+            "Кольцо странника",
+            "Простое кольцо. На поясе висит сумка, с которой удобнее в пути.",
+            ItemType.Armor, ItemUseKind.None, 1, 25,
+            ringIcon, EquipmentSlotType.Accessory, "M_SlingBag", null);
+
+        return new List<ItemData> { swordItem, armorItem, helmetItem, pantsItem, ringItem };
     }
 
     private static ItemData CreateOrUpdateItem(
         string assetPath, string itemId, string displayName, string description,
         ItemType type, ItemUseKind useKind, int maxStack, int sellPrice,
-        List<Sprite> sprites, int spriteIndex)
+        Sprite icon, EquipmentSlotType equipSlot, string equipVisualId, WeaponData weaponData)
     {
         ItemData item = AssetDatabase.LoadAssetAtPath<ItemData>(assetPath);
         if (item == null)
@@ -229,29 +278,23 @@ public static class InventorySetup
         item.stackable = maxStack > 1;
         item.maxStackSize = Mathf.Max(1, maxStack);
         item.sellPrice = Mathf.Max(0, sellPrice);
+        item.icon = icon;
+        item.equipSlot = equipSlot;
+        item.equipVisualId = equipVisualId;
+        item.weaponData = weaponData;
         item.MarkMigrated(DataVersion);
-
-        // Иконки берём из готового атласа, если он есть. Иначе останется [PLACEHOLDER].
-        if (sprites != null && sprites.Count > 0)
-        {
-            item.icon = sprites[Mathf.Abs(spriteIndex) % sprites.Count];
-        }
 
         EditorUtility.SetDirty(item);
         return item;
     }
 
-    private static List<Sprite> LoadSprites(string texturePath)
+    private static Sprite LoadSprite(string assetPath)
     {
-        List<Sprite> result = new List<Sprite>();
-        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(texturePath);
+        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        if (sprite == null)
+            Debug.LogWarning($"[InventorySetup] Не найден спрайт: {assetPath}. Останется [PLACEHOLDER].");
 
-        for (int i = 0; i < assets.Length; i++)
-        {
-            if (assets[i] is Sprite sprite) result.Add(sprite);
-        }
-
-        return result;
+        return sprite;
     }
 
     private static InventoryTheme CreateOrLoadTheme()
@@ -385,9 +428,6 @@ public static class InventorySetup
         slotPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SlotPrefabPath);
         equipmentPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(EquipmentSlotPrefabPath);
         startingItems = ReloadItems(startingItems);
-
-        // Количества задаются явно и в том же порядке, что и тестовые предметы.
-        int[] startingQuantities = { 1, 1, 5, 10 };
 
         if (theme == null || slotPrefab == null || equipmentPrefab == null)
         {
@@ -534,6 +574,7 @@ public static class InventorySetup
 
         Button sortButton = CreateButton(buttonsGo.transform, "SortButton", "Сортировать", theme);
         Button dropButton = CreateButton(buttonsGo.transform, "DropButton", "Выбросить", theme);
+        Button deleteButton = CreateButton(buttonsGo.transform, "DeleteButton", "Удалить", theme);
         Button useButton = CreateButton(buttonsGo.transform, "UseButton", "Использовать", theme);
 
         TextMeshProUGUI footer = CreateText("Footer", frame.transform, string.Empty,
@@ -656,11 +697,13 @@ public static class InventorySetup
         confirmGroup.interactable = false;
 
         InventoryConfirmDialog confirmDialog = confirmGo.GetComponent<InventoryConfirmDialog>();
+        TextMeshProUGUI confirmLabel = confirmButton.GetComponentInChildren<TextMeshProUGUI>(true);
         Assign(confirmDialog, serialized =>
         {
             serialized.FindProperty("root").objectReferenceValue = confirmGo;
             serialized.FindProperty("canvasGroup").objectReferenceValue = confirmGroup;
             serialized.FindProperty("messageText").objectReferenceValue = confirmMessage;
+            serialized.FindProperty("confirmLabelText").objectReferenceValue = confirmLabel;
             serialized.FindProperty("confirmButton").objectReferenceValue = confirmButton;
             serialized.FindProperty("cancelButton").objectReferenceValue = cancelButton;
             serialized.FindProperty("theme").objectReferenceValue = theme;
@@ -718,6 +761,7 @@ public static class InventorySetup
 
             serialized.FindProperty("sortButton").objectReferenceValue = sortButton;
             serialized.FindProperty("dropButton").objectReferenceValue = dropButton;
+            serialized.FindProperty("deleteButton").objectReferenceValue = deleteButton;
             serialized.FindProperty("useButton").objectReferenceValue = useButton;
             serialized.FindProperty("closeButton").objectReferenceValue = closeButton;
             serialized.FindProperty("footerText").objectReferenceValue = footer;
@@ -732,23 +776,15 @@ public static class InventorySetup
 
         Assign(inventory, serialized =>
         {
+            // Стартовый инвентарь пуст: всё тестовое лежит в контейнере перед игроком.
             SerializedProperty starting = serialized.FindProperty("startingItems");
             starting.ClearArray();
-
-            for (int i = 0; i < startingItems.Count; i++)
-            {
-                ItemData item = startingItems[i];
-                if (item == null) continue;
-
-                starting.InsertArrayElementAtIndex(starting.arraySize);
-                SerializedProperty entry = starting.GetArrayElementAtIndex(starting.arraySize - 1);
-                entry.FindPropertyRelative("item").objectReferenceValue = item;
-                entry.FindPropertyRelative("quantity").intValue =
-                    i < startingQuantities.Length ? startingQuantities[i] : 1;
-            }
         });
 
         WireSaveSystem(inventory, startingItems);
+
+        SetupCharacterVisuals(inventory);
+        SetupLoot(inventory, panel, deleteButton, playerController, startingItems);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
@@ -788,6 +824,585 @@ public static class InventorySetup
         }
 
         return reloaded;
+    }
+
+    // ------------------------------------------------- Визуальная экипировка
+
+    private struct VisualBinding
+    {
+        public EquipmentSlotType slot;
+        public string visualId;
+
+        public VisualBinding(EquipmentSlotType slot, string visualId)
+        {
+            this.slot = slot;
+            this.visualId = visualId;
+        }
+    }
+
+    /// <summary>
+    /// Раскладывает существующую одежду BasicHero_M по папкам слотов и регистрирует
+    /// её в CharacterEquipmentVisuals. Второй скелет и новые меши не создаются.
+    /// </summary>
+    private static void SetupCharacterVisuals(Inventory inventory)
+    {
+        GameObject character = FindSceneGameObject(CharacterName);
+        if (character == null)
+        {
+            Debug.LogError($"[InventorySetup] В сцене не найден {CharacterName}.");
+            return;
+        }
+
+        Transform visualsRoot = FindOrCreateChild(character.transform, VisualsRootName);
+        Transform armorFolder = FindOrCreateChild(visualsRoot, "Armor");
+        Transform helmetFolder = FindOrCreateChild(visualsRoot, "Helmet");
+        Transform pantsFolder = FindOrCreateChild(visualsRoot, "Pants");
+        Transform accessoryFolder = FindOrCreateChild(visualsRoot, "Accessory");
+
+        VisualBinding[] bindings =
+        {
+            new VisualBinding(EquipmentSlotType.Armor, "M_Swordsman_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Archer_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Mage_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Fighter_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Rogue_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Warlock_Top"),
+            new VisualBinding(EquipmentSlotType.Armor, "M_Warlock_TopCape"),
+
+            new VisualBinding(EquipmentSlotType.Helmet, "M_Mage_Headwear"),
+            new VisualBinding(EquipmentSlotType.Helmet, "M_Warlock_Hood"),
+
+            new VisualBinding(EquipmentSlotType.Pants, "M_Swordsman_Bottom"),
+            new VisualBinding(EquipmentSlotType.Pants, "M_Archer_Bottom"),
+            new VisualBinding(EquipmentSlotType.Pants, "M_Mage_Bottom"),
+            new VisualBinding(EquipmentSlotType.Pants, "M_Fighter_Bottom"),
+            new VisualBinding(EquipmentSlotType.Pants, "M_Rogue_Bottom"),
+            new VisualBinding(EquipmentSlotType.Pants, "M_Warlock_Bottom"),
+
+            new VisualBinding(EquipmentSlotType.Accessory, "M_SlingBag"),
+            new VisualBinding(EquipmentSlotType.Accessory, "M_ArrowQuiver"),
+            new VisualBinding(EquipmentSlotType.Accessory, "M_Archer_Cape"),
+            new VisualBinding(EquipmentSlotType.Accessory, "M_Warlock_Cape")
+        };
+
+        List<GameObject> resolved = new List<GameObject>();
+        List<VisualBinding> resolvedBindings = new List<VisualBinding>();
+
+        for (int i = 0; i < bindings.Length; i++)
+        {
+            VisualBinding binding = bindings[i];
+
+            GameObject visual = binding.slot == EquipmentSlotType.Armor && binding.visualId == "M_Archer_Top"
+                ? FindArcherTop(character.transform, armorFolder)
+                : FindChild(character.transform, binding.visualId);
+
+            if (visual == null)
+            {
+                Debug.LogError($"[InventorySetup] Не найден объект одежды {binding.visualId}.");
+                continue;
+            }
+
+            Transform folder = GetSlotFolder(binding.slot, armorFolder, helmetFolder, pantsFolder, accessoryFolder);
+            if (visual.transform.parent != folder) visual.transform.SetParent(folder, true);
+
+            resolved.Add(visual);
+            resolvedBindings.Add(binding);
+        }
+
+        // Второй M_Archer_Top висит в ArcherCapeTopBody и дублирует арчерский верх.
+        Transform capeBody = FindChildTransform(character.transform, "ArcherCapeTopBody");
+        if (capeBody != null)
+        {
+            GameObject duplicate = FindChild(capeBody, "M_Archer_Top");
+            if (duplicate != null && !resolved.Contains(duplicate)) duplicate.SetActive(false);
+        }
+
+        CharacterEquipmentVisuals visuals = character.GetComponent<CharacterEquipmentVisuals>();
+        if (visuals == null) visuals = character.AddComponent<CharacterEquipmentVisuals>();
+
+        Assign(visuals, serialized =>
+        {
+            SerializedProperty list = serialized.FindProperty("visuals");
+            list.ClearArray();
+
+            for (int i = 0; i < resolved.Count; i++)
+            {
+                VisualBinding binding = resolvedBindings[i];
+
+                list.InsertArrayElementAtIndex(i);
+                SerializedProperty entry = list.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("slot").intValue = (int)binding.slot;
+                entry.FindPropertyRelative("visualId").stringValue = binding.visualId;
+                entry.FindPropertyRelative("visual").objectReferenceValue = resolved[i];
+            }
+        });
+
+        // В сцене персонаж стоит в базовой одежде: слоты пусты, пока ничего не надето.
+        for (int i = 0; i < resolved.Count; i++)
+        {
+            if (resolved[i] != null) resolved[i].SetActive(false);
+        }
+
+        PlayerController playerController =
+            Object.FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+        if (playerController == null)
+        {
+            Debug.LogError("[InventorySetup] В сцене не найден PlayerController — мост экипировки не создан.");
+            return;
+        }
+
+        PlayerEquipmentBridge bridge = playerController.GetComponent<PlayerEquipmentBridge>();
+        if (bridge == null) bridge = playerController.gameObject.AddComponent<PlayerEquipmentBridge>();
+
+        Assign(bridge, serialized =>
+        {
+            serialized.FindProperty("inventory").objectReferenceValue = inventory;
+            serialized.FindProperty("visuals").objectReferenceValue = visuals;
+        });
+    }
+
+    /// <summary>
+    /// Арчерский верх ищем сначала в ArcherTopBody, затем в папке брони:
+    /// после первого запуска объект уже перенесён и старого пути нет.
+    /// </summary>
+    private static GameObject FindArcherTop(Transform character, Transform armorFolder)
+    {
+        // Сначала папка брони: после первого запуска объект уже перенесён,
+        // а в ArcherTopBody/ArcherCapeTopBody остаются только дубли.
+        GameObject moved = FindChild(armorFolder, "M_Archer_Top");
+        if (moved != null) return moved;
+
+        Transform body = FindChildTransform(character, "ArcherTopBody");
+        if (body != null)
+        {
+            GameObject direct = FindChild(body, "M_Archer_Top");
+            if (direct != null) return direct;
+        }
+
+        return null;
+    }
+
+    private static Transform GetSlotFolder(EquipmentSlotType slot, Transform armor, Transform helmet,
+        Transform pants, Transform accessory)
+    {
+        switch (slot)
+        {
+            case EquipmentSlotType.Helmet: return helmet;
+            case EquipmentSlotType.Pants: return pants;
+            case EquipmentSlotType.Accessory: return accessory;
+            default: return armor;
+        }
+    }
+
+    private static Transform FindOrCreateChild(Transform parent, string name)
+    {
+        Transform existing = FindChildTransform(parent, name);
+        if (existing != null) return existing;
+
+        GameObject created = new GameObject(name);
+        created.transform.SetParent(parent, false);
+        return created.transform;
+    }
+
+    // ---------------------------------------------------------------- Лут
+
+    /// <summary>
+    /// Собирает всё, что нужно луту: материал контура, префаб контейнера, сервис,
+    /// стартовый контейнер, панель и компоненты игрока.
+    /// </summary>
+    private static void SetupLoot(Inventory inventory, InventoryPanelUI panel, Button deleteButton,
+        PlayerController playerController, List<ItemData> items)
+    {
+        Material outline = EnsureOutlineMaterial();
+        if (outline == null) return;
+
+        GameObject containerPrefab = CreateLootContainerPrefab(outline);
+        if (containerPrefab == null) return;
+
+        WorldLootService service = EnsureLootService(containerPrefab);
+        CreateStarterContainer(service, playerController, items);
+
+        InventoryTheme theme = AssetDatabase.LoadAssetAtPath<InventoryTheme>(ThemePath);
+        GameObject rowPrefab = CreateLootRowPrefab(theme);
+
+        LootPickupController pickupController = EnsurePickupController(playerController, inventory);
+        LootPanelUI lootPanel = BuildLootPanel(theme, inventory, pickupController, rowPrefab);
+        EnsurePointerController(playerController, lootPanel, panel, pickupController);
+
+        Assign(panel, serialized =>
+        {
+            serialized.FindProperty("lootService").objectReferenceValue = service;
+            serialized.FindProperty("dropOrigin").objectReferenceValue =
+                playerController != null ? playerController.transform : null;
+            serialized.FindProperty("deleteButton").objectReferenceValue = deleteButton;
+
+            // Пока инвентарь открыт, подход к луту должен остановиться.
+            SerializedProperty disableList = serialized.FindProperty("disableWhileOpen");
+            if (pickupController != null) EnsureObjectInList(disableList, pickupController);
+        });
+
+        // Без надетого оружия в руках должны остаться кулаки.
+        WeaponData fists = AssetDatabase.LoadAssetAtPath<WeaponData>(FistsWeaponPath);
+        if (fists == null)
+        {
+            Debug.LogWarning($"[InventorySetup] Не найден {FistsWeaponPath} — снятие оружия оставит прежнюю модель.");
+            return;
+        }
+
+        EquipmentSlotUI weaponSlot = FindEquipmentSlot(EquipmentSlotType.Weapon);
+        if (weaponSlot == null) return;
+
+        Assign(weaponSlot, serialized =>
+            serialized.FindProperty("unarmedWeapon").objectReferenceValue = fists);
+    }
+
+    private static Material EnsureOutlineMaterial()
+    {
+        Shader shader = Shader.Find("Inventory/Outline");
+        if (shader == null)
+        {
+            Debug.LogError("[InventorySetup] Шейдер Inventory/Outline не найден. Переимпортируйте Assets/Inventary/Shaders.");
+            return null;
+        }
+
+        EnsureFolder("Assets/Inventary/Materials");
+
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(OutlineMaterialPath);
+        if (material == null)
+        {
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, OutlineMaterialPath);
+        }
+        else
+        {
+            material.shader = shader;
+        }
+
+        material.SetColor("_OutlineColor", new Color(1f, 0.82f, 0.3f, 1f));
+        material.SetFloat("_OutlineWidth", 0.06f);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static GameObject CreateLootContainerPrefab(Material outline)
+    {
+        EnsureFolder(PrefabFolder);
+
+        GameObject root = new GameObject("WorldLootContainer",
+            typeof(WorldLootContainer), typeof(OutlineTarget), typeof(SphereCollider));
+
+        SphereCollider collider = root.GetComponent<SphereCollider>();
+        collider.center = new Vector3(0f, 0.4f, 0f);
+        collider.radius = 0.7f;
+
+        GameObject effectPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ItemEffectPrefabPath);
+        if (effectPrefab != null)
+        {
+            GameObject effect = (GameObject)PrefabUtility.InstantiatePrefab(effectPrefab, root.transform);
+            effect.name = "ItemEffect";
+            effect.transform.localPosition = Vector3.zero;
+        }
+        else
+        {
+            Debug.LogWarning($"[InventorySetup] Не найден {ItemEffectPrefabPath} — контейнер будет без визуала.");
+        }
+
+        OutlineTarget target = root.GetComponent<OutlineTarget>();
+        Assign(target, serialized =>
+            serialized.FindProperty("outlineMaterial").objectReferenceValue = outline);
+
+        GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, LootContainerPrefabPath);
+        Object.DestroyImmediate(root);
+        return prefab;
+    }
+
+    private static WorldLootService EnsureLootService(GameObject containerPrefab)
+    {
+        GameObject serviceGo = FindSceneGameObject(LootServiceName);
+
+        if (serviceGo == null)
+        {
+            serviceGo = new GameObject(LootServiceName);
+            serviceGo.AddComponent<WorldLootService>();
+        }
+
+        WorldLootService service = serviceGo.GetComponent<WorldLootService>();
+        if (service == null) service = serviceGo.AddComponent<WorldLootService>();
+
+        Assign(service, serialized =>
+        {
+            serialized.FindProperty("containerPrefab").objectReferenceValue = containerPrefab;
+            serialized.FindProperty("dropDistance").floatValue = 1.5f;
+            serialized.FindProperty("mergeRadius").floatValue = 2.5f;
+            serialized.FindProperty("groundRayHeight").floatValue = 5f;
+            serialized.FindProperty("groundMask").intValue = ~0;
+        });
+
+        return service;
+    }
+
+    private static void CreateStarterContainer(WorldLootService service, PlayerController playerController,
+        List<ItemData> items)
+    {
+        // Повторный запуск сетапа не должен плодить контейнеры.
+        GameObject old = FindSceneGameObject(StarterContainerName);
+        if (old != null) Object.DestroyImmediate(old);
+
+        if (playerController == null)
+        {
+            Debug.LogError("[InventorySetup] Нет PlayerController — стартовый контейнер не создан.");
+            return;
+        }
+
+        Vector3 point = playerController.transform.position +
+                        playerController.transform.forward * StarterLootDistance;
+
+        WorldLootContainer container = service.SpawnContainer(point);
+        if (container == null) return;
+
+        container.name = StarterContainerName;
+
+        if (items == null) return;
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] != null) container.Add(items[i], 1);
+        }
+    }
+
+    private static GameObject CreateLootRowPrefab(InventoryTheme theme)
+    {
+        EnsureFolder(PrefabFolder);
+
+        GameObject root = NewUiObject("LootRow",
+            null, typeof(Image), typeof(LayoutElement), typeof(LootRowUI));
+
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.sizeDelta = new Vector2(0f, LootRowHeight);
+
+        LayoutElement layout = root.GetComponent<LayoutElement>();
+        layout.preferredHeight = LootRowHeight;
+        layout.minHeight = LootRowHeight;
+
+        ConfigureImage(root.GetComponent<Image>(), theme.windowBackground, true, true);
+
+        Image icon = CreateImage("Icon", root.transform, Color.white, false, false);
+        PlaceLeftMiddle(icon.rectTransform, 8f, 40f, 40f);
+
+        Image placeholder = CreateImage("Placeholder", root.transform, theme.placeholderColor, true, false);
+        PlaceLeftMiddle(placeholder.rectTransform, 8f, 40f, 40f);
+
+        TextMeshProUGUI nameText = CreateText("Name", root.transform, string.Empty,
+            TextSizeBody, TextAlignmentOptions.Left, theme.textColor);
+        RectTransform nameRect = nameText.rectTransform;
+        nameRect.anchorMin = new Vector2(0f, 0.5f);
+        nameRect.anchorMax = new Vector2(1f, 0.5f);
+        nameRect.pivot = new Vector2(0f, 0.5f);
+        nameRect.offsetMin = new Vector2(56f, -14f);
+        nameRect.offsetMax = new Vector2(-150f, 14f);
+
+        TextMeshProUGUI countText = CreateText("Count", root.transform, string.Empty,
+            TextSizeBody, TextAlignmentOptions.Right, theme.mutedTextColor);
+        RectTransform countRect = countText.rectTransform;
+        countRect.anchorMin = new Vector2(1f, 0.5f);
+        countRect.anchorMax = new Vector2(1f, 0.5f);
+        countRect.pivot = new Vector2(1f, 0.5f);
+        countRect.anchoredPosition = new Vector2(-104f, 0f);
+        countRect.sizeDelta = new Vector2(44f, 24f);
+
+        Button takeButton = CreateButton(root.transform, "TakeButton", "Забрать", theme);
+        RectTransform takeRect = takeButton.GetComponent<RectTransform>();
+        takeRect.anchorMin = new Vector2(1f, 0.5f);
+        takeRect.anchorMax = new Vector2(1f, 0.5f);
+        takeRect.pivot = new Vector2(1f, 0.5f);
+        takeRect.anchoredPosition = new Vector2(-8f, 0f);
+        takeRect.sizeDelta = new Vector2(92f, 38f);
+
+        LootRowUI row = root.GetComponent<LootRowUI>();
+        Assign(row, serialized =>
+        {
+            serialized.FindProperty("icon").objectReferenceValue = icon;
+            serialized.FindProperty("placeholder").objectReferenceValue = placeholder;
+            serialized.FindProperty("nameText").objectReferenceValue = nameText;
+            serialized.FindProperty("countText").objectReferenceValue = countText;
+            serialized.FindProperty("takeButton").objectReferenceValue = takeButton;
+        });
+
+        GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, LootRowPrefabPath);
+        Object.DestroyImmediate(root);
+        return prefab;
+    }
+
+    private static LootPickupController EnsurePickupController(PlayerController playerController,
+        Inventory inventory)
+    {
+        if (playerController == null) return null;
+
+        GameObject playerGo = playerController.gameObject;
+        LootPickupController pickup = playerGo.GetComponent<LootPickupController>();
+        if (pickup == null) pickup = playerGo.AddComponent<LootPickupController>();
+
+        Assign(pickup, serialized =>
+        {
+            serialized.FindProperty("inventory").objectReferenceValue = inventory;
+            serialized.FindProperty("agent").objectReferenceValue = playerGo.GetComponent<NavMeshAgent>();
+            serialized.FindProperty("animator").objectReferenceValue = playerGo.GetComponent<Animator>();
+            serialized.FindProperty("speedParameter").stringValue = "Speed";
+            serialized.FindProperty("pickupRange").floatValue = 2.5f;
+            serialized.FindProperty("approachTimeout").floatValue = 8f;
+            serialized.FindProperty("noProgressTimeout").floatValue = 2f;
+        });
+
+        return pickup;
+    }
+
+    private static LootPanelUI BuildLootPanel(InventoryTheme theme, Inventory inventory,
+        LootPickupController pickupController, GameObject rowPrefab)
+    {
+        GameObject canvasGo = FindSceneGameObject(CanvasName);
+        if (canvasGo == null)
+        {
+            Debug.LogError("[InventorySetup] Нет Canvas — панель лута не создана.");
+            return null;
+        }
+
+        GameObject old = FindSceneGameObject(LootPanelName);
+        if (old != null) Object.DestroyImmediate(old);
+
+        GameObject panelGo = NewUiObject(LootPanelName, canvasGo.transform,
+            typeof(Image), typeof(CanvasGroup), typeof(LootPanelUI));
+
+        RectTransform panelRect = panelGo.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0f, 1f);
+        panelRect.sizeDelta = new Vector2(LootPanelWidth, LootPanelHeight);
+        panelRect.anchoredPosition = Vector2.zero;
+
+        ConfigureImage(panelGo.GetComponent<Image>(), theme.windowBackground, true, true);
+
+        Image border = CreateImage("Border", panelGo.transform, theme.borderColor, true, false);
+        Stretch(border.rectTransform);
+
+        TextMeshProUGUI title = CreateText("Title", panelGo.transform, "Содержимое",
+            TextSizeBody + 2f, TextAlignmentOptions.Left, theme.textColor);
+        PlaceTopLeft(title.rectTransform, 16f, -12f, new Vector2(LootPanelWidth - 32f, 28f));
+
+        GameObject listGo = NewUiObject("List", panelGo.transform,
+            typeof(Image), typeof(ScrollRect), typeof(RectMask2D));
+        RectTransform listRect = listGo.GetComponent<RectTransform>();
+        PlaceTopLeft(listRect, 16f, -48f, new Vector2(LootPanelWidth - 32f, LootPanelHeight - 48f - 68f));
+
+        Image listImage = listGo.GetComponent<Image>();
+        listImage.color = new Color(0f, 0f, 0f, 0.25f);
+        listImage.raycastTarget = true;
+
+        GameObject contentGo = NewUiObject("Content", listGo.transform);
+        RectTransform contentRect = contentGo.GetComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = new Vector2(1f, 1f);
+        contentRect.pivot = new Vector2(0.5f, 1f);
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = Vector2.zero;
+
+        VerticalLayoutGroup contentLayout = contentGo.AddComponent<VerticalLayoutGroup>();
+        contentLayout.spacing = 4f;
+        contentLayout.padding = new RectOffset(4, 4, 4, 4);
+        contentLayout.childControlWidth = true;
+        contentLayout.childControlHeight = true;
+        contentLayout.childForceExpandWidth = true;
+        contentLayout.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = contentGo.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        ScrollRect scroll = listGo.GetComponent<ScrollRect>();
+        scroll.viewport = listRect;
+        scroll.content = contentRect;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 20f;
+
+        Button takeAllButton = CreateButton(panelGo.transform, "TakeAllButton", "Забрать всё", theme);
+        RectTransform takeAllRect = takeAllButton.GetComponent<RectTransform>();
+        takeAllRect.anchorMin = new Vector2(1f, 0f);
+        takeAllRect.anchorMax = new Vector2(1f, 0f);
+        takeAllRect.pivot = new Vector2(1f, 0f);
+        takeAllRect.anchoredPosition = new Vector2(-16f, 16f);
+        takeAllRect.sizeDelta = new Vector2(150f, 40f);
+
+        TextMeshProUGUI message = CreateText("Message", panelGo.transform, string.Empty,
+            TextSizeSmall, TextAlignmentOptions.Left, theme.highlightColor);
+        RectTransform messageRect = message.rectTransform;
+        messageRect.anchorMin = new Vector2(0f, 0f);
+        messageRect.anchorMax = new Vector2(0f, 0f);
+        messageRect.pivot = new Vector2(0f, 0f);
+        messageRect.anchoredPosition = new Vector2(16f, 16f);
+        messageRect.sizeDelta = new Vector2(LootPanelWidth - 190f, 40f);
+        message.gameObject.SetActive(false);
+
+        CanvasGroup group = panelGo.GetComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.blocksRaycasts = false;
+        group.interactable = false;
+
+        LootPanelUI panel = panelGo.GetComponent<LootPanelUI>();
+        Assign(panel, serialized =>
+        {
+            serialized.FindProperty("root").objectReferenceValue = panelGo;
+            serialized.FindProperty("canvasGroup").objectReferenceValue = group;
+            serialized.FindProperty("panelRect").objectReferenceValue = panelRect;
+            serialized.FindProperty("listContent").objectReferenceValue = contentRect;
+            serialized.FindProperty("rowPrefab").objectReferenceValue =
+                rowPrefab != null ? rowPrefab.GetComponent<LootRowUI>() : null;
+            serialized.FindProperty("takeAllButton").objectReferenceValue = takeAllButton;
+            serialized.FindProperty("titleText").objectReferenceValue = title;
+            serialized.FindProperty("messageText").objectReferenceValue = message;
+            serialized.FindProperty("inventory").objectReferenceValue = inventory;
+            serialized.FindProperty("pickupController").objectReferenceValue = pickupController;
+        });
+
+        // В сцене панель не нужна: показывается только при наведении на лут.
+        panelGo.SetActive(false);
+        return panel;
+    }
+
+    private static void EnsurePointerController(PlayerController playerController,
+        LootPanelUI lootPanel, InventoryPanelUI inventoryPanel, LootPickupController pickupController)
+    {
+        if (playerController == null) return;
+
+        GameObject playerGo = playerController.gameObject;
+        LootPointerController pointer = playerGo.GetComponent<LootPointerController>();
+        if (pointer == null) pointer = playerGo.AddComponent<LootPointerController>();
+
+        Camera camera = playerController.GetComponentInChildren<Camera>(true);
+        if (camera == null) camera = Camera.main;
+
+        Assign(pointer, serialized =>
+        {
+            serialized.FindProperty("playerCamera").objectReferenceValue = camera;
+            serialized.FindProperty("panel").objectReferenceValue = lootPanel;
+            serialized.FindProperty("inventoryPanel").objectReferenceValue = inventoryPanel;
+            serialized.FindProperty("pickupController").objectReferenceValue = pickupController;
+            serialized.FindProperty("rayMask").intValue = ~0;
+            serialized.FindProperty("maxDistance").floatValue = 100f;
+            serialized.FindProperty("hideDelay").floatValue = 0.2f;
+        });
+    }
+
+    private static EquipmentSlotUI FindEquipmentSlot(EquipmentSlotType slotType)
+    {
+        EquipmentSlotUI[] slots = Object.FindObjectsByType<EquipmentSlotUI>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && slots[i].SlotType == slotType) return slots[i];
+        }
+
+        return null;
     }
 
     // -------------------------------------------------------------- UI-хелперы
@@ -886,6 +1501,36 @@ public static class InventorySetup
         rect.pivot = new Vector2(1f, 1f);
         rect.anchoredPosition = new Vector2(x, y);
         rect.sizeDelta = size;
+    }
+
+    private static void PlaceLeftMiddle(RectTransform rect, float x, float width, float height)
+    {
+        rect.anchorMin = new Vector2(0f, 0.5f);
+        rect.anchorMax = new Vector2(0f, 0.5f);
+        rect.pivot = new Vector2(0f, 0.5f);
+        rect.anchoredPosition = new Vector2(x, 0f);
+        rect.sizeDelta = new Vector2(width, height);
+    }
+
+    /// <summary>Ищет объект по имени в глубину, включая выключенные.</summary>
+    private static GameObject FindChild(Transform root, string name)
+    {
+        Transform found = FindChildTransform(root, name);
+        return found != null ? found.gameObject : null;
+    }
+
+    private static Transform FindChildTransform(Transform root, string name)
+    {
+        if (root == null) return null;
+        if (root.name == name) return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildTransform(root.GetChild(i), name);
+            if (found != null) return found;
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------- Служебное
