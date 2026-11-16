@@ -36,6 +36,7 @@ public class Pause_menu : MonoBehaviour
 
     void Update()
     {
+        //Points.text = "" + LevelUp.LevlPoints;
         actives = active;
         if (time>0)
         {
@@ -106,19 +107,19 @@ public class Pause_menu : MonoBehaviour
 
     public void SetVolumeButton(float volume)
     {
-        audioMixerButton.SetFloat("пїЅпїЅпїЅпїЅпїЅпїЅ", Mathf.Log10(volume) * 20);
+        audioMixerButton.SetFloat("Кнопки", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeFith(float volume)
     {
-        audioMixerFiht.SetFloat("пїЅпїЅпїЅпїЅпїЅ", Mathf.Log10(volume) * 20);
+        audioMixerFiht.SetFloat("Удары", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeMove(float volume)
     {
-        audioMixerMove.SetFloat("пїЅпїЅпїЅпїЅ", Mathf.Log10(volume) * 20);
+        audioMixerMove.SetFloat("Шаги", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeOcrujenie(float volume)
     {
-        audioMixerOcrujenie.SetFloat("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", Mathf.Log10(volume) * 20);
+        audioMixerOcrujenie.SetFloat("Окружение", Mathf.Log10(volume) * 20);
     }
     public void SetQuality(int qualityIndex)
     {

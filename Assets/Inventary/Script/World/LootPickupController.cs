@@ -37,12 +37,19 @@ public class LootPickupController : MonoBehaviour
     public event Action<string> OnStatus;
 
     /// <summary>Персонаж сейчас идёт к контейнеру.</summary>
-    public bool IsApproaching => targetContainer != null;
+    public bool IsApproaching => hasTarget;
+
+    /// <summary>Последний контейнер, к которому шли или который забрали.</summary>
+    public WorldLootContainer LastInteractedContainer { get; private set; }
+
+    /// <summary>Время последнего завершения подхода (для подавления повторного показа панели).</summary>
+    public float LastInteractionTime { get; private set; } = float.NegativeInfinity;
 
     private WorldLootContainer targetContainer;
     private ItemData targetItem;
     private int targetQuantity;
     private bool targetTakeAll;
+    private bool hasTarget;
 
     private PlayerControls controls;
     private PlayerController playerController;
@@ -69,10 +76,10 @@ public class LootPickupController : MonoBehaviour
 
     private void Update()
     {
-        if (targetContainer == null) return;
+        if (!hasTarget) return;
 
         // Контейнер мог быть уничтожен подбором из панели или сменой сцены.
-        if (!targetContainer)
+        if (targetContainer == null)
         {
             CancelApproach("Контейнер исчез.");
             return;
@@ -100,6 +107,7 @@ public class LootPickupController : MonoBehaviour
             int quantity = targetQuantity;
             bool takeAll = targetTakeAll;
 
+            RememberInteraction(container);
             FinishApproach();
 
             bool success = takeAll
@@ -155,9 +163,16 @@ public class LootPickupController : MonoBehaviour
     /// <summary>Прерывает подход и сбрасывает движение. Причина уходит в <see cref="OnStatus"/>.</summary>
     public void CancelApproach(string reason = null)
     {
+        if (hasTarget) RememberInteraction(targetContainer);
         FinishApproach();
 
         if (!string.IsNullOrEmpty(reason)) OnStatus?.Invoke(reason);
+    }
+
+    private void RememberInteraction(WorldLootContainer container)
+    {
+        LastInteractedContainer = container;
+        LastInteractionTime = Time.time;
     }
 
     private void StartApproach(WorldLootContainer container, ItemData item, int quantity, bool takeAll)
@@ -170,6 +185,7 @@ public class LootPickupController : MonoBehaviour
         targetItem = item;
         targetQuantity = quantity;
         targetTakeAll = takeAll;
+        hasTarget = true;
 
         approachTimer = 0f;
         stuckTimer = 0f;
@@ -184,6 +200,7 @@ public class LootPickupController : MonoBehaviour
         targetItem = null;
         targetQuantity = 0;
         targetTakeAll = false;
+        hasTarget = false;
 
         approachTimer = 0f;
         stuckTimer = 0f;

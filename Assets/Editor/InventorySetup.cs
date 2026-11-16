@@ -891,10 +891,11 @@ public static class InventorySetup
         for (int i = 0; i < bindings.Length; i++)
         {
             VisualBinding binding = bindings[i];
+            Transform folder = GetSlotFolder(binding.slot, armorFolder, helmetFolder, pantsFolder, accessoryFolder);
 
             GameObject visual = binding.slot == EquipmentSlotType.Armor && binding.visualId == "M_Archer_Top"
                 ? FindArcherTop(character.transform, armorFolder)
-                : FindChild(character.transform, binding.visualId);
+                : ResolveVisual(character.transform, folder, binding.visualId);
 
             if (visual == null)
             {
@@ -902,20 +903,22 @@ public static class InventorySetup
                 continue;
             }
 
-            Transform folder = GetSlotFolder(binding.slot, armorFolder, helmetFolder, pantsFolder, accessoryFolder);
             if (visual.transform.parent != folder) visual.transform.SetParent(folder, true);
 
             resolved.Add(visual);
             resolvedBindings.Add(binding);
         }
 
-        // Второй M_Archer_Top висит в ArcherCapeTopBody и дублирует арчерский верх.
-        Transform capeBody = FindChildTransform(character.transform, "ArcherCapeTopBody");
-        if (capeBody != null)
-        {
-            GameObject duplicate = FindChild(capeBody, "M_Archer_Top");
-            if (duplicate != null && !resolved.Contains(duplicate)) duplicate.SetActive(false);
-        }
+        // Стрелы — часть колчана: переносим их под него, чтобы включались вместе.
+        GameObject quiver = FindResolved(resolved, "M_ArrowQuiver");
+        GameObject arrow = ResolveVisual(character.transform, accessoryFolder, "M_Arrow");
+        if (quiver != null && arrow != null && arrow.transform.parent != quiver.transform)
+            arrow.transform.SetParent(quiver.transform, true);
+
+        // В модели есть парные копии (ArcherCapeTopBody): оставляем по одной.
+        DisableDuplicates(character.transform, "M_Archer_Top", FindResolved(resolved, "M_Archer_Top"));
+        DisableDuplicates(character.transform, "M_ArrowQuiver", quiver);
+        DisableDuplicates(character.transform, "M_Arrow", arrow);
 
         CharacterEquipmentVisuals visuals = character.GetComponent<CharacterEquipmentVisuals>();
         if (visuals == null) visuals = character.AddComponent<CharacterEquipmentVisuals>();
@@ -980,6 +983,52 @@ public static class InventorySetup
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Ищет вещь сначала в папке слота, затем где угодно у персонажа.
+    /// Так повторный запуск сетапа не хватает дубли из выключенных обёрток.
+    /// </summary>
+    private static GameObject ResolveVisual(Transform character, Transform folder, string visualId)
+    {
+        GameObject inFolder = FindChild(folder, visualId);
+        if (inFolder != null) return inFolder;
+
+        return FindChild(character, visualId);
+    }
+
+    private static GameObject FindResolved(List<GameObject> resolved, string name)
+    {
+        for (int i = 0; i < resolved.Count; i++)
+        {
+            if (resolved[i] != null && resolved[i].name == name) return resolved[i];
+        }
+
+        return null;
+    }
+
+    /// <summary>Выключает все копии объекта с этим именем, кроме выбранной.</summary>
+    private static void DisableDuplicates(Transform root, string name, GameObject keep)
+    {
+        List<GameObject> found = new List<GameObject>();
+        CollectChildren(root, name, found);
+
+        for (int i = 0; i < found.Count; i++)
+        {
+            if (found[i] == null || found[i] == keep) continue;
+            found[i].SetActive(false);
+        }
+    }
+
+    private static void CollectChildren(Transform root, string name, List<GameObject> result)
+    {
+        if (root == null) return;
+        if (root.name == name) result.Add(root.gameObject);
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            CollectChildren(root.GetChild(i), name, result);
+        }
     }
 
     private static Transform GetSlotFolder(EquipmentSlotType slot, Transform armor, Transform helmet,
@@ -1377,8 +1426,8 @@ public static class InventorySetup
         LootPointerController pointer = playerGo.GetComponent<LootPointerController>();
         if (pointer == null) pointer = playerGo.AddComponent<LootPointerController>();
 
-        Camera camera = playerController.GetComponentInChildren<Camera>(true);
-        if (camera == null) camera = Camera.main;
+        Camera camera = Camera.main;
+        if (camera == null) camera = playerController.GetComponentInChildren<Camera>(true);
 
         Assign(pointer, serialized =>
         {

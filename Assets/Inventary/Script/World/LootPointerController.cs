@@ -24,6 +24,9 @@ public class LootPointerController : MonoBehaviour
     [Tooltip("Задержка перед скрытием панели, когда курсор ушёл с контейнера.")]
     [SerializeField] private float hideDelay = 0.2f;
 
+    [Tooltip("Сколько секунд не открывать панель у контейнера после подхода.")]
+    [SerializeField] private float reopenDelay = 1.5f;
+
     [Header("Подсветка")]
     [Tooltip("Смещение точки панели над центром контейнера.")]
     [SerializeField] private float panelHeightOffset = 0.5f;
@@ -67,6 +70,15 @@ public class LootPointerController : MonoBehaviour
 
         if (container != null)
         {
+            // Сразу после подхода панель не переоткрываем: игрок только что
+            // нажал «Забрать», и всплывающий список поверх движения мешает.
+            if (IsSuppressed(container))
+            {
+                HideCurrent();
+                PointerGuard.IsBlockingAttack = false;
+                return;
+            }
+
             Show(container);
             return;
         }
@@ -89,6 +101,14 @@ public class LootPointerController : MonoBehaviour
     {
         HideCurrent();
         PointerGuard.IsBlockingAttack = false;
+    }
+
+    private bool IsSuppressed(WorldLootContainer container)
+    {
+        if (pickupController == null) return false;
+        if (pickupController.LastInteractedContainer != container) return false;
+
+        return Time.time - pickupController.LastInteractionTime < reopenDelay;
     }
 
     private void Show(WorldLootContainer container)

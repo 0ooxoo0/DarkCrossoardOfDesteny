@@ -73,7 +73,23 @@ public class PlayerInteraction : MonoBehaviour
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             return true;
 
-        // 2) UI/Interactable, у которых есть коллайдеры и они лежат на нужном слое.
+        // 2) Контейнер лута под курсором. Наведение обновляет флаг в Update,
+        //    а клик приходит из input-колбэка раньше — проверяем лучом ещё раз.
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera != null && Mouse.current != null)
+        {
+            Ray lootRay = playerCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+            int lootMask = ~(1 << gameObject.layer);
+
+            if (Physics.Raycast(lootRay, out RaycastHit lootHit, 100f, lootMask,
+                    QueryTriggerInteraction.Collide)
+                && lootHit.collider.GetComponentInParent<WorldLootContainer>() != null)
+            {
+                return true;
+            }
+        }
+
+        // 3) UI/Interactable, у которых есть коллайдеры и они лежат на нужном слое.
         if (blockAttackLayers.value == 0) return false;
         if (playerCamera == null) playerCamera = Camera.main;
         if (playerCamera == null || Mouse.current == null) return false;

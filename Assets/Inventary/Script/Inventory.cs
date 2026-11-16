@@ -444,7 +444,9 @@ public class Inventory : MonoBehaviour
     private static bool IsCompatible(ItemData item, EquipmentSlotType slotType)
     {
         if (item == null) return false;
-        return item.EquipmentSlot == slotType;
+
+        // Только экипировка: расходники и материалы не должны попадать в слоты.
+        return item.IsEquipment && item.EquipmentSlot == slotType;
     }
 
     // ------------------------------------------------------------ Применение

@@ -143,7 +143,7 @@ public class ItemData : ScriptableObject
 
             // У ассетов, созданных до появления equipSlot, поле равно Weapon:
             // без этой поправки броня не наделась бы ни в один слот.
-            if (equipSlot == EquipmentSlotType.Weapon) return EquipmentSlotType.Armor;
+            if (type == ItemType.Armor && equipSlot == EquipmentSlotType.Weapon) return EquipmentSlotType.Armor;
             return equipSlot;
         }
     }
