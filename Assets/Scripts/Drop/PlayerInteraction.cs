@@ -64,6 +64,10 @@ public class PlayerInteraction : MonoBehaviour
 
     private bool IsAttackBlocked()
     {
+        // 0) Клик по луту и его панели не должен запускать атаку:
+        //    проверка идёт до лучей, потому что панель — обычный UI без коллайдера.
+        if (PointerGuard.IsBlockingAttack) return true;
+
         // 1) Стандартный UI (Canvas Screen Space Overlay) — коллайдеров нет,
         //    ловим через EventSystem.
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())

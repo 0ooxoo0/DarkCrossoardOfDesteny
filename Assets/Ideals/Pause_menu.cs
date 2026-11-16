@@ -28,31 +28,14 @@ public class Pause_menu : MonoBehaviour
     public float time;
     void Start()
     {
-        
+        // Игра управляется мышью: курсор всегда свободный и видимый,
+        // иначе после первого Esc наведение на лут перестаёт работать.
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     void Update()
     {
-        if (PauseMenu.activeInHierarchy)
-        {}
-        else
-        {
-            if (Input.GetKeyDown(KeyCode.LeftAlt))
-            {
-                //camm.GetComponent<CinemachineFreeLook>().m_YAxis.m_MaxSpeed = 0;
-                //camm.GetComponent<CinemachineFreeLook>().m_XAxis.m_MaxSpeed = 0;
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-            }
-            if (Input.GetKeyUp(KeyCode.LeftAlt))
-            {
-                //camm.GetComponent<CinemachineFreeLook>().m_YAxis.m_MaxSpeed = 2;
-                //camm.GetComponent<CinemachineFreeLook>().m_XAxis.m_MaxSpeed = 500;
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-            }
-        }
-        //Points.text = "" + LevelUp.LevlPoints;
         actives = active;
         if (time>0)
         {
@@ -71,8 +54,6 @@ public class Pause_menu : MonoBehaviour
             SettingsVolume.SetActive(false);
             Naviki.SetActive(false);
             Karta.SetActive(false);
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
             active = true;
             time = 0.1f;
         }
@@ -81,8 +62,6 @@ public class Pause_menu : MonoBehaviour
             if (!Settings.activeSelf && !SettingsGraphic.activeSelf && !SettingsVolume.activeSelf && !Naviki.activeSelf && !Karta.activeSelf)
             {
                 PauseMenu.SetActive(false);
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
                 active = false;
                 time = 0.1f;
                 return;
@@ -127,19 +106,19 @@ public class Pause_menu : MonoBehaviour
 
     public void SetVolumeButton(float volume)
     {
-        audioMixerButton.SetFloat("������", Mathf.Log10(volume) * 20);
+        audioMixerButton.SetFloat("������", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeFith(float volume)
     {
-        audioMixerFiht.SetFloat("�����", Mathf.Log10(volume) * 20);
+        audioMixerFiht.SetFloat("�����", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeMove(float volume)
     {
-        audioMixerMove.SetFloat("����", Mathf.Log10(volume) * 20);
+        audioMixerMove.SetFloat("����", Mathf.Log10(volume) * 20);
     }    
     public void SetVolumeOcrujenie(float volume)
     {
-        audioMixerOcrujenie.SetFloat("���������", Mathf.Log10(volume) * 20);
+        audioMixerOcrujenie.SetFloat("���������", Mathf.Log10(volume) * 20);
     }
     public void SetQuality(int qualityIndex)
     {
@@ -154,8 +133,6 @@ public class Pause_menu : MonoBehaviour
     public void Active()
     {
         PauseMenu.SetActive(false);
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
         active = false;
         time = 0.1f;
     }
