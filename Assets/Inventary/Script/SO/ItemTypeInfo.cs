@@ -73,7 +73,7 @@ public static class EquipmentSlotInfo
             case EquipmentSlotType.Weapon: return "Оружие";
             case EquipmentSlotType.Armor: return "Броня";
             case EquipmentSlotType.Helmet: return "Шлем";
-            case EquipmentSlotType.Boots: return "Сапоги";
+            case EquipmentSlotType.Pants: return "Штаны";
             case EquipmentSlotType.Accessory: return "Аксессуар";
             default: return slot.ToString();
         }

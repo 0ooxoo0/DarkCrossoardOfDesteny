@@ -13,8 +13,8 @@ public enum EquipmentSlotType
     /// <summary>Шлем.</summary>
     Helmet = 2,
 
-    /// <summary>Сапоги.</summary>
-    Boots = 3,
+    /// <summary>Штаны.</summary>
+    Pants = 3,
 
     /// <summary>Кольцо, амулет или другой аксессуар.</summary>
     Accessory = 4

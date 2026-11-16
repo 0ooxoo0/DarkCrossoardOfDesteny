@@ -96,6 +96,13 @@ public class ItemData : ScriptableObject
     [Tooltip("Устаревший флаг. Оставлен, чтобы не ломать ассеты; используйте useKind.")]
     public bool consumable;
 
+    [Header("Equipment")]
+    [Tooltip("Слот, в который надевается предмет. Для оружия всегда Weapon.")]
+    public EquipmentSlotType equipSlot = EquipmentSlotType.Armor;
+
+    [Tooltip("Имя объекта одежды на персонаже. Пусто — внешность не меняется.")]
+    public string equipVisualId;
+
     [Header("Weapon")]
     [Tooltip("Необязательно: данные оружия для системы боя. Инвентарь их не читает.")]
     public WeaponData weaponData;
@@ -125,9 +132,21 @@ public class ItemData : ScriptableObject
     /// <summary>Можно ли надеть предмет в слот экипировки.</summary>
     public bool IsEquipment => type == ItemType.Weapon || type == ItemType.Armor;
 
-    /// <summary>Слот, в который предмет надевается. Шлем/сапоги/аксессуар появятся позже.</summary>
-    public EquipmentSlotType EquipmentSlot =>
-        type == ItemType.Weapon ? EquipmentSlotType.Weapon : EquipmentSlotType.Armor;
+    /// <summary>
+    /// Слот, в который предмет надевается. Шлем, штаны и аксессуар задаются в инспекторе.
+    /// </summary>
+    public EquipmentSlotType EquipmentSlot
+    {
+        get
+        {
+            if (type == ItemType.Weapon) return EquipmentSlotType.Weapon;
+
+            // У ассетов, созданных до появления equipSlot, поле равно Weapon:
+            // без этой поправки броня не наделась бы ни в один слот.
+            if (equipSlot == EquipmentSlotType.Weapon) return EquipmentSlotType.Armor;
+            return equipSlot;
+        }
+    }
 
     /// <summary>Версия данных, через которую работает миграция старых ассетов.</summary>
     public int DataVersion => dataVersion;
@@ -155,5 +174,11 @@ public class ItemData : ScriptableObject
             maxStackSize = 1;
             if (useKind != ItemUseKind.None) useKind = ItemUseKind.None;
         }
+
+        // Слот не должен противоречить типу: иначе предмет нельзя надеть.
+        if (type == ItemType.Weapon)
+            equipSlot = EquipmentSlotType.Weapon;
+        else if (type == ItemType.Armor && equipSlot == EquipmentSlotType.Weapon)
+            equipSlot = EquipmentSlotType.Armor;
     }
 }

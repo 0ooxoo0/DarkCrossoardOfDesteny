@@ -486,7 +486,7 @@ public static class InventorySetup
             EquipmentSlotType.Weapon,
             EquipmentSlotType.Armor,
             EquipmentSlotType.Helmet,
-            EquipmentSlotType.Boots,
+            EquipmentSlotType.Pants,
             EquipmentSlotType.Accessory
         };
 
