@@ -26,9 +26,15 @@ public class InventoryPanelUI : MonoBehaviour
     [Header("Кнопки")]
     [SerializeField] private Button sortButton;
     [SerializeField] private Button dropButton;
+    [SerializeField] private Button deleteButton;
     [SerializeField] private Button useButton;
     [SerializeField] private Button closeButton;
     [SerializeField] private TextMeshProUGUI footerText;
+
+    [Header("Выброс в мир")]
+    [SerializeField] private WorldLootService lootService;
+    [Tooltip("Откуда считается направление выброса — обычно игрок.")]
+    [SerializeField] private Transform dropOrigin;
 
     [Header("Управление")]
     [Tooltip("Клавиша открытия и закрытия панели.")]
@@ -64,6 +70,7 @@ public class InventoryPanelUI : MonoBehaviour
 
         if (sortButton != null) sortButton.onClick.AddListener(SortInventory);
         if (dropButton != null) dropButton.onClick.AddListener(DropSelected);
+        if (deleteButton != null) deleteButton.onClick.AddListener(DeleteSelected);
         if (useButton != null) useButton.onClick.AddListener(UseSelected);
         if (closeButton != null) closeButton.onClick.AddListener(Close);
 
@@ -190,7 +197,7 @@ public class InventoryPanelUI : MonoBehaviour
         RefreshViews();
     }
 
-    /// <summary>Удаляет выбранный предмет с подтверждением.</summary>
+    /// <summary>Выбрасывает выбранный предмет в мир с подтверждением.</summary>
     public void DropSelected()
     {
         if (inventory == null) return;
@@ -206,12 +213,36 @@ public class InventoryPanelUI : MonoBehaviour
 
         if (confirmDialog != null)
         {
-            confirmDialog.Show(message, () => DropItem(index, quantity));
+            confirmDialog.Show(message, () => DropToWorld(index, item, quantity), "Выбросить");
         }
         else
         {
             // Без окна подтверждения не выбрасываем: защита от случайного удаления.
             Debug.LogWarning("[InventoryPanelUI] Нет InventoryConfirmDialog — выброс отменён.");
+        }
+    }
+
+    /// <summary>Удаляет выбранный предмет навсегда, без создания лута в мире.</summary>
+    public void DeleteSelected()
+    {
+        if (inventory == null) return;
+
+        InventorySlot slot = inventory.GetSlot(selectedIndex);
+        if (slot == null || slot.IsEmpty) return;
+
+        ItemData item = slot.itemData;
+        int quantity = dropWholeStack ? slot.quantity : 1;
+        int index = selectedIndex;
+
+        string message = $"Удалить навсегда {quantity} × {item.DisplayName}?";
+
+        if (confirmDialog != null)
+        {
+            confirmDialog.Show(message, () => DeleteItem(index, quantity), "Удалить");
+        }
+        else
+        {
+            Debug.LogWarning("[InventoryPanelUI] Нет InventoryConfirmDialog — удаление отменено.");
         }
     }
 
@@ -231,7 +262,29 @@ public class InventoryPanelUI : MonoBehaviour
         UpdateButtons();
     }
 
-    private void DropItem(int index, int quantity)
+    private void DropToWorld(int index, ItemData item, int quantity)
+    {
+        // Между показом окна и подтверждением слот мог измениться.
+        InventorySlot slot = inventory != null ? inventory.GetSlot(index) : null;
+        if (slot == null || slot.IsEmpty || slot.itemData != item)
+        {
+            SetFooter("Слот уже изменился — выброс отменён.");
+            return;
+        }
+
+        if (lootService == null || dropOrigin == null || !lootService.TryDrop(item, quantity, dropOrigin))
+        {
+            // Предмет остаётся в инвентаре: потерять его из-за сбоя нельзя.
+            SetFooter("Не удалось выбросить предмет.");
+            return;
+        }
+
+        inventory.RemoveItem(index, quantity);
+        ClearSelection();
+        RefreshViews();
+    }
+
+    private void DeleteItem(int index, int quantity)
     {
         inventory?.RemoveItem(index, quantity);
         ClearSelection();
@@ -327,6 +380,7 @@ public class InventoryPanelUI : MonoBehaviour
         }
 
         if (dropButton != null) dropButton.interactable = hasSelection;
+        if (deleteButton != null) deleteButton.interactable = hasSelection;
         if (useButton != null) useButton.interactable = hasSelection;
         if (sortButton != null) sortButton.interactable = inventory != null;
 

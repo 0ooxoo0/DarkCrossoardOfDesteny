@@ -32,7 +32,11 @@ public class EquipmentSlotUI : MonoBehaviour,
     [Tooltip("Если назначен, надетое оружие сразу попадает в руки через систему боя.")]
     [SerializeField] private WeaponManager weaponManager;
 
+    [Tooltip("Оружие без предмета: сюда возвращаемся, когда меч снят.")]
+    [SerializeField] private WeaponData unarmedWeapon;
+
     private CanvasGroup canvasGroup;
+    private bool warnedNoUnarmed;
 
     /// <summary>Тип этого слота.</summary>
     public EquipmentSlotType SlotType => slotType;
@@ -216,7 +220,24 @@ public class EquipmentSlotUI : MonoBehaviour,
 
     private void HandleUnequipped(ItemData item, EquipmentSlotType unequippedType)
     {
-        if (unequippedType == slotType) Refresh();
+        if (unequippedType != slotType) return;
+
+        Refresh();
+
+        // Без надетого меча в руках ничего не остаётся — возвращаем кулаки.
+        if (slotType != EquipmentSlotType.Weapon || weaponManager == null) return;
+
+        if (unarmedWeapon != null)
+        {
+            weaponManager.EquipWeapon(unarmedWeapon);
+            return;
+        }
+
+        if (!warnedNoUnarmed)
+        {
+            warnedNoUnarmed = true;
+            Debug.LogWarning("[EquipmentSlotUI] Не назначен unarmedWeapon — руки останутся с прежним оружием.");
+        }
     }
 
     private void ApplyTheme()

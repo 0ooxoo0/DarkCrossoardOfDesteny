@@ -15,6 +15,7 @@ public class InventoryConfirmDialog : MonoBehaviour
 
     [Header("Тексты")]
     [SerializeField] private TextMeshProUGUI messageText;
+    [SerializeField] private TextMeshProUGUI confirmLabelText;
 
     [Header("Кнопки")]
     [SerializeField] private Button confirmButton;
@@ -51,10 +52,22 @@ public class InventoryConfirmDialog : MonoBehaviour
     /// <summary>Показывает вопрос и запоминает обработчики.</summary>
     public void Show(string message, Action confirmAction, Action cancelAction = null)
     {
+        Show(message, confirmAction, null, cancelAction);
+    }
+
+    /// <summary>
+    /// Показывает вопрос с собственной подписью кнопки подтверждения:
+    /// «Выбросить» и «Удалить» — разные действия, и текст кнопки должен это отражать.
+    /// </summary>
+    public void Show(string message, Action confirmAction, string confirmLabel, Action cancelAction = null)
+    {
         onConfirm = confirmAction;
         onCancel = cancelAction;
 
         if (messageText != null) messageText.text = message;
+
+        if (confirmLabelText != null && !string.IsNullOrEmpty(confirmLabel))
+            confirmLabelText.text = confirmLabel;
 
         root.SetActive(true);
         canvasGroup.alpha = 1f;
