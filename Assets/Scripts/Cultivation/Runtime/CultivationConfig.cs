@@ -60,6 +60,10 @@ public class CultivationConfig : ScriptableObject
     [Header("Автозапуск")]
     [SerializeField] private bool autoBootstrap = true;
 
+    [Header("Медитация")]
+    [Tooltip("Настройки риска: радиус угрозы, окна затухания и стадии последствий.")]
+    [SerializeField] private MeditationRiskConfig meditationRisk;
+
     private static CultivationConfig runtimeDefault;
 
     public IReadOnlyList<CultivationRealm> Realms => realms;
@@ -69,6 +73,7 @@ public class CultivationConfig : ScriptableObject
     public int BaseExperienceQi => baseExperienceQi;
     public float ExperienceGrowth => experienceGrowth;
     public float BaseBreakthroughChance => baseBreakthroughChance;
+    public MeditationRiskConfig MeditationRisk => meditationRisk;
     public float MaxQi => maxQi;
     public float QiRegenPerSecond => qiRegenPerSecond;
     public float MeditationTickInterval => meditationTickInterval;
