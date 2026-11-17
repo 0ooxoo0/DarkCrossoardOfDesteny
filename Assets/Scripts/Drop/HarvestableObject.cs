@@ -1,22 +1,36 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Разрушаемый объект мира: здоровье, урон, смерть и выпадение добычи.
+/// Если задана <see cref="LootTable"/>, предметы падают в контейнер через
+/// <see cref="WorldLootService"/>; иначе работает прежний <see cref="DropManager"/>.
+/// </summary>
 public class HarvestableObject : MonoBehaviour, IInteractable
 {
-    [Header("�������� ���������")]
+    [Header("Параметры объекта")]
     [SerializeField] private ResourceType resourceType;
     [SerializeField] private int objectLevel = 1;
     [SerializeField] private float maxHealth = 100f;
     private float currentHealth;
 
-    [Header("���������� �������")]
-    [SerializeField] private GameObject destroyEffectPrefab; // ������ ��� �����������
+    [Header("Эффекты и точка выброса")]
+    [SerializeField] private GameObject destroyEffectPrefab;
+    [SerializeField] private Transform dropSpawnPoint;
 
-    [Header("��������� �����")]
-    [SerializeField] private Transform dropSpawnPoint; // ����� ��������� �������� (���� null - ������� �������)
+    [Header("Добыча")]
+    [Tooltip("Если задана, предметы падают в контейнер через WorldLootService.")]
+    [SerializeField] private LootTable lootTable;
 
-    private bool isDead = false;
+    private bool isDead;
 
-    public event System.Action<float> Damaged;
+    public event Action<float> Damaged;
+
+    /// <summary>Объект умер: второй аргумент — точка смерти для эффектов.</summary>
+    public event Action<HarvestableObject, Vector3> OnDied;
+
+    public LootTable LootTable => lootTable;
 
     private void Start()
     {
@@ -29,12 +43,10 @@ public class HarvestableObject : MonoBehaviour, IInteractable
 
         currentHealth -= damage;
         Damaged?.Invoke(damage);
-        Debug.Log($"{gameObject.name} ������� ���� {damage}, �������� {currentHealth} HP");
+        Debug.Log($"{gameObject.name} получил {damage}, осталось {currentHealth} HP");
 
         if (currentHealth <= 0f)
-        {
             Die();
-        }
     }
 
     private void Die()
@@ -42,20 +54,53 @@ public class HarvestableObject : MonoBehaviour, IInteractable
         if (isDead) return;
         isDead = true;
 
-        // ���������� ������
         if (destroyEffectPrefab != null)
             Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
 
-        // �������� �����
-        GameObject itemPrefab = DropManager.GetDropItem(resourceType, objectLevel);
-        if (itemPrefab != null)
+        // Сначала сообщаем о смерти: EnemyAI и UI успевают отреагировать до удаления.
+        OnDied?.Invoke(this, transform.position);
+
+        DropLoot();
+
+        Destroy(gameObject);
+    }
+
+    private void DropLoot()
+    {
+        if (lootTable == null)
         {
-            Vector3 spawnPos = dropSpawnPoint != null ? dropSpawnPoint.position : transform.position;
-            Instantiate(itemPrefab, spawnPos, Quaternion.identity);
+            DropLegacyPrefab();
+            return;
         }
 
-        // ����������� �������
-        Destroy(gameObject);
+        WorldLootService service = WorldLootService.Instance;
+        if (service == null)
+        {
+            // Без сервиса таблица не может создать контейнер — откатываемся на старый путь,
+            // иначе предметы исчезнут молча.
+            Debug.LogWarning("[HarvestableObject] Нет WorldLootService — используется старый DropManager.");
+            DropLegacyPrefab();
+            return;
+        }
+
+        var drops = new List<LootDrop>();
+        lootTable.Roll(drops);
+
+        Transform origin = dropSpawnPoint != null ? dropSpawnPoint : transform;
+        for (int i = 0; i < drops.Count; i++)
+        {
+            if (!service.TryDrop(drops[i].Item, drops[i].Quantity, origin))
+                Debug.LogError($"[HarvestableObject] Не удалось выбросить {drops[i].Item.DisplayName} x{drops[i].Quantity}.");
+        }
+    }
+
+    private void DropLegacyPrefab()
+    {
+        GameObject itemPrefab = DropManager.GetDropItem(resourceType, objectLevel);
+        if (itemPrefab == null) return;
+
+        Vector3 spawnPos = dropSpawnPoint != null ? dropSpawnPoint.position : transform.position;
+        Instantiate(itemPrefab, spawnPos, Quaternion.identity);
     }
 
     public ResourceType GetResourceType() => resourceType;

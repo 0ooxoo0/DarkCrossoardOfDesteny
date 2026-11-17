@@ -27,6 +27,30 @@ public class WorldLootService : MonoBehaviour
     private readonly List<WorldLootContainer> spawned = new List<WorldLootContainer>();
 
     /// <summary>
+    /// Текущий сервис в сцене. Нужен объектам мира, которые не знают о нём ссылкой
+    /// (деревья, камни, враги), чтобы единообразно ронять лут в контейнер.
+    /// </summary>
+    public static WorldLootService Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("[WorldLootService] В сцене больше одного сервиса — используется первый.");
+            return;
+        }
+
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+
+    /// <summary>
     /// Выбрасывает предметы перед указанным трансформом.
     /// Возвращает false, если префаб не задан или предмет невалиден — вызывающий
     /// код в этом случае не должен удалять предмет из инвентаря.
