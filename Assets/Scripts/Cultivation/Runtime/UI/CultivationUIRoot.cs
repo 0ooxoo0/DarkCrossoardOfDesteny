@@ -12,6 +12,7 @@ public class CultivationUIRoot : MonoBehaviour
     public static CultivationUIRoot Instance { get; private set; }
 
     public Canvas Canvas { get; private set; }
+    public PlayerVitalsUI Vitals { get; private set; }
     public QiBarUI QiBar { get; private set; }
     public CultivationUI CultivationPanel { get; private set; }
     public TechniqueListUI Techniques { get; private set; }
@@ -54,11 +55,11 @@ public class CultivationUIRoot : MonoBehaviour
         this.caster = caster;
         uiManager = manager;
 
-        RectTransform hpBar = FindHpBar(canvas.transform);
-
-        var qiBarRect = CultivationUIFactory.CreateRect("Qi Bar", canvas.transform);
-        QiBar = qiBarRect.gameObject.AddComponent<QiBarUI>();
-        QiBar.Build(qi, dao, canvas.transform, hpBar);
+        var vitalsRect = CultivationUIFactory.CreateRect("Player Vitals", canvas.transform);
+        Vitals = vitalsRect.gameObject.AddComponent<PlayerVitalsUI>();
+        PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>();
+        Vitals.Build(playerHealth, qi, cultivation, dao, canvas.transform);
+        QiBar = Vitals.QiBar;
 
         var techniqueRect = CultivationUIFactory.CreateRect("Technique List", transform);
         Techniques = techniqueRect.gameObject.AddComponent<TechniqueListUI>();
@@ -120,19 +121,5 @@ public class CultivationUIRoot : MonoBehaviour
 
         if (QuickBar.gameObject.activeSelf != shouldShow)
             QuickBar.gameObject.SetActive(shouldShow);
-    }
-
-    private static RectTransform FindHpBar(Transform canvas)
-    {
-        var transforms = canvas.GetComponentsInChildren<Transform>(true);
-        for (int i = 0; i < transforms.Length; i++)
-        {
-            var candidate = transforms[i];
-            if (candidate.name != "PlayerInfo") continue;
-
-            var hp = candidate.Find("HP") as RectTransform;
-            if (hp != null) return hp;
-        }
-        return null;
     }
 }
