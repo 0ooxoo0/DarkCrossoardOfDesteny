@@ -25,6 +25,17 @@ public class MeditationController : MonoBehaviour
     [Header("Прерывание")]
     [SerializeField] private bool interruptOnDamage = true;
 
+    [Header("Риск и последствия")]
+    [SerializeField] private MeditationRiskConfig riskConfig;
+    [SerializeField] private CultivationDebuffController debuffs;
+    [SerializeField] private MeditationConsequenceService consequences;
+    [SerializeField] private PlayerHealth playerHealth;
+    [Tooltip("Радиус поиска угрозы, если MeditationRiskConfig не назначен.")]
+    [SerializeField, Min(0f)] private float threatRadiusFallback = 8f;
+    [SerializeField, Min(0.1f)] private float eyeHeight = 1.7f;
+    [Tooltip("Слои, перекрывающие обзор врагу. Пусто — линия видимости не проверяется.")]
+    [SerializeField] private LayerMask obstacleMask = ~0;
+
     [Header("Анимация (необязательно)")]
     [Tooltip("Имя триггера Animator. Пусто = Animator не трогаем: состояния Meditate в проекте нет.")]
     [SerializeField] private string animatorTriggerName = "";
@@ -42,6 +53,7 @@ public class MeditationController : MonoBehaviour
     private bool savedRegenerate;
     private float restoreAccumulator;
     private float comprehensionAccumulator;
+    private float threatTimer;
 
     public event Action OnMeditationStarted;
     public event Action OnMeditationStopped;
@@ -54,6 +66,12 @@ public class MeditationController : MonoBehaviour
     public DaoSystem Dao => dao;
     public QiComponent Qi => qi;
     public bool InterruptOnDamage { get => interruptOnDamage; set => interruptOnDamage = value; }
+
+    /// <summary>Снимок текущей медитации: сколько накоплено до прерывания.</summary>
+    public MeditationSession Session { get; } = new MeditationSession();
+
+    /// <summary>Игрок стоит в зоне медитации (алтарь/пещера).</summary>
+    public bool IsInSafeZone => zones.Count > 0;
 
     public float CurrentMultiplier
     {
@@ -78,12 +96,24 @@ public class MeditationController : MonoBehaviour
     {
         CollectInterrupters();
         SubscribeInterrupters(true);
+
+        if (playerHealth != null)
+        {
+            playerHealth.OnDamaged += HandlePlayerDamaged;
+            playerHealth.OnDied += HandlePlayerDied;
+        }
     }
 
     private void OnDisable()
     {
         SubscribeInterrupters(false);
         interrupters.Clear();
+
+        if (playerHealth != null)
+        {
+            playerHealth.OnDamaged -= HandlePlayerDamaged;
+            playerHealth.OnDied -= HandlePlayerDied;
+        }
     }
 
     public void Initialize(CultivationSystem cultivationSystem, DaoSystem daoSystem, QiComponent qiComponent,
@@ -102,6 +132,8 @@ public class MeditationController : MonoBehaviour
     private void Update()
     {
         if (!IsMeditating) return;
+
+        ScanForThreat();
 
         if (qi == null || qiRestorePerSecond <= 0f) return;
 
@@ -122,9 +154,20 @@ public class MeditationController : MonoBehaviour
             return false;
         }
 
+        if (playerHealth != null && playerHealth.IsDead)
+            return false;
+
+        if (debuffs != null && debuffs.IsMeditationBlocked)
+        {
+            Debug.Log("[Meditation] Медитация заблокирована последствиями срыва.");
+            return false;
+        }
+
         IsMeditating = true;
         restoreAccumulator = 0f;
         comprehensionAccumulator = 0f;
+        threatTimer = 0f;
+        Session.Start(IsInSafeZone);
 
         if (qi != null)
         {
@@ -140,6 +183,7 @@ public class MeditationController : MonoBehaviour
         return true;
     }
 
+    /// <summary>Мягко завершить медитацию без последствий: смерть, прорыв, каст.</summary>
     public void ExitMeditation()
     {
         if (!IsMeditating) return;
@@ -162,18 +206,45 @@ public class MeditationController : MonoBehaviour
         OnMeditationStopped?.Invoke();
     }
 
-    /// <summary>Прервать медитацию (урон, кнопка «Прервать», внешние системы).</summary>
+    /// <summary>Прервать медитацию по урону (совместимость со старым API).</summary>
     public void Interrupt()
+    {
+        Interrupt(MeditationInterruptionReason.Damage);
+    }
+
+    /// <summary>
+    /// Прервать медитацию с последствиями. <see cref="MeditationInterruptionReason.Death"/>
+    /// и мягкий выход через <see cref="ExitMeditation"/> последствий не дают.
+    /// </summary>
+    public void Interrupt(MeditationInterruptionReason reason)
+    {
+        if (!IsMeditating) return;
+
+        bool wasSafe = Session.WasSafe;
+        ExitMeditation();
+
+        if (consequences != null)
+            consequences.Apply(reason, Session, wasSafe);
+
+        Session.Reset();
+        OnMeditationInterrupted?.Invoke();
+    }
+
+    /// <summary>Завершает медитацию перед смертью: без дебафа, смерть сама по себе штраф.</summary>
+    public void StopMeditationForDeath()
     {
         if (!IsMeditating) return;
 
         ExitMeditation();
-        OnMeditationInterrupted?.Invoke();
+        Session.Reset();
     }
+
+    /// <summary>Совместимый вход: то же, что <see cref="EnterMeditation"/>.</summary>
+    public bool StartMeditation() => EnterMeditation();
 
     public void ToggleMeditation()
     {
-        if (IsMeditating) ExitMeditation();
+        if (IsMeditating) Interrupt(MeditationInterruptionReason.Manual);
         else EnterMeditation();
     }
 
@@ -191,10 +262,16 @@ public class MeditationController : MonoBehaviour
             int points = Mathf.RoundToInt(daoPointsPerTick * multiplier);
 
             if (cultivation != null)
+            {
                 cultivation.AddExperienceQi(experience);
+                Session.AddExperience(experience);
+            }
 
             if (dao != null && dao.ActiveDao.HasValue)
+            {
                 dao.AddPoints(dao.ActiveDao.Value, points);
+                Session.AddDaoPoints(points);
+            }
 
             if (cultivation != null && comprehensionPerMinute > 0f)
             {
@@ -204,6 +281,7 @@ public class MeditationController : MonoBehaviour
                 {
                     comprehensionAccumulator -= comprehension;
                     cultivation.AddComprehension(comprehension);
+                    Session.AddComprehension(comprehension);
                 }
             }
 
@@ -282,7 +360,60 @@ public class MeditationController : MonoBehaviour
     private void HandleInterrupted()
     {
         if (!interruptOnDamage) return;
-        Interrupt();
+        Interrupt(MeditationInterruptionReason.Damage);
+    }
+
+    private void HandlePlayerDamaged(DamageInfo info)
+    {
+        if (!interruptOnDamage) return;
+
+        // Смертельный удар обрабатывает HandlePlayerDied: дебаф за смерть не нужен.
+        if (playerHealth != null && playerHealth.Current <= 0) return;
+
+        Interrupt(MeditationInterruptionReason.Damage);
+    }
+
+    private void HandlePlayerDied()
+    {
+        StopMeditationForDeath();
+    }
+
+    /// <summary>Раз в интервал ищет агрессивного врага рядом с линией видимости.</summary>
+    private void ScanForThreat()
+    {
+        threatTimer -= Time.deltaTime;
+        if (threatTimer > 0f) return;
+
+        threatTimer = riskConfig != null ? riskConfig.ThreatScanInterval : 0.25f;
+
+        float radius = riskConfig != null ? riskConfig.ThreatRadius : threatRadiusFallback;
+        if (radius <= 0f) return;
+
+        Collider[] hits = Physics.OverlapSphere(transform.position, radius, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            EnemyAI enemy = hits[i] != null ? hits[i].GetComponentInParent<EnemyAI>() : null;
+            if (enemy == null || !enemy.IsAggroed) continue;
+            if (!HasLineOfSight(enemy.transform)) continue;
+
+            Interrupt(MeditationInterruptionReason.Threat);
+            return;
+        }
+    }
+
+    private bool HasLineOfSight(Transform target)
+    {
+        if (target == null) return false;
+        if (obstacleMask.value == 0) return true;
+
+        Vector3 eye = transform.position + Vector3.up * eyeHeight;
+        Vector3 aim = target.position + Vector3.up * (eyeHeight * 0.5f);
+
+        if (!Physics.Linecast(eye, aim, out RaycastHit hit, obstacleMask, QueryTriggerInteraction.Ignore))
+            return true;
+
+        // Линия может задеть самого врага — это не препятствие.
+        return hit.collider != null && hit.collider.GetComponentInParent<EnemyAI>() != null;
     }
 
     private void ApplyAnimatorTrigger(bool entering)
