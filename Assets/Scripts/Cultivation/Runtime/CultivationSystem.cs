@@ -51,6 +51,8 @@ public class CultivationSystem : MonoBehaviour
     public event Action<CultivationRealm> OnRealmChanged;
     public event Action<CultivationRealm, int> OnStageChanged;
     public event Action<int, int> OnExperienceQiChanged;
+    /// <summary>Сколько опыта ступени потеряно (смерть, срыв культивации).</summary>
+    public event Action<int> OnExperienceLost;
     public event Action<BreakthroughResult> OnBreakthroughAttempted;
     /// <summary>(реалм, в котором был совершён успешный прорыв) — для списания материалов.</summary>
     public event Action<CultivationRealm> OnBreakthroughSucceeded;
@@ -160,6 +162,23 @@ public class CultivationSystem : MonoBehaviour
         EnsureInitialized();
         experienceQi = Mathf.Clamp(value, 0, ExperienceQiToNextStageInt);
         OnExperienceQiChanged?.Invoke(experienceQi, ExperienceQiToNextStageInt);
+    }
+
+    /// <summary>
+    /// Отнимает долю текущего опыта ступени и возвращает фактическую потерю.
+    /// Ниже нуля не опускается, событие поднимает только при реальной потере.
+    /// </summary>
+    public int LoseExperiencePercent(float percent)
+    {
+        EnsureInitialized();
+        if (percent <= 0f) return 0;
+
+        int loss = Mathf.RoundToInt(experienceQi * Mathf.Clamp01(percent));
+        if (loss <= 0) return 0;
+
+        SetExperienceQi(experienceQi - loss);
+        OnExperienceLost?.Invoke(loss);
+        return loss;
     }
 
     public void AddComprehension(int amount)
