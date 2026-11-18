@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 /// <summary>
@@ -11,6 +12,7 @@ public static class CultivationWorldSetup
 {
     private const string ContentFolder = "Assets/Inventary/Data/Content";
     private const string PillsFolder = ContentFolder + "/Pills";
+    private const string LootFolder = "Assets/Inventary/Data/Loot";
     private const string IconsFolder =
         "Assets/Ideals/Menu/MenuSaves/Brackeys/2D Mega Pack/Items & Icons/";
 
@@ -43,7 +45,10 @@ public static class CultivationWorldSetup
         }
 
         EnsureFolder(PillsFolder);
+        EnsureFolder(LootFolder);
         EnsureItems();
+        EnsureLootTables();
+        BindLootTables();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -108,6 +113,182 @@ public static class CultivationWorldSetup
             pill, new[] { 0, 0, 0 }, new[] { 0, 0, 0 }, new[] { 0, 0, 0 }, new[] { 40, 70, 110 });
 
         CreateBreakthroughPill(pill);
+    }
+
+    private static void EnsureLootTables()
+    {
+        ItemData woodSpirit = LoadItem("Wood_Spirit");
+        ItemData oreIron = LoadItem("Ore_Iron");
+        ItemData oreJade = LoadItem("Ore_Jade");
+        ItemData herbMortal = LoadItem("Herb_Mortal");
+        ItemData herbSpirit = LoadItem("Herb_Spirit");
+        ItemData goldenEssence = LoadItem("Essence_Golden");
+        ItemData meat = LoadItem("Meat_Raw");
+        ItemData pelt = LoadItem("Pelt");
+
+        LootTable tree = CreateOrLoadTable("Loot_Tree");
+        FillTable(tree, new List<LootRoll>
+        {
+            Roll(woodSpirit, 1, 3, 1f, true)
+        });
+
+        LootTable rock = CreateOrLoadTable("Loot_Rock");
+        FillTable(rock, new List<LootRoll>
+        {
+            Roll(oreIron, 1, 2, 1f, true),
+            Roll(oreJade, 1, 1, 0.1f)
+        });
+
+        LootTable plant = CreateOrLoadTable("Loot_Plant");
+        FillTable(plant, new List<LootRoll>
+        {
+            Roll(herbMortal, 1, 2, 1f, true),
+            Roll(herbSpirit, 1, 1, 0.2f)
+        });
+
+        LootTable enemy = CreateOrLoadTable("Loot_Enemy");
+        FillTable(enemy, new List<LootRoll>
+        {
+            Roll(oreIron, 1, 2, 0.6f),
+            Roll(herbMortal, 1, 2, 0.4f),
+            Roll(goldenEssence, 1, 1, 0.05f)
+        });
+
+        LootTable animal = CreateOrLoadTable("Loot_Animal");
+        FillTable(animal, new List<LootRoll>
+        {
+            Roll(meat, 1, 2, 1f, true),
+            Roll(pelt, 1, 1, 0.6f)
+        });
+
+        AssetDatabase.SaveAssets();
+    }
+
+    /// <summary>
+    /// Привязывает таблицы к объектам открытой сцены. Отсутствие объекта — предупреждение,
+    /// а не ошибка: сцена может быть ещё не заполнена.
+    /// </summary>
+    private static void BindLootTables()
+    {
+        BindLootTable("Tree", "Loot_Tree");
+        BindLootTable("Rock", "Loot_Rock");
+        BindLootTable("Plant", "Loot_Plant");
+        BindLootTable("Enemy", "Loot_Enemy");
+        BindLootTable("Horse", "Loot_Animal");
+        BindLootTable("Pig", "Loot_Animal");
+        BindLootTable("Sheep", "Loot_Animal");
+    }
+
+    private static void BindLootTable(string objectName, string tableFileName)
+    {
+        LootTable table = AssetDatabase.LoadAssetAtPath<LootTable>(LootFolder + "/" + tableFileName + ".asset");
+        if (table == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Нет таблицы лута " + tableFileName + " — привязка пропущена.");
+            return;
+        }
+
+        HarvestableObject[] targets = UnityEngine.Object.FindObjectsByType<HarvestableObject>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        bool bound = false;
+        for (int i = 0; i < targets.Length; i++)
+        {
+            HarvestableObject target = targets[i];
+            if (target == null || !MatchesName(target.gameObject.name, objectName)) continue;
+
+            var serialized = new SerializedObject(target);
+            SerializedProperty property = serialized.FindProperty("lootTable");
+            if (property == null)
+            {
+                Debug.LogWarning("[CultivationSetup] У " + target.name + " нет поля lootTable.");
+                continue;
+            }
+
+            property.objectReferenceValue = table;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+            EditorSceneManager.MarkSceneDirty(target.gameObject.scene);
+            bound = true;
+        }
+
+        if (!bound)
+            Debug.LogWarning("[CultivationSetup] В сцене нет объекта " + objectName + " — таблица " + tableFileName + " не привязана.");
+    }
+
+    private static bool MatchesName(string candidate, string target)
+    {
+        if (string.Equals(candidate, target, System.StringComparison.Ordinal)) return true;
+        if (candidate.StartsWith(target + " ", System.StringComparison.Ordinal)) return true;
+        return candidate.StartsWith(target + "(", System.StringComparison.Ordinal);
+    }
+
+    private static LootRoll Roll(ItemData item, int min, int max, float chance, bool guaranteed = false)
+    {
+        if (item == null)
+            Debug.LogWarning("[CultivationSetup] Строка лута без предмета пропущена: сначала выполните создание предметов.");
+
+        return new LootRoll
+        {
+            item = item,
+            min = Mathf.Max(1, min),
+            max = Mathf.Max(min, max),
+            chance = Mathf.Clamp01(chance),
+            guaranteed = guaranteed
+        };
+    }
+
+    private static LootTable CreateOrLoadTable(string fileName)
+    {
+        string path = LootFolder + "/" + fileName + ".asset";
+        LootTable table = AssetDatabase.LoadAssetAtPath<LootTable>(path);
+        if (table == null)
+        {
+            table = ScriptableObject.CreateInstance<LootTable>();
+            AssetDatabase.CreateAsset(table, path);
+        }
+
+        return table;
+    }
+
+    private static void FillTable(LootTable table, List<LootRoll> rolls)
+    {
+        var serialized = new SerializedObject(table);
+        SerializedProperty list = serialized.FindProperty("rolls");
+        if (list == null)
+        {
+            Debug.LogWarning("[CultivationSetup] У таблицы " + table.name + " нет поля rolls.");
+            return;
+        }
+
+        list.ClearArray();
+        int count = 0;
+        for (int i = 0; i < rolls.Count; i++)
+        {
+            // Строки без предмета не пишем: иначе таблица навсегда останется с пустыми ссылками.
+            if (rolls[i] == null || rolls[i].item == null) continue;
+
+            list.InsertArrayElementAtIndex(count);
+            SerializedProperty element = list.GetArrayElementAtIndex(count);
+            element.FindPropertyRelative("item").objectReferenceValue = rolls[i].item;
+            element.FindPropertyRelative("min").intValue = rolls[i].min;
+            element.FindPropertyRelative("max").intValue = rolls[i].max;
+            element.FindPropertyRelative("chance").floatValue = rolls[i].chance;
+            element.FindPropertyRelative("guaranteed").boolValue = rolls[i].guaranteed;
+            count++;
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(table);
+    }
+
+    private static ItemData LoadItem(string fileName)
+    {
+        string path = ContentFolder + "/" + fileName + ".asset";
+        ItemData item = AssetDatabase.LoadAssetAtPath<ItemData>(path);
+        if (item == null)
+            Debug.LogWarning("[CultivationSetup] Не найден предмет " + path + " — строка лута будет пропущена.");
+        return item;
     }
 
     private static void CreateResource(string fileName, string itemId, string displayName, string description,
