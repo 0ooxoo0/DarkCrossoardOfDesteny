@@ -13,6 +13,9 @@ public static class CultivationWorldSetup
     private const string ContentFolder = "Assets/Inventary/Data/Content";
     private const string PillsFolder = ContentFolder + "/Pills";
     private const string LootFolder = "Assets/Inventary/Data/Loot";
+    private const string ResourcesFolder = "Assets/Resources/Cultivation";
+    private const string AlchemyConfigPath = ResourcesFolder + "/AlchemyConfig.asset";
+    private const string AlchemyRecipesFolder = ResourcesFolder + "/Alchemy";
     private const string IconsFolder =
         "Assets/Ideals/Menu/MenuSaves/Brackeys/2D Mega Pack/Items & Icons/";
 
@@ -49,6 +52,7 @@ public static class CultivationWorldSetup
         EnsureItems();
         EnsureLootTables();
         BindLootTables();
+        EnsureAlchemy();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -289,6 +293,155 @@ public static class CultivationWorldSetup
         if (item == null)
             Debug.LogWarning("[CultivationSetup] Не найден предмет " + path + " — строка лута будет пропущена.");
         return item;
+    }
+
+    private static void EnsureAlchemy()
+    {
+        EnsureFolder(AlchemyRecipesFolder);
+
+        AlchemyConfig config = AssetDatabase.LoadAssetAtPath<AlchemyConfig>(AlchemyConfigPath);
+        if (config == null)
+        {
+            config = ScriptableObject.CreateInstance<AlchemyConfig>();
+            AssetDatabase.CreateAsset(config, AlchemyConfigPath);
+        }
+
+        EditorUtility.SetDirty(config);
+
+        var recipes = new List<AlchemyRecipe>
+        {
+            CreateRecipe("Recipe_QiReturn", "recipe.qi.return", "Пилюля возврата Ци",
+                "Простая пилюля, возвращающая запас Ци.",
+                "Pill_QiReturn", AlchemyGradeName.Common, AlchemySubRank.Low,
+                1, 0, 0.6f, true, 5f, 5,
+                Ingredient("Herb_Mortal", 2), Ingredient("Herb_Spirit", 1)),
+
+            CreateRecipe("Recipe_BoneMarrow", "recipe.bone.marrow", "Пилюля очищения костного мозга",
+                "Прочищает каналы и прибавляет опыт Ци.",
+                "Pill_BoneMarrow", AlchemyGradeName.Common, AlchemySubRank.Middle,
+                2, 0, 0.5f, false, 8f, 8,
+                Ingredient("Herb_Mortal", 2), Ingredient("Core_Beast", 1)),
+
+            CreateRecipe("Recipe_Enlightenment", "recipe.enlightenment", "Пилюля озарения",
+                "Дарует Прозрение. Требует духовных трав.",
+                "Pill_Enlightenment", AlchemyGradeName.Earth, AlchemySubRank.Low,
+                3, 1, 0.45f, false, 10f, 12,
+                Ingredient("Herb_Spirit", 1), Ingredient("Essence_Golden", 1)),
+
+            CreateRecipe("Recipe_Healing", "recipe.healing", "Пилюля лечения",
+                "Закрывает раны. Варится даже в походе.",
+                "Pill_Healing", AlchemyGradeName.Common, AlchemySubRank.Low,
+                1, 0, 0.6f, true, 5f, 5,
+                Ingredient("Herb_Mortal", 1), Ingredient("Meat_Raw", 1)),
+
+            CreateRecipe("Recipe_Breakthrough", "recipe.breakthrough", "Пилюля прорыва",
+                "Заменяет ядро зверя при прорыве.",
+                "Pill_Breakthrough", AlchemyGradeName.Earth, AlchemySubRank.Middle,
+                4, 1, 0.4f, false, 12f, 15,
+                Ingredient("Herb_Spirit", 1), Ingredient("Ore_Jade", 1), Ingredient("Core_Beast", 1))
+        };
+
+        AssignAlchemyToConfig(config, recipes);
+        AssetDatabase.SaveAssets();
+    }
+
+    private static void AssignAlchemyToConfig(AlchemyConfig config, List<AlchemyRecipe> recipes)
+    {
+        CultivationConfig cultivationConfig = AssetDatabase.LoadAssetAtPath<CultivationConfig>(
+            ResourcesFolder + "/CultivationConfig.asset");
+
+        if (cultivationConfig == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Нет CultivationConfig — рецепты не прописаны в конфиг.");
+            return;
+        }
+
+        var serialized = new SerializedObject(cultivationConfig);
+        serialized.FindProperty("alchemyConfig").objectReferenceValue = config;
+
+        SerializedProperty list = serialized.FindProperty("alchemyRecipes");
+        if (list != null)
+        {
+            list.ClearArray();
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                list.InsertArrayElementAtIndex(i);
+                list.GetArrayElementAtIndex(i).objectReferenceValue = recipes[i];
+            }
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(cultivationConfig);
+    }
+
+    private static AlchemyRecipe CreateRecipe(string fileName, string recipeId, string displayName,
+        string description, string outputBaseName, AlchemyGradeName grade, AlchemySubRank subRank,
+        int requiredDaoLevel, int requiredRealmIndex, float baseChance, bool portable,
+        float craftSeconds, int masteryReward, params IngredientSpec[] ingredients)
+    {
+        string path = AlchemyRecipesFolder + "/" + fileName + ".asset";
+        AlchemyRecipe recipe = AssetDatabase.LoadAssetAtPath<AlchemyRecipe>(path);
+        if (recipe == null)
+        {
+            recipe = ScriptableObject.CreateInstance<AlchemyRecipe>();
+            AssetDatabase.CreateAsset(recipe, path);
+        }
+
+        var serialized = new SerializedObject(recipe);
+        serialized.FindProperty("recipeId").stringValue = recipeId;
+        serialized.FindProperty("displayName").stringValue = displayName;
+        serialized.FindProperty("description").stringValue = description;
+        serialized.FindProperty("output").objectReferenceValue = LoadPillVariant(outputBaseName, "_Normal");
+        serialized.FindProperty("veinsOutput").objectReferenceValue = LoadPillVariant(outputBaseName, "_Veins");
+        serialized.FindProperty("cloudOutput").objectReferenceValue = LoadPillVariant(outputBaseName, "_Cloud");
+        serialized.FindProperty("outputCount").intValue = 1;
+        serialized.FindProperty("requiredGrade.gradeName").enumValueIndex = (int)grade;
+        serialized.FindProperty("requiredGrade.subRank").enumValueIndex = (int)subRank;
+        serialized.FindProperty("requiredDaoLevel").intValue = Mathf.Max(0, requiredDaoLevel);
+        serialized.FindProperty("requiredRealmIndex").intValue = Mathf.Max(0, requiredRealmIndex);
+        serialized.FindProperty("baseSuccessChance").floatValue = Mathf.Clamp01(baseChance);
+        serialized.FindProperty("portableAllowed").boolValue = portable;
+        serialized.FindProperty("craftSeconds").floatValue = Mathf.Max(0f, craftSeconds);
+        serialized.FindProperty("masteryReward").intValue = Mathf.Max(0, masteryReward);
+
+        SerializedProperty list = serialized.FindProperty("ingredients");
+        if (list != null)
+        {
+            list.ClearArray();
+            for (int i = 0; i < ingredients.Length; i++)
+            {
+                list.InsertArrayElementAtIndex(i);
+                SerializedProperty element = list.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("item").objectReferenceValue = LoadItem(ingredients[i].FileName);
+                element.FindPropertyRelative("count").intValue = Mathf.Max(1, ingredients[i].Count);
+            }
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(recipe);
+        return recipe;
+    }
+
+    private static ItemData LoadPillVariant(string baseName, string suffix)
+    {
+        return AssetDatabase.LoadAssetAtPath<ItemData>(PillsFolder + "/" + baseName + suffix + ".asset");
+    }
+
+    private static IngredientSpec Ingredient(string fileName, int count)
+    {
+        return new IngredientSpec(fileName, count);
+    }
+
+    private readonly struct IngredientSpec
+    {
+        public readonly string FileName;
+        public readonly int Count;
+
+        public IngredientSpec(string fileName, int count)
+        {
+            FileName = fileName;
+            Count = count;
+        }
     }
 
     private static void CreateResource(string fileName, string itemId, string displayName, string description,

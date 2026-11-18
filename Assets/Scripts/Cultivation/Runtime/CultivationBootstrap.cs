@@ -29,6 +29,8 @@ public class CultivationBootstrap : MonoBehaviour
     public CultivationDebuffController Debuffs { get; private set; }
     public MeditationConsequenceService Consequences { get; private set; }
     public PlayerHealth Health { get; private set; }
+    public AlchemySkill AlchemySkill { get; private set; }
+    public AlchemyService AlchemyService { get; private set; }
     public BreakthroughSequence Breakthrough { get; private set; }
     public DaoAuraController Aura { get; private set; }
     public CultivationCastController Caster { get; private set; }
@@ -164,12 +166,13 @@ public class CultivationBootstrap : MonoBehaviour
             Config.MeditationDaoPointsPerTick, Config.MeditationQiRestorePerSecond, Config.MeditationComprehensionPerMinute);
         Breakthrough.Initialize(Cultivation, Config.BreakthroughDuration);
         WireMeditationRisk();
+        WireAlchemy();
 
         Cultivation.OnRealmBonusesChanged += HandleRealmBonuses;
         HandleRealmBonuses(Cultivation.TotalQiBonus, Cultivation.TotalHpBonus, Cultivation.TotalRegenBonus);
 
         CultivationStateCache.LoadFromPrefs();
-        if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health))
+        if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill))
             Debug.Log("[Cultivation] Прогресс восстановлен.");
 
         SetupTechniqueOutput();
@@ -205,10 +208,11 @@ public class CultivationBootstrap : MonoBehaviour
         }
 
         WireMeditationRisk();
+        WireAlchemy();
 
         CultivationStateCache.LoadFromPrefs();
         if (Qi != null || Cultivation != null)
-            CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health);
+            CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
 
         SetupTechniqueOutput();
         WireInventory();
@@ -285,6 +289,18 @@ public class CultivationBootstrap : MonoBehaviour
 
         SubscribeDebuffEffects();
         ApplyDebuffEffects();
+    }
+
+    /// <summary>Создаёт навык и сервис алхимии, раздаёт конфиг и рецепты.</summary>
+    private void WireAlchemy()
+    {
+        if (Cultivation == null) return;
+
+        AlchemySkill = AddOrGet<AlchemySkill>(Player);
+        AlchemySkill.Initialize(Config != null ? Config.AlchemyConfig : null);
+
+        AlchemyService = AddOrGet<AlchemyService>(Player);
+        AlchemyService.Initialize(Config != null ? Config.AlchemyConfig : null, AlchemySkill, Cultivation, Dao);
     }
 
     private void SubscribeDebuffEffects()
@@ -382,7 +398,8 @@ public class CultivationBootstrap : MonoBehaviour
         if (CultivationUIRoot.Instance != null) return;
 
         UI = CultivationUIRoot.Create(Qi, Cultivation, Dao, Meditation, Breakthrough, Config,
-            Caster, GetAssignHandler(), FindUiManager(), Debuffs);
+            Caster, GetAssignHandler(), FindUiManager(), Debuffs, AlchemyService, AlchemySkill,
+            Config != null ? Config.AlchemyRecipes : null);
         SubscribeTechniqueEvents();
     }
 
@@ -423,7 +440,7 @@ public class CultivationBootstrap : MonoBehaviour
     {
         if (Cultivation == null) return;
 
-        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
         if (Config != null && Config.PersistBetweenSessions)
             CultivationStateCache.SaveToPrefs();
     }
@@ -476,7 +493,7 @@ public class CultivationBootstrap : MonoBehaviour
 
     private void CaptureState()
     {
-        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
     }
 
     private void HandleRealmChangedCapture(CultivationRealm realm) => CaptureState();

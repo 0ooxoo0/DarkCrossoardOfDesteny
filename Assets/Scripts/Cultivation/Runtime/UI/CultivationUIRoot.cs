@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -14,6 +15,7 @@ public class CultivationUIRoot : MonoBehaviour
     public Canvas Canvas { get; private set; }
     public PlayerVitalsUI Vitals { get; private set; }
     public DebuffPanelUI Debuffs { get; private set; }
+    public AlchemyPanelUI Alchemy { get; private set; }
     public QiBarUI QiBar { get; private set; }
     public CultivationUI CultivationPanel { get; private set; }
     public TechniqueListUI Techniques { get; private set; }
@@ -28,12 +30,14 @@ public class CultivationUIRoot : MonoBehaviour
     public bool IsInputBlocked =>
         (CultivationPanel != null && CultivationPanel.IsOpen) ||
         (Techniques != null && Techniques.IsOpen) ||
+        (Alchemy != null && Alchemy.IsOpen) ||
         (BreakthroughPanel != null && BreakthroughPanel.gameObject.activeSelf);
 
     public static CultivationUIRoot Create(QiComponent qi, CultivationSystem cultivation, DaoSystem dao,
         MeditationController meditationController, BreakthroughSequence breakthrough, CultivationConfig config,
         CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager,
-        CultivationDebuffController debuffController = null)
+        CultivationDebuffController debuffController = null, AlchemyService alchemyService = null,
+        AlchemySkill alchemySkill = null, IReadOnlyList<AlchemyRecipe> alchemyRecipes = null)
     {
         if (Instance != null) return Instance;
 
@@ -44,14 +48,15 @@ public class CultivationUIRoot : MonoBehaviour
 
         var root = rootRect.gameObject.AddComponent<CultivationUIRoot>();
         root.Build(canvas, qi, cultivation, dao, meditationController, breakthrough, config, caster,
-            assignHandler, manager, debuffController);
+            assignHandler, manager, debuffController, alchemyService, alchemySkill, alchemyRecipes);
         return root;
     }
 
     private void Build(Canvas canvas, QiComponent qi, CultivationSystem cultivation, DaoSystem dao,
         MeditationController meditationController, BreakthroughSequence breakthrough, CultivationConfig config,
         CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager,
-        CultivationDebuffController debuffController)
+        CultivationDebuffController debuffController, AlchemyService alchemyService,
+        AlchemySkill alchemySkill, IReadOnlyList<AlchemyRecipe> alchemyRecipes)
     {
         Instance = this;
         Canvas = canvas;
@@ -70,6 +75,14 @@ public class CultivationUIRoot : MonoBehaviour
             var debuffRect = CultivationUIFactory.CreateRect("Debuff Panel", canvas.transform);
             Debuffs = debuffRect.gameObject.AddComponent<DebuffPanelUI>();
             Debuffs.Build(debuffController, canvas.transform);
+        }
+
+        if (alchemyService != null)
+        {
+            var alchemyRect = CultivationUIFactory.CreateRect("Alchemy Panel", canvas.transform);
+            Alchemy = alchemyRect.gameObject.AddComponent<AlchemyPanelUI>();
+            Alchemy.Build(alchemyService, alchemySkill, FindFirstObjectByType<Inventory>(FindObjectsInactive.Include),
+                cultivation, dao, alchemyRecipes, canvas.transform);
         }
 
         var techniqueRect = CultivationUIFactory.CreateRect("Technique List", transform);

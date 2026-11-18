@@ -64,6 +64,12 @@ public class CultivationConfig : ScriptableObject
     [Tooltip("Настройки риска: радиус угрозы, окна затухания и стадии последствий.")]
     [SerializeField] private MeditationRiskConfig meditationRisk;
 
+    [Header("Алхимия")]
+    [Tooltip("Числа крафта: шансы, штрафы, качество. Пусто — значения по умолчанию.")]
+    [SerializeField] private AlchemyConfig alchemyConfig;
+    [Tooltip("Рецепты, доступные из меню и у печи.")]
+    [SerializeField] private List<AlchemyRecipe> alchemyRecipes = new List<AlchemyRecipe>();
+
     private static CultivationConfig runtimeDefault;
 
     public IReadOnlyList<CultivationRealm> Realms => realms;
@@ -74,6 +80,8 @@ public class CultivationConfig : ScriptableObject
     public float ExperienceGrowth => experienceGrowth;
     public float BaseBreakthroughChance => baseBreakthroughChance;
     public MeditationRiskConfig MeditationRisk => meditationRisk;
+    public AlchemyConfig AlchemyConfig => alchemyConfig;
+    public IReadOnlyList<AlchemyRecipe> AlchemyRecipes => alchemyRecipes;
     public float MaxQi => maxQi;
     public float QiRegenPerSecond => qiRegenPerSecond;
     public float MeditationTickInterval => meditationTickInterval;
