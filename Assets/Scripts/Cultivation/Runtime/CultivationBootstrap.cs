@@ -32,6 +32,7 @@ public class CultivationBootstrap : MonoBehaviour
     public AlchemySkill AlchemySkill { get; private set; }
     public AlchemyService AlchemyService { get; private set; }
     public PassiveSkillService Passives { get; private set; }
+    public CultivationVfxBridge Vfx { get; private set; }
     public BreakthroughSequence Breakthrough { get; private set; }
     public DaoAuraController Aura { get; private set; }
     public CultivationCastController Caster { get; private set; }
@@ -181,6 +182,7 @@ public class CultivationBootstrap : MonoBehaviour
         SetupTechniqueOutput();
         WireInventory();
         Aura.Initialize(Dao, Cultivation);
+        WireVfx();
         SubscribeStateCapture();
 
         Debug.Log("[Cultivation] Подключено: " + Cultivation.GetProgressLabel() +
@@ -221,6 +223,7 @@ public class CultivationBootstrap : MonoBehaviour
 
         SetupTechniqueOutput();
         WireInventory();
+        WireVfx();
         SubscribeStateCapture();
     }
 
@@ -315,6 +318,18 @@ public class CultivationBootstrap : MonoBehaviour
 
         Passives = AddOrGet<PassiveSkillService>(Player);
         Passives.Initialize(Dao, Cultivation, Health, Qi, Player.GetComponent<AbilitySystem>(), AlchemyService);
+    }
+
+    /// <summary>Создаёт мост VFX и передаёт ему ауру из конфига, если она задана.</summary>
+    private void WireVfx()
+    {
+        CultivationVfxConfig vfx = Config != null ? Config.VfxConfig : null;
+
+        Vfx = AddOrGet<CultivationVfxBridge>(Player);
+        Vfx.Initialize(vfx, Meditation, Breakthrough, Debuffs);
+
+        if (Aura != null && vfx != null && vfx.AuraPrefab != null)
+            Aura.SetAuraPrefab(vfx.AuraPrefab);
     }
 
     private void SubscribeDebuffEffects()

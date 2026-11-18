@@ -70,6 +70,10 @@ public class CultivationConfig : ScriptableObject
     [Tooltip("Рецепты, доступные из меню и у печи.")]
     [SerializeField] private List<AlchemyRecipe> alchemyRecipes = new List<AlchemyRecipe>();
 
+    [Header("VFX")]
+    [Tooltip("Префабы ауры, медитации, прорыва и последствий. Пусто — процедурные плейсхолдеры.")]
+    [SerializeField] private CultivationVfxConfig vfxConfig;
+
     private static CultivationConfig runtimeDefault;
 
     public IReadOnlyList<CultivationRealm> Realms => realms;
@@ -82,6 +86,7 @@ public class CultivationConfig : ScriptableObject
     public MeditationRiskConfig MeditationRisk => meditationRisk;
     public AlchemyConfig AlchemyConfig => alchemyConfig;
     public IReadOnlyList<AlchemyRecipe> AlchemyRecipes => alchemyRecipes;
+    public CultivationVfxConfig VfxConfig => vfxConfig;
     public float MaxQi => maxQi;
     public float QiRegenPerSecond => qiRegenPerSecond;
     public float MeditationTickInterval => meditationTickInterval;
