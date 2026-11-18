@@ -16,21 +16,33 @@ public class CultivationSnapshot
     public int[] daoLevels = new int[5];
     public int[] daoPoints = new int[5];
     public string[] learnedTechniqueIds = new string[0];
+
+    // v2: последствия срыва культивации и здоровье игрока.
+    public int debuffKind;
+    public float debuffRemaining;
+    public int debuffSeverity;
+    [Tooltip("Секунд чистой медитации до следующего снижения стадии.")]
+    public float severityDecayAt;
+    public int playerHealth;
+    public int playerMaxHealth;
 }
 
 /// <summary>
 /// Кэш прогресса: сцена меняется — прогресс сохраняется. Дополнительно пишется в PlayerPrefs.
+/// Формат v2 добавляет дебафы и здоровье; старый v1 читается как v2 с нулями в новых полях.
 /// </summary>
 public static class CultivationStateCache
 {
-    private const string PrefsKey = "Cultivation.Save.v1";
+    private const string PrefsKey = "Cultivation.Save.v2";
+    private const string LegacyPrefsKey = "Cultivation.Save.v1";
 
     private static CultivationSnapshot snapshot = new CultivationSnapshot();
     private static bool prefsLoaded;
 
     public static bool HasState => snapshot != null && snapshot.hasState;
 
-    public static void Capture(CultivationSystem cultivation, DaoSystem dao, QiComponent qi)
+    public static void Capture(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
+        CultivationDebuffController debuffs = null, PlayerHealth health = null)
     {
         if (cultivation == null) return;
 
@@ -62,9 +74,25 @@ public static class CultivationStateCache
 
         if (qi != null)
             snapshot.qi = qi.CurrentQi;
+
+        if (debuffs != null)
+        {
+            ActiveCultivationDebuff primary = debuffs.Primary;
+            snapshot.debuffKind = primary != null ? (int)primary.Vfx : (int)CultivationVfxKind.None;
+            snapshot.debuffRemaining = primary != null ? primary.Remaining : 0f;
+            snapshot.debuffSeverity = debuffs.Severity;
+            snapshot.severityDecayAt = debuffs.TimeSinceLastInterruption;
+        }
+
+        if (health != null)
+        {
+            snapshot.playerHealth = health.Current;
+            snapshot.playerMaxHealth = health.Max;
+        }
     }
 
-    public static bool TryRestore(CultivationSystem cultivation, DaoSystem dao, QiComponent qi)
+    public static bool TryRestore(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
+        CultivationDebuffController debuffs = null, PlayerHealth health = null)
     {
         if (!HasState || cultivation == null) return false;
 
@@ -76,6 +104,12 @@ public static class CultivationStateCache
 
         if (qi != null)
             qi.SetCurrent(snapshot.qi);
+
+        if (debuffs != null)
+            debuffs.Restore(snapshot.debuffSeverity, snapshot.debuffRemaining, snapshot.severityDecayAt);
+
+        if (health != null && snapshot.playerMaxHealth > 0 && snapshot.playerHealth > 0)
+            health.RestorePercent((float)snapshot.playerHealth / snapshot.playerMaxHealth);
 
         return true;
     }
@@ -93,10 +127,14 @@ public static class CultivationStateCache
         prefsLoaded = true;
 
         string json = PlayerPrefs.GetString(PrefsKey, string.Empty);
+        if (string.IsNullOrEmpty(json))
+            json = PlayerPrefs.GetString(LegacyPrefsKey, string.Empty);
+
         if (string.IsNullOrEmpty(json)) return;
 
         try
         {
+            // v1 и v2 — один класс: старый JSON просто оставляет новые поля нулями.
             var loaded = JsonUtility.FromJson<CultivationSnapshot>(json);
             if (loaded != null && loaded.hasState)
                 snapshot = loaded;
@@ -114,6 +152,7 @@ public static class CultivationStateCache
 
         if (!deletePrefs) return;
         PlayerPrefs.DeleteKey(PrefsKey);
+        PlayerPrefs.DeleteKey(LegacyPrefsKey);
         PlayerPrefs.Save();
     }
 }

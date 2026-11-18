@@ -13,6 +13,7 @@ public class CultivationUIRoot : MonoBehaviour
 
     public Canvas Canvas { get; private set; }
     public PlayerVitalsUI Vitals { get; private set; }
+    public DebuffPanelUI Debuffs { get; private set; }
     public QiBarUI QiBar { get; private set; }
     public CultivationUI CultivationPanel { get; private set; }
     public TechniqueListUI Techniques { get; private set; }
@@ -31,7 +32,8 @@ public class CultivationUIRoot : MonoBehaviour
 
     public static CultivationUIRoot Create(QiComponent qi, CultivationSystem cultivation, DaoSystem dao,
         MeditationController meditationController, BreakthroughSequence breakthrough, CultivationConfig config,
-        CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager)
+        CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager,
+        CultivationDebuffController debuffController = null)
     {
         if (Instance != null) return Instance;
 
@@ -41,13 +43,15 @@ public class CultivationUIRoot : MonoBehaviour
         CultivationUIFactory.Stretch(rootRect);
 
         var root = rootRect.gameObject.AddComponent<CultivationUIRoot>();
-        root.Build(canvas, qi, cultivation, dao, meditationController, breakthrough, config, caster, assignHandler, manager);
+        root.Build(canvas, qi, cultivation, dao, meditationController, breakthrough, config, caster,
+            assignHandler, manager, debuffController);
         return root;
     }
 
     private void Build(Canvas canvas, QiComponent qi, CultivationSystem cultivation, DaoSystem dao,
         MeditationController meditationController, BreakthroughSequence breakthrough, CultivationConfig config,
-        CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager)
+        CultivationCastController caster, Action<TechniqueData> assignHandler, UiManager manager,
+        CultivationDebuffController debuffController)
     {
         Instance = this;
         Canvas = canvas;
@@ -60,6 +64,13 @@ public class CultivationUIRoot : MonoBehaviour
         PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>();
         Vitals.Build(playerHealth, qi, cultivation, dao, canvas.transform);
         QiBar = Vitals.QiBar;
+
+        if (debuffController != null)
+        {
+            var debuffRect = CultivationUIFactory.CreateRect("Debuff Panel", canvas.transform);
+            Debuffs = debuffRect.gameObject.AddComponent<DebuffPanelUI>();
+            Debuffs.Build(debuffController, canvas.transform);
+        }
 
         var techniqueRect = CultivationUIFactory.CreateRect("Technique List", transform);
         Techniques = techniqueRect.gameObject.AddComponent<TechniqueListUI>();

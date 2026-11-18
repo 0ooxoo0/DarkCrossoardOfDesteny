@@ -26,6 +26,9 @@ public class CultivationBootstrap : MonoBehaviour
     public CultivationSystem Cultivation { get; private set; }
     public DaoSystem Dao { get; private set; }
     public MeditationController Meditation { get; private set; }
+    public CultivationDebuffController Debuffs { get; private set; }
+    public MeditationConsequenceService Consequences { get; private set; }
+    public PlayerHealth Health { get; private set; }
     public BreakthroughSequence Breakthrough { get; private set; }
     public DaoAuraController Aura { get; private set; }
     public CultivationCastController Caster { get; private set; }
@@ -34,6 +37,7 @@ public class CultivationBootstrap : MonoBehaviour
     public Inventory PlayerInventory { get; private set; }
 
     private float baseMaxQi;
+    private float baseQiRegen;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void InitializeOnLoad()
@@ -94,6 +98,7 @@ public class CultivationBootstrap : MonoBehaviour
         }
 
         UnsubscribeTechniqueEvents();
+        UnsubscribeDebuffEffects();
 
         if (instance == this) instance = null;
     }
@@ -142,6 +147,7 @@ public class CultivationBootstrap : MonoBehaviour
         Meditation = AddOrGet<MeditationController>(Player);
         Breakthrough = AddOrGet<BreakthroughSequence>(Player);
         Aura = AddOrGet<DaoAuraController>(Player);
+        Health = Player.GetComponent<PlayerHealth>();
 
         baseMaxQi = Config.MaxQi;
         Qi.Configure(Config.MaxQi, Config.QiRegenPerSecond, true);
@@ -157,12 +163,13 @@ public class CultivationBootstrap : MonoBehaviour
         Meditation.Initialize(Cultivation, Dao, Qi, Config.MeditationTickInterval, Config.MeditationXpPerTick,
             Config.MeditationDaoPointsPerTick, Config.MeditationQiRestorePerSecond, Config.MeditationComprehensionPerMinute);
         Breakthrough.Initialize(Cultivation, Config.BreakthroughDuration);
+        WireMeditationRisk();
 
         Cultivation.OnRealmBonusesChanged += HandleRealmBonuses;
         HandleRealmBonuses(Cultivation.TotalQiBonus, Cultivation.TotalHpBonus, Cultivation.TotalRegenBonus);
 
         CultivationStateCache.LoadFromPrefs();
-        if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi))
+        if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health))
             Debug.Log("[Cultivation] Прогресс восстановлен.");
 
         SetupTechniqueOutput();
@@ -186,8 +193,10 @@ public class CultivationBootstrap : MonoBehaviour
         Aura = Player.GetComponent<DaoAuraController>();
         Caster = Player.GetComponent<CultivationCastController>();
         Bridge = Player.GetComponent<CultivationAbilityBridge>();
+        Health = Player.GetComponent<PlayerHealth>();
 
         if (Qi != null) baseMaxQi = Qi.MaxQi;
+        if (Qi != null) baseQiRegen = Qi.RegenPerSecond;
 
         if (Cultivation != null)
         {
@@ -195,9 +204,11 @@ public class CultivationBootstrap : MonoBehaviour
             Cultivation.OnRealmBonusesChanged += HandleRealmBonuses;
         }
 
+        WireMeditationRisk();
+
         CultivationStateCache.LoadFromPrefs();
         if (Qi != null || Cultivation != null)
-            CultivationStateCache.TryRestore(Cultivation, Dao, Qi);
+            CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health);
 
         SetupTechniqueOutput();
         WireInventory();
@@ -246,13 +257,74 @@ public class CultivationBootstrap : MonoBehaviour
 
     private void HandleRealmBonuses(int qiBonus, int hpBonus, float regenBonus)
     {
+        baseQiRegen = Config != null ? Config.QiRegenPerSecond + regenBonus : 0f;
+
         if (Qi != null)
-        {
             Qi.SetMaxQi(baseMaxQi + qiBonus, true);
-            Qi.RegenPerSecond = Config != null ? Config.QiRegenPerSecond + regenBonus : Qi.RegenPerSecond;
+
+        ApplyDebuffEffects();
+        PlayerRealmBonusesChanged?.Invoke(qiBonus, hpBonus, regenBonus);
+    }
+
+    /// <summary>
+    /// Создаёт контроллер дебафов и сервис последствий, раздаёт им конфиг риска
+    /// и подписывает медитацию. Без PlayerHealth медитация работает, но без прерываний уроном.
+    /// </summary>
+    private void WireMeditationRisk()
+    {
+        if (Cultivation == null) return;
+
+        Debuffs = AddOrGet<CultivationDebuffController>(Player);
+        Debuffs.Initialize(Config != null ? Config.MeditationRisk : null, Cultivation, Qi);
+
+        Consequences = AddOrGet<MeditationConsequenceService>(Player);
+        Consequences.Initialize(Config != null ? Config.MeditationRisk : null, Debuffs, Cultivation);
+
+        if (Meditation != null)
+            Meditation.InitializeRisk(Config != null ? Config.MeditationRisk : null, Debuffs, Consequences, Health);
+
+        SubscribeDebuffEffects();
+        ApplyDebuffEffects();
+    }
+
+    private void SubscribeDebuffEffects()
+    {
+        if (Debuffs == null) return;
+
+        Debuffs.OnDebuffApplied -= HandleDebuffEffectChanged;
+        Debuffs.OnDebuffExpired -= HandleDebuffEffectChanged;
+        Debuffs.OnSeverityChanged -= HandleSeverityChanged;
+
+        Debuffs.OnDebuffApplied += HandleDebuffEffectChanged;
+        Debuffs.OnDebuffExpired += HandleDebuffEffectChanged;
+        Debuffs.OnSeverityChanged += HandleSeverityChanged;
+    }
+
+    private void UnsubscribeDebuffEffects()
+    {
+        if (Debuffs == null) return;
+
+        Debuffs.OnDebuffApplied -= HandleDebuffEffectChanged;
+        Debuffs.OnDebuffExpired -= HandleDebuffEffectChanged;
+        Debuffs.OnSeverityChanged -= HandleSeverityChanged;
+    }
+
+    private void HandleDebuffEffectChanged(ActiveCultivationDebuff debuff) => ApplyDebuffEffects();
+    private void HandleSeverityChanged(int severity) => ApplyDebuffEffects();
+
+    /// <summary>Переносит множители дебафов на здоровье и регенерацию Ци.</summary>
+    private void ApplyDebuffEffects()
+    {
+        if (Debuffs == null) return;
+
+        if (Health != null)
+        {
+            Health.IncomingDamageMultiplier = Debuffs.IncomingDamageMultiplier;
+            Health.MaxHealthMultiplier = Debuffs.MaxHealthMultiplier;
         }
 
-        PlayerRealmBonusesChanged?.Invoke(qiBonus, hpBonus, regenBonus);
+        if (Qi != null)
+            Qi.RegenPerSecond = baseQiRegen * Debuffs.QiRegenMultiplier;
     }
 
     /// <summary>Связка культивации с инвентарём: материалы прорыва и расходники.</summary>
@@ -310,7 +382,7 @@ public class CultivationBootstrap : MonoBehaviour
         if (CultivationUIRoot.Instance != null) return;
 
         UI = CultivationUIRoot.Create(Qi, Cultivation, Dao, Meditation, Breakthrough, Config,
-            Caster, GetAssignHandler(), FindUiManager());
+            Caster, GetAssignHandler(), FindUiManager(), Debuffs);
         SubscribeTechniqueEvents();
     }
 
@@ -351,7 +423,7 @@ public class CultivationBootstrap : MonoBehaviour
     {
         if (Cultivation == null) return;
 
-        CultivationStateCache.Capture(Cultivation, Dao, Qi);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health);
         if (Config != null && Config.PersistBetweenSessions)
             CultivationStateCache.SaveToPrefs();
     }
@@ -404,7 +476,7 @@ public class CultivationBootstrap : MonoBehaviour
 
     private void CaptureState()
     {
-        CultivationStateCache.Capture(Cultivation, Dao, Qi);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health);
     }
 
     private void HandleRealmChangedCapture(CultivationRealm realm) => CaptureState();

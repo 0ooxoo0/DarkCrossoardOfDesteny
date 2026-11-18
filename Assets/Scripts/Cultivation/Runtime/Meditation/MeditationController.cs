@@ -129,6 +129,32 @@ public class MeditationController : MonoBehaviour
         comprehensionPerMinute = Mathf.Max(0f, comprehension);
     }
 
+    /// <summary>Подключает риск медитации, дебафы и здоровье из bootstrap.</summary>
+    public void InitializeRisk(MeditationRiskConfig risk, CultivationDebuffController debuffController,
+        MeditationConsequenceService consequenceService, PlayerHealth health)
+    {
+        riskConfig = risk;
+        debuffs = debuffController;
+        consequences = consequenceService;
+
+        if (playerHealth == health) return;
+
+        if (playerHealth != null)
+        {
+            playerHealth.OnDamaged -= HandlePlayerDamaged;
+            playerHealth.OnDied -= HandlePlayerDied;
+        }
+
+        playerHealth = health;
+
+        // Компонент мог быть уже включён — подписка из OnEnable не повторится.
+        if (isActiveAndEnabled && playerHealth != null)
+        {
+            playerHealth.OnDamaged += HandlePlayerDamaged;
+            playerHealth.OnDied += HandlePlayerDied;
+        }
+    }
+
     private void Update()
     {
         if (!IsMeditating) return;

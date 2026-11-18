@@ -33,6 +33,12 @@ public class CultivationDebuffController : MonoBehaviour
     /// <summary>Сколько ещё действует запрет медитации.</summary>
     public float MeditationBlockRemaining => meditationBlockRemaining;
 
+    /// <summary>Первый активный дебаф или null.</summary>
+    public ActiveCultivationDebuff Primary => active.Count > 0 ? active[0] : null;
+
+    /// <summary>Секунд прошло без новых прерываний — часы затухания стадий.</summary>
+    public float TimeSinceLastInterruption => timeSinceLastInterruption;
+
     public float QiRegenMultiplier { get; private set; } = 1f;
     public float DamageDealtMultiplier { get; private set; } = 1f;
     public float IncomingDamageMultiplier { get; private set; } = 1f;
@@ -149,6 +155,36 @@ public class CultivationDebuffController : MonoBehaviour
 
         Recalculate();
         OnSeverityChanged?.Invoke(0);
+    }
+
+    /// <summary>
+    /// Восстанавливает сохранённое состояние: только неистёкший дебаф,
+    /// номер стадии и часы затухания. Без конфига восстанавливать нечего.
+    /// </summary>
+    public void Restore(int savedSeverity, float savedRemaining, float savedSinceInterruption)
+    {
+        if (config == null) return;
+
+        ClearAll();
+        timeSinceLastInterruption = Mathf.Max(0f, savedSinceInterruption);
+
+        if (savedSeverity <= 0 || savedRemaining <= 0f)
+        {
+            severity = Mathf.Max(0, savedSeverity);
+            Recalculate();
+            return;
+        }
+
+        CultivationFailureStage stage = config.GetStage(savedSeverity);
+        if (stage == null) return;
+
+        var debuff = new ActiveCultivationDebuff(stage, savedSeverity, savedRemaining);
+        active.Add(debuff);
+        severity = Mathf.Clamp(savedSeverity, 1, MaxSeverity);
+
+        Recalculate();
+        OnDebuffApplied?.Invoke(debuff);
+        OnSeverityChanged?.Invoke(severity);
     }
 
     private int MaxSeverity
