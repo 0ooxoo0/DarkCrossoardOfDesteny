@@ -12,6 +12,7 @@ public class CultivationItemBridge : MonoBehaviour
     [SerializeField] private CultivationSystem cultivation;
     [SerializeField] private DaoSystem dao;
     [SerializeField] private Inventory inventory;
+    [SerializeField] private PlayerHealth playerHealth;
 
     private Inventory subscribedInventory;
 
@@ -19,14 +20,16 @@ public class CultivationItemBridge : MonoBehaviour
     public CultivationSystem Cultivation => cultivation;
     public DaoSystem Dao => dao;
     public Inventory Inventory => inventory;
+    public PlayerHealth PlayerHealth => playerHealth;
 
     public void Initialize(QiComponent qiComponent, CultivationSystem cultivationSystem, DaoSystem daoSystem,
-        Inventory playerInventory)
+        Inventory playerInventory, PlayerHealth health = null)
     {
         qi = qiComponent;
         cultivation = cultivationSystem;
         dao = daoSystem;
         inventory = playerInventory;
+        playerHealth = health;
 
         Subscribe();
     }
@@ -99,8 +102,9 @@ public class CultivationItemBridge : MonoBehaviour
         int qiAmount = Mathf.Max(0, item.qiRestore);
         int experience = Mathf.Max(0, item.experienceQiGain);
         int comprehension = Mathf.Max(0, item.comprehensionGain);
+        int healing = Mathf.Max(0, item.healAmount);
 
-        if (qiAmount == 0 && experience == 0 && comprehension == 0)
+        if (qiAmount == 0 && experience == 0 && comprehension == 0 && healing == 0)
         {
             Debug.LogWarning("[Cultivation] Пилюля " + item.DisplayName + " не имеет эффекта.");
             return false;
@@ -111,6 +115,12 @@ public class CultivationItemBridge : MonoBehaviour
         if (qiAmount > 0 && qi != null)
         {
             qi.Restore(qiAmount);
+            applied = true;
+        }
+
+        if (healing > 0 && playerHealth != null)
+        {
+            playerHealth.Heal(healing);
             applied = true;
         }
 
@@ -183,6 +193,7 @@ public class CultivationItemBridge : MonoBehaviour
         if (qi == null) qi = GetComponent<QiComponent>();
         if (cultivation == null) cultivation = GetComponent<CultivationSystem>();
         if (dao == null) dao = GetComponent<DaoSystem>();
+        if (playerHealth == null) playerHealth = GetComponent<PlayerHealth>();
         if (inventory == null) inventory = FindFirstObjectByType<Inventory>(FindObjectsInactive.Include);
     }
 

@@ -115,6 +115,8 @@ public class ItemData : ScriptableObject
     [Min(0)] public int qiRestore;
     [Min(0)] public int experienceQiGain;
     [Min(0)] public int comprehensionGain;
+    [Tooltip("Сколько здоровья восстанавливает пилюля. 0 — не лечит.")]
+    [Min(0)] public int healAmount;
 
     [Header("Scroll")]
     public TechniqueData technique;

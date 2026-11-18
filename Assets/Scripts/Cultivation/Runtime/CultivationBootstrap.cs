@@ -346,7 +346,7 @@ public class CultivationBootstrap : MonoBehaviour
         }
 
         var itemBridge = AddOrGet<CultivationItemBridge>(Player);
-        itemBridge.Initialize(Qi, Cultivation, Dao, PlayerInventory);
+        itemBridge.Initialize(Qi, Cultivation, Dao, PlayerInventory, Health);
     }
 
     private bool HasBreakthroughMaterials()
