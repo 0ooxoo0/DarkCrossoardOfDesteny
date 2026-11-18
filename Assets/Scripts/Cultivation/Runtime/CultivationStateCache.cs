@@ -25,6 +25,11 @@ public class CultivationSnapshot
     public float severityDecayAt;
     public int playerHealth;
     public int playerMaxHealth;
+
+    // v2: навык алхимика.
+    public int alchemyGrade;
+    public int alchemySubRank;
+    public int alchemyMastery;
 }
 
 /// <summary>
@@ -42,7 +47,7 @@ public static class CultivationStateCache
     public static bool HasState => snapshot != null && snapshot.hasState;
 
     public static void Capture(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
-        CultivationDebuffController debuffs = null, PlayerHealth health = null)
+        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null)
     {
         if (cultivation == null) return;
 
@@ -89,10 +94,17 @@ public static class CultivationStateCache
             snapshot.playerHealth = health.Current;
             snapshot.playerMaxHealth = health.Max;
         }
+
+        if (alchemy != null)
+        {
+            snapshot.alchemyGrade = (int)alchemy.Grade.Name;
+            snapshot.alchemySubRank = (int)alchemy.Grade.SubRank;
+            snapshot.alchemyMastery = alchemy.Mastery;
+        }
     }
 
     public static bool TryRestore(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
-        CultivationDebuffController debuffs = null, PlayerHealth health = null)
+        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null)
     {
         if (!HasState || cultivation == null) return false;
 
@@ -110,6 +122,10 @@ public static class CultivationStateCache
 
         if (health != null && snapshot.playerMaxHealth > 0 && snapshot.playerHealth > 0)
             health.RestorePercent((float)snapshot.playerHealth / snapshot.playerMaxHealth);
+
+        if (alchemy != null)
+            alchemy.Restore(new AlchemyGrade((AlchemyGradeName)snapshot.alchemyGrade,
+                (AlchemySubRank)snapshot.alchemySubRank), snapshot.alchemyMastery);
 
         return true;
     }
