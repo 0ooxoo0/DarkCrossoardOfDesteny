@@ -106,6 +106,14 @@ public class GameMenuController : MonoBehaviour
     /// <summary>Esc: закрыть верхнюю панель или переключить меню паузы.</summary>
     public void ToggleMenu()
     {
+        CultivationUIRoot cultivationUi = CultivationUIRoot.Instance;
+        if (cultivationUi != null && cultivationUi.MeditationScreen != null &&
+            cultivationUi.MeditationScreen.IsOpen)
+        {
+            cultivationUi.MeditationScreen.Close();
+            return;
+        }
+
         if (openPanels.Count > 0)
         {
             CloseTopPanel();

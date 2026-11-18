@@ -17,6 +17,8 @@ public class CultivationUIRoot : MonoBehaviour
     public DebuffPanelUI Debuffs { get; private set; }
     public AlchemyPanelUI Alchemy { get; private set; }
     public SkillListUI Skills { get; private set; }
+    public DaoHudBarUI DaoBar { get; private set; }
+    public MeditationScreenUI MeditationScreen { get; private set; }
     public QiBarUI QiBar { get; private set; }
     public CultivationUI CultivationPanel { get; private set; }
     public TechniqueListUI Techniques { get; private set; }
@@ -81,6 +83,15 @@ public class CultivationUIRoot : MonoBehaviour
             Debuffs = debuffRect.gameObject.AddComponent<DebuffPanelUI>();
             Debuffs.Build(debuffController, canvas.transform);
         }
+
+        var meditationScreenRect = CultivationUIFactory.CreateRect("Meditation Screen", canvas.transform);
+        MeditationScreen = meditationScreenRect.gameObject.AddComponent<MeditationScreenUI>();
+        MeditationScreen.Build(meditation, cultivation, dao, debuffController,
+            config != null ? config.MeditationRisk : null, canvas.transform);
+
+        var daoBarRect = CultivationUIFactory.CreateRect("Dao Bar", canvas.transform);
+        DaoBar = daoBarRect.gameObject.AddComponent<DaoHudBarUI>();
+        DaoBar.Build(dao, cultivation, MeditationScreen, canvas.transform);
 
         if (alchemyService != null)
         {
