@@ -16,6 +16,10 @@ public class AlchemyRecipe : ScriptableObject
 
     [Header("Результат")]
     [SerializeField] private ItemData output;
+    [Tooltip("Вариант с жилками. Пусто — поиск по суффиксу имени ассета.")]
+    [SerializeField] private ItemData veinsOutput;
+    [Tooltip("Облачный вариант. Пусто — поиск по суффиксу имени ассета.")]
+    [SerializeField] private ItemData cloudOutput;
     [SerializeField, Min(1)] private int outputCount = 1;
 
     [Header("Ингредиенты")]
@@ -38,6 +42,8 @@ public class AlchemyRecipe : ScriptableObject
     public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
     public string Description => description;
     public ItemData Output => output;
+    public ItemData VeinsOutput => veinsOutput;
+    public ItemData CloudOutput => cloudOutput;
     public int OutputCount => Mathf.Max(1, outputCount);
     public IReadOnlyList<AlchemyIngredient> Ingredients => ingredients;
     public AlchemyGrade RequiredGrade => requiredGrade;
