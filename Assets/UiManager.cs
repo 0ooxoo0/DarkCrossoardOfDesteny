@@ -23,7 +23,13 @@ public class UiManager : MonoBehaviour
         if (Keyboard.current == null) return;
 
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
-            Toggle();
+        {
+            // Владелец Esc — GameMenuController; старый Toggle остаётся запасным.
+            if (GameMenuController.Instance != null)
+                GameMenuController.Instance.ToggleMenu();
+            else
+                Toggle();
+        }
     }
 
     private void OnDestroy()

@@ -339,6 +339,7 @@ public class CultivationUI : MonoBehaviour
 
         IsOpen = true;
         gameObject.SetActive(true);
+        GameMenuController.Instance?.OpenPanel(gameObject);
         transform.SetAsLastSibling();
         PauseGame();
         Refresh();
@@ -349,6 +350,7 @@ public class CultivationUI : MonoBehaviour
         if (!IsOpen) return;
         IsOpen = false;
         gameObject.SetActive(false);
+        GameMenuController.Instance?.NotifyClosed(gameObject);
         ResumeGame();
         OnClosed?.Invoke();
     }

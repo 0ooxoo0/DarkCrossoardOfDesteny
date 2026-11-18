@@ -133,6 +133,7 @@ public class InventoryPanelUI : MonoBehaviour
     {
         if (isOpen) return;
         isOpen = true;
+        GameMenuController.Instance?.OpenPanel(gameObject);
 
         previousTimeScale = Time.timeScale;
         previousLockMode = Cursor.lockState;
@@ -155,6 +156,7 @@ public class InventoryPanelUI : MonoBehaviour
     {
         if (!isOpen) return;
         isOpen = false;
+        GameMenuController.Instance?.NotifyClosed(gameObject);
 
         dragController?.EndDrag();
         tooltip?.Hide();

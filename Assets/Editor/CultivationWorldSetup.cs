@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Контент мира культивации: ресурсы и пилюли в Assets/Inventary/Data/Content.
@@ -53,6 +55,7 @@ public static class CultivationWorldSetup
         EnsureLootTables();
         BindLootTables();
         EnsureAlchemy();
+        EnsurePauseMenuButtons();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -240,6 +243,85 @@ public static class CultivationWorldSetup
             chance = Mathf.Clamp01(chance),
             guaranteed = guaranteed
         };
+    }
+
+    private static readonly string[] PauseMenuButtonNames =
+    {
+        "Культивация", "Техники", "Крафт", "Журнал"
+    };
+
+    /// <summary>Добавляет кнопки в PauseMenu/Кнопки, не создавая дубли.</summary>
+    private static void EnsurePauseMenuButtons()
+    {
+        Transform container = FindPauseButtonsContainer();
+        if (container == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Не найдена панель PauseMenu/Кнопки — кнопки меню не созданы.");
+            return;
+        }
+
+        var template = FindTemplateButton(container);
+        if (template == null)
+        {
+            Debug.LogWarning("[CultivationSetup] В PauseMenu/Кнопки нет кнопки-образца.");
+            return;
+        }
+
+        var templateRect = (RectTransform)template.transform;
+        float step = templateRect.rect.height + 12f;
+
+        // Новые кнопки ставим ниже самой нижней существующей.
+        float lowestY = templateRect.anchoredPosition.y;
+        for (int i = 0; i < container.childCount; i++)
+        {
+            if (container.GetChild(i) is RectTransform child && child.GetComponent<Button>() != null)
+                lowestY = Mathf.Min(lowestY, child.anchoredPosition.y);
+        }
+
+        for (int i = 0; i < PauseMenuButtonNames.Length; i++)
+        {
+            string buttonName = PauseMenuButtonNames[i];
+            if (container.Find(buttonName) != null) continue;
+
+            GameObject clone = UnityEngine.Object.Instantiate(template.gameObject, container);
+            clone.name = buttonName;
+
+            var rect = (RectTransform)clone.transform;
+            rect.anchoredPosition = new Vector2(templateRect.anchoredPosition.x, lowestY - step * (i + 1));
+
+            TextMeshProUGUI label = clone.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null) label.text = buttonName;
+
+            EditorUtility.SetDirty(clone);
+            EditorSceneManager.MarkSceneDirty(clone.scene);
+        }
+    }
+
+    private static Transform FindPauseButtonsContainer()
+    {
+        Transform[] all = UnityEngine.Object.FindObjectsByType<Transform>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform candidate = all[i];
+            if (candidate.name != "Кнопки" || !candidate.gameObject.scene.IsValid()) continue;
+
+            Transform parent = candidate.parent;
+            while (parent != null)
+            {
+                if (parent.name == "PauseMenu") return candidate;
+                parent = parent.parent;
+            }
+        }
+
+        return null;
+    }
+
+    private static Button FindTemplateButton(Transform container)
+    {
+        Button[] buttons = container.GetComponentsInChildren<Button>(true);
+        return buttons.Length > 0 ? buttons[0] : null;
     }
 
     private static LootTable CreateOrLoadTable(string fileName)

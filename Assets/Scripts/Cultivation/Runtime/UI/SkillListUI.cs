@@ -145,6 +145,7 @@ public class SkillListUI : MonoBehaviour
     {
         IsOpen = true;
         gameObject.SetActive(true);
+        GameMenuController.Instance?.OpenPanel(gameObject);
         transform.SetAsLastSibling();
         Rebuild();
     }
@@ -155,6 +156,7 @@ public class SkillListUI : MonoBehaviour
 
         IsOpen = false;
         gameObject.SetActive(false);
+        GameMenuController.Instance?.NotifyClosed(gameObject);
     }
 
     public void Toggle()

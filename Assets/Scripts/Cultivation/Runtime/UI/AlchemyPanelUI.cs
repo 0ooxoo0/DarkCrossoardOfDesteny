@@ -38,6 +38,7 @@ public class AlchemyPanelUI : MonoBehaviour
     private AlchemyRecipe selected;
     private bool atStation;
     private bool craftingInProgress;
+    private bool pausedByUs;
 
     public bool IsOpen { get; private set; }
 
@@ -162,7 +163,15 @@ public class AlchemyPanelUI : MonoBehaviour
 
         IsOpen = false;
         selected = null;
+        GameMenuController.Instance?.NotifyClosed(gameObject);
         gameObject.SetActive(false);
+
+        if (pausedByUs)
+        {
+            pausedByUs = false;
+            UiManager manager = FindFirstObjectByType<UiManager>();
+            if (manager == null || !manager.IsOpen) Time.timeScale = 1f;
+        }
     }
 
     /// <summary>Подсказка у печи. Пустая строка скрывает её.</summary>
@@ -178,7 +187,14 @@ public class AlchemyPanelUI : MonoBehaviour
     {
         gameObject.SetActive(true);
         IsOpen = true;
+        GameMenuController.Instance?.OpenPanel(gameObject);
         SetHint(string.Empty);
+
+        // Походный крафт у печи открывается без меню: мир нужно остановить.
+        pausedByUs = Time.timeScale > 0f;
+        if (pausedByUs) Time.timeScale = 0f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         RebuildList(recipes);
 
         if (entries.Count > 0)

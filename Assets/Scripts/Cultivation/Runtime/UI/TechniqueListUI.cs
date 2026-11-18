@@ -147,6 +147,7 @@ public class TechniqueListUI : MonoBehaviour
     {
         IsOpen = true;
         gameObject.SetActive(true);
+        GameMenuController.Instance?.OpenPanel(gameObject);
         transform.SetAsLastSibling();
         RebuildCards();
     }
@@ -156,6 +157,7 @@ public class TechniqueListUI : MonoBehaviour
         if (!IsOpen) return;
         IsOpen = false;
         gameObject.SetActive(false);
+        GameMenuController.Instance?.NotifyClosed(gameObject);
     }
 
     public void Toggle()
