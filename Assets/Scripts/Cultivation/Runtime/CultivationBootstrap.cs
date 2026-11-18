@@ -413,7 +413,7 @@ public class CultivationBootstrap : MonoBehaviour
 
         UI = CultivationUIRoot.Create(Qi, Cultivation, Dao, Meditation, Breakthrough, Config,
             Caster, GetAssignHandler(), FindUiManager(), Debuffs, AlchemyService, AlchemySkill,
-            Config != null ? Config.AlchemyRecipes : null);
+            Config != null ? Config.AlchemyRecipes : null, Passives, Bridge);
         SubscribeTechniqueEvents();
     }
 
