@@ -26,6 +26,18 @@ public class AbilitySystem : MonoBehaviour
     [SerializeField] private DaoSystem dao;
     [SerializeField] private CultivationSystem cultivation;
 
+    private float damageMultiplier = 1f;
+
+    /// <summary>
+    /// Единственный множитель урона способностей. Пассивные скиллы пишут сюда,
+    /// потребители урона умножают силу на это значение.
+    /// </summary>
+    public float DamageMultiplier
+    {
+        get => damageMultiplier;
+        set => damageMultiplier = Mathf.Max(0f, value);
+    }
+
     private readonly List<AbilityData> techniqueAbilities = new List<AbilityData>();
 
     private static readonly Key[] SlotKeys =

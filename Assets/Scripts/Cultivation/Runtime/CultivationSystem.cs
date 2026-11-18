@@ -69,6 +69,8 @@ public class CultivationSystem : MonoBehaviour
     public int StagesInCurrentRealm { get { var realm = CurrentRealm; return realm != null ? realm.StagesCount : 1; } }
     public int ExperienceQi { get { EnsureInitialized(); return experienceQi; } }
     public int Comprehension { get { return comprehension; } }
+    /// <summary>Множитель получаемого Прозрения от пассивных скиллов.</summary>
+    public float ComprehensionGainMultiplier { get; set; } = 1f;
     public int RealmsCount => realms != null ? realms.Count : 0;
     public bool IsAtMaxStage { get { EnsureInitialized(); return realmIndex >= RealmsCount - 1 && stage >= StagesInCurrentRealm; } }
 
@@ -184,7 +186,10 @@ public class CultivationSystem : MonoBehaviour
     public void AddComprehension(int amount)
     {
         if (amount == 0) return;
-        comprehension = Mathf.Max(0, comprehension + amount);
+        int scaled = Mathf.RoundToInt(amount * Mathf.Max(0f, ComprehensionGainMultiplier));
+        if (scaled == 0) return;
+
+        comprehension = Mathf.Max(0, comprehension + scaled);
         RaiseComprehension();
     }
 

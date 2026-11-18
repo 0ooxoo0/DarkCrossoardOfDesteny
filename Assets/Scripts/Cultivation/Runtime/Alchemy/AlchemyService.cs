@@ -18,6 +18,13 @@ public class AlchemyService : MonoBehaviour
     private static readonly HashSet<string> MissingVariantWarnings = new HashSet<string>();
     private static ItemData[] itemCache;
     private static AlchemyConfig fallbackConfig;
+    private float passiveSuccessBonus;
+
+    /// <summary>Прибавка к шансу от пассивных скиллов (0.1 = +10%).</summary>
+    public void SetPassiveSuccessBonus(float bonus)
+    {
+        passiveSuccessBonus = Mathf.Max(0f, bonus);
+    }
 
     /// <summary>Источник случайного числа 0..1. Подменяется тестами и ручной проверкой.</summary>
     public static Func<float> Random01 = () => UnityEngine.Random.value;
@@ -48,6 +55,7 @@ public class AlchemyService : MonoBehaviour
         float chance = recipe.BaseSuccessChance
                        + (playerRank - requiredRank) * cfg.ChancePerRank
                        + comprehension * cfg.ChancePerComprehension
+                       + passiveSuccessBonus
                        + (atStation ? cfg.StationBonus : -cfg.PortablePenalty);
 
         return Mathf.Clamp(chance, cfg.MinChance, cfg.MaxChance);

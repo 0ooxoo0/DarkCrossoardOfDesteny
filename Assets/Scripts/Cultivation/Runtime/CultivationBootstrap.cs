@@ -31,6 +31,7 @@ public class CultivationBootstrap : MonoBehaviour
     public PlayerHealth Health { get; private set; }
     public AlchemySkill AlchemySkill { get; private set; }
     public AlchemyService AlchemyService { get; private set; }
+    public PassiveSkillService Passives { get; private set; }
     public BreakthroughSequence Breakthrough { get; private set; }
     public DaoAuraController Aura { get; private set; }
     public CultivationCastController Caster { get; private set; }
@@ -175,6 +176,8 @@ public class CultivationBootstrap : MonoBehaviour
         if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill))
             Debug.Log("[Cultivation] Прогресс восстановлен.");
 
+        WirePassives();
+
         SetupTechniqueOutput();
         WireInventory();
         Aura.Initialize(Dao, Cultivation);
@@ -213,6 +216,8 @@ public class CultivationBootstrap : MonoBehaviour
         CultivationStateCache.LoadFromPrefs();
         if (Qi != null || Cultivation != null)
             CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
+
+        WirePassives();
 
         SetupTechniqueOutput();
         WireInventory();
@@ -301,6 +306,15 @@ public class CultivationBootstrap : MonoBehaviour
 
         AlchemyService = AddOrGet<AlchemyService>(Player);
         AlchemyService.Initialize(Config != null ? Config.AlchemyConfig : null, AlchemySkill, Cultivation, Dao);
+    }
+
+    /// <summary>Подключает пассивы школ к здоровью, Ци, урону и алхимии.</summary>
+    private void WirePassives()
+    {
+        if (Cultivation == null) return;
+
+        Passives = AddOrGet<PassiveSkillService>(Player);
+        Passives.Initialize(Dao, Cultivation, Health, Qi, Player.GetComponent<AbilitySystem>(), AlchemyService);
     }
 
     private void SubscribeDebuffEffects()

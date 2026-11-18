@@ -42,6 +42,11 @@ public class TechniqueData : ScriptableObject
     [Tooltip("Префаб VFX (плейсхолдер: All In 1 Vfx Toolkit назначается в инспекторе).")]
     [SerializeField] private GameObject vfxPrefab;
 
+    [Header("Пассивный скилл (Kind = Passive)")]
+    [SerializeField] private PassiveEffectKind passiveEffect = PassiveEffectKind.MaxHealthPercent;
+    [Tooltip("Прибавка в долях: 0.1 = +10%. 0 — пассив без эффекта.")]
+    [SerializeField, Min(0f)] private float passiveValue;
+
     public string TechniqueId => techniqueId;
     public string DisplayName => displayName;
     public string DisplayNameChinese => displayNameChinese;
@@ -57,6 +62,8 @@ public class TechniqueData : ScriptableObject
     public int Power => Mathf.Max(0, power);
     public AnimationClip CastAnimationClip => castAnimationClip;
     public GameObject VfxPrefab => vfxPrefab;
+    public PassiveEffectKind PassiveEffect => passiveEffect;
+    public float PassiveValue => Mathf.Max(0f, passiveValue);
 
     public void Setup(string id, string name, string nameChinese, string desc, DaoType type, TechniqueKind techniqueKind,
         int techniqueRank, int daoLevel, int realmIndex, int cost, float cd, int techniquePower,
@@ -77,6 +84,12 @@ public class TechniqueData : ScriptableObject
         icon = techniqueIcon;
         castAnimationClip = castClip;
         vfxPrefab = vfx;
+    }
+
+    public void SetPassive(PassiveEffectKind effect, float value)
+    {
+        passiveEffect = effect;
+        passiveValue = Mathf.Max(0f, value);
     }
 
     public string GetKindName()

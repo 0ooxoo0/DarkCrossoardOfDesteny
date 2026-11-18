@@ -33,6 +33,8 @@ public static class CultivationDefaults
         public int QiCost;
         public float Cooldown;
         public int Power;
+        public PassiveEffectKind PassiveEffect;
+        public float PassiveValue;
     }
 
     public static readonly RealmBlueprint[] Realms =
@@ -92,7 +94,19 @@ public static class CultivationDefaults
         // Thunder
         new TechniqueBlueprint { Id = "thunder_1", Name = "Громовой удар", Chinese = "雷击", Dao = DaoType.Thunder, Kind = TechniqueKind.Active, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 20, Cooldown = 7f, Power = 50 },
         new TechniqueBlueprint { Id = "thunder_2", Name = "Громоотвод", Chinese = "引雷", Dao = DaoType.Thunder, Kind = TechniqueKind.Block, Rank = 2, RequiredDaoLevel = 2, RequiredRealmIndex = 0, QiCost = 28, Cooldown = 13f, Power = 0 },
-        new TechniqueBlueprint { Id = "thunder_3", Name = "Гнев небес", Chinese = "天怒", Dao = DaoType.Thunder, Kind = TechniqueKind.Aura, Rank = 3, RequiredDaoLevel = 4, RequiredRealmIndex = 1, QiCost = 70, Cooldown = 50f, Power = 110 }
+        new TechniqueBlueprint { Id = "thunder_3", Name = "Гнев небес", Chinese = "天怒", Dao = DaoType.Thunder, Kind = TechniqueKind.Aura, Rank = 3, RequiredDaoLevel = 4, RequiredRealmIndex = 1, QiCost = 70, Cooldown = 50f, Power = 110 },
+
+        // Пассивные скиллы школ (5 базовых + 5 на реалме 1)
+        new TechniqueBlueprint { Id = "sword_passive_1", Name = "Острота клинка", Chinese = "剑锐", Dao = DaoType.Sword, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.MeleeDamagePercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "sword_passive_2", Name = "Единство с клинком", Chinese = "剑一", Dao = DaoType.Sword, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 3, RequiredRealmIndex = 1, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.MeleeDamagePercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "fist_passive_1", Name = "Твёрдость кулака", Chinese = "拳坚", Dao = DaoType.Fist, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.MeleeDamagePercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "fist_passive_2", Name = "Железная ладонь", Chinese = "铁掌", Dao = DaoType.Fist, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 3, RequiredRealmIndex = 1, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.MeleeDamagePercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "body_passive_1", Name = "Закалка тела", Chinese = "炼体", Dao = DaoType.Body, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.MaxHealthPercent, PassiveValue = 0.15f },
+        new TechniqueBlueprint { Id = "body_passive_2", Name = "Несокрушимость", Chinese = "不坏", Dao = DaoType.Body, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 3, RequiredRealmIndex = 1, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.DamageReductionPercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "fire_passive_1", Name = "Внутреннее пламя", Chinese = "内焰", Dao = DaoType.Fire, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.SpellPowerPercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "fire_passive_2", Name = "Пепел и пламя", Chinese = "灰焰", Dao = DaoType.Fire, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 3, RequiredRealmIndex = 1, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.SpellPowerPercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "thunder_passive_1", Name = "Громовое дыхание", Chinese = "雷息", Dao = DaoType.Thunder, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.QiRegenPercent, PassiveValue = 0.1f },
+        new TechniqueBlueprint { Id = "thunder_passive_2", Name = "Раскат грома", Chinese = "雷震", Dao = DaoType.Thunder, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 3, RequiredRealmIndex = 1, QiCost = 0, Cooldown = 0f, Power = 0, PassiveEffect = PassiveEffectKind.QiRegenPercent, PassiveValue = 0.1f }
     };
 
     public static List<TechniqueBlueprint> GetTechniques(DaoType type)
@@ -161,6 +175,7 @@ public static class CultivationDefaults
         technique.Setup(blueprint.Id, blueprint.Name, blueprint.Chinese, description, blueprint.Dao,
             blueprint.Kind, blueprint.Rank, blueprint.RequiredDaoLevel, blueprint.RequiredRealmIndex,
             blueprint.QiCost, blueprint.Cooldown, blueprint.Power, null, null, null);
+        technique.SetPassive(blueprint.PassiveEffect, blueprint.PassiveValue);
         return technique;
     }
 }

@@ -32,7 +32,8 @@ public class PlayerHealth : MonoBehaviour
         get
         {
             float realmBonus = cultivation != null ? cultivation.TotalHpBonus : 0f;
-            float raw = (baseMaxHealth + realmBonus) * Mathf.Max(0.1f, MaxHealthMultiplier);
+            float raw = (baseMaxHealth + realmBonus) * Mathf.Max(0.1f, MaxHealthMultiplier)
+                        * Mathf.Max(0.1f, passiveMaxHealthMultiplier);
             return Mathf.Max(1, Mathf.FloorToInt(raw));
         }
     }
@@ -46,7 +47,22 @@ public class PlayerHealth : MonoBehaviour
     /// <summary>Множитель получаемого урона: дебафы и защита.</summary>
     public float IncomingDamageMultiplier { get; set; } = 1f;
 
+    /// <summary>Множитель получаемого урона от пассивов (снижение урона).</summary>
+    public float PassiveIncomingDamageMultiplier { get; set; } = 1f;
+
     private float maxHealthMultiplier = 1f;
+    private float passiveMaxHealthMultiplier = 1f;
+
+    /// <summary>Множитель максимума HP от пассивных скиллов.</summary>
+    public float PassiveMaxHealthMultiplier
+    {
+        get => passiveMaxHealthMultiplier;
+        set
+        {
+            passiveMaxHealthMultiplier = Mathf.Max(0.1f, value);
+            RecalculateMaxHealth();
+        }
+    }
 
     /// <summary>Множитель максимума HP: дебафы и пассивные скиллы.</summary>
     public float MaxHealthMultiplier
@@ -58,7 +74,6 @@ public class PlayerHealth : MonoBehaviour
             RecalculateMaxHealth();
         }
     }
-
     public event Action<int, int> OnHealthChanged;
     public event Action<DamageInfo> OnDamaged;
     public event Action OnDied;
@@ -108,7 +123,8 @@ public class PlayerHealth : MonoBehaviour
     {
         if (dead || invulnerableRemaining > 0f) return;
 
-        float incoming = Mathf.Max(0f, info.Amount) * Mathf.Max(0f, IncomingDamageMultiplier);
+        float incoming = Mathf.Max(0f, info.Amount) * Mathf.Max(0f, IncomingDamageMultiplier)
+                         * Mathf.Max(0f, PassiveIncomingDamageMultiplier);
         if (incoming <= 0f) return;
 
         current = Mathf.Max(0f, current - incoming);

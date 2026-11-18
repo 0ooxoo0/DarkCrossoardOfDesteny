@@ -122,6 +122,7 @@ public static class CultivationSetup
                     blueprint.Name + " — " + blueprint.Kind + " техника пути " + DaoTypeInfo.GetDisplayName(type) + ".",
                     type, blueprint.Kind, blueprint.Rank, blueprint.RequiredDaoLevel, blueprint.RequiredRealmIndex,
                     blueprint.QiCost, blueprint.Cooldown, blueprint.Power, null, null, null);
+                technique.SetPassive(blueprint.PassiveEffect, blueprint.PassiveValue);
 
                 EditorUtility.SetDirty(technique);
                 techniques.Add(technique);

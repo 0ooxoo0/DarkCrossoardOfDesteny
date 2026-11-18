@@ -29,6 +29,7 @@ public class CultivationCastController : MonoBehaviour
     private readonly float[] cooldowns = new float[SlotCount];
     private float checkTimer;
     private bool suppressed;
+    private AbilitySystem abilitySystem;
 
     public event Action<int, TechniqueData> OnSlotChanged;
     public event Action<int, TechniqueData> OnCast;
@@ -215,6 +216,11 @@ public class CultivationCastController : MonoBehaviour
     {
         if (!dealDamage || technique.Power <= 0) return;
 
+        if (abilitySystem == null) abilitySystem = GetComponent<AbilitySystem>();
+        float multiplier = abilitySystem != null ? Mathf.Max(0f, abilitySystem.DamageMultiplier) : 1f;
+        int damage = Mathf.RoundToInt(technique.Power * multiplier);
+        if (damage <= 0) return;
+
         var colliders = Physics.OverlapSphere(transform.position + Vector3.up * 0.9f, damageRadius);
         var visited = new HashSet<GameObject>();
         GameObject selfRoot = transform.root.gameObject;
@@ -232,8 +238,8 @@ public class CultivationCastController : MonoBehaviour
                 if (!visited.Add(current.gameObject)) break;
 
                 // В проекте встречаются оба написания: BossController.TakeDamamge и PlayerHpController.TakeDammage.
-                current.gameObject.SendMessage("TakeDamamge", technique.Power, SendMessageOptions.DontRequireReceiver);
-                current.gameObject.SendMessage("TakeDammage", technique.Power, SendMessageOptions.DontRequireReceiver);
+                current.gameObject.SendMessage("TakeDamamge", damage, SendMessageOptions.DontRequireReceiver);
+                current.gameObject.SendMessage("TakeDammage", damage, SendMessageOptions.DontRequireReceiver);
                 current = current.parent;
             }
         }

@@ -21,6 +21,8 @@ public class QiComponent : MonoBehaviour
     private int lastCurrent;
     private int lastMax;
     private bool depletedRaised;
+    private float maxQiMultiplier = 1f;
+    private float regenMultiplier = 1f;
 
     /// <summary>Текущее и максимальное значение (целые) — для UI.</summary>
     public event Action<int, int> OnQiChanged;
@@ -29,12 +31,31 @@ public class QiComponent : MonoBehaviour
     /// <summary>Успешно потраченное количество.</summary>
     public event Action<int> OnQiSpent;
 
-    public float MaxQi => maxQi;
+    public float MaxQi => maxQi * Mathf.Max(0.1f, maxQiMultiplier);
     public float CurrentQi => currentQi;
     public int Current => Mathf.FloorToInt(currentQi + 0.0001f);
-    public int Max => Mathf.Max(0, Mathf.FloorToInt(maxQi + 0.0001f));
-    public float Normalized => maxQi <= 0.0001f ? 0f : Mathf.Clamp01(currentQi / maxQi);
+    public int Max => Mathf.Max(0, Mathf.FloorToInt(MaxQi + 0.0001f));
+    public float Normalized => MaxQi <= 0.0001f ? 0f : Mathf.Clamp01(currentQi / MaxQi);
     public bool IsDepleted => currentQi <= 0.0001f;
+
+    /// <summary>Множитель максимума Ци от пассивных скиллов.</summary>
+    public float MaxQiMultiplier
+    {
+        get => maxQiMultiplier;
+        set
+        {
+            maxQiMultiplier = Mathf.Max(0.1f, value);
+            currentQi = Mathf.Min(currentQi, MaxQi);
+            ForceNotify();
+        }
+    }
+
+    /// <summary>Множитель пассивной регенерации Ци.</summary>
+    public float RegenMultiplier
+    {
+        get => regenMultiplier;
+        set => regenMultiplier = Mathf.Max(0f, value);
+    }
 
     public float RegenPerSecond
     {
@@ -55,10 +76,10 @@ public class QiComponent : MonoBehaviour
 
     private void Update()
     {
-        if (!regenerate || regenPerSecond <= 0f || currentQi >= maxQi)
+        if (!regenerate || regenPerSecond <= 0f || currentQi >= MaxQi)
             return;
 
-        currentQi = Mathf.Min(maxQi, currentQi + regenPerSecond * Time.deltaTime);
+        currentQi = Mathf.Min(MaxQi, currentQi + regenPerSecond * regenMultiplier * Time.deltaTime);
         RaiseIfChanged();
     }
 
@@ -67,8 +88,8 @@ public class QiComponent : MonoBehaviour
     {
         maxQi = Mathf.Max(0f, newMaxQi);
         regenPerSecond = Mathf.Max(0f, newRegenPerSecond);
-        if (refill) currentQi = maxQi;
-        else currentQi = Mathf.Clamp(currentQi, 0f, maxQi);
+        if (refill) currentQi = MaxQi;
+        else currentQi = Mathf.Clamp(currentQi, 0f, MaxQi);
         ForceNotify();
     }
 
@@ -84,7 +105,7 @@ public class QiComponent : MonoBehaviour
     {
         float percent = Normalized;
         maxQi = Mathf.Max(0f, value);
-        currentQi = keepPercent ? maxQi * percent : Mathf.Clamp(currentQi, 0f, maxQi);
+        currentQi = keepPercent ? MaxQi * percent : Mathf.Clamp(currentQi, 0f, MaxQi);
         ForceNotify();
     }
 
@@ -106,7 +127,7 @@ public class QiComponent : MonoBehaviour
         if (amount <= 0) return 0;
 
         float before = currentQi;
-        currentQi = Mathf.Min(maxQi, currentQi + amount);
+        currentQi = Mathf.Min(MaxQi, currentQi + amount);
         float delta = currentQi - before;
         if (delta > 0.0001f) RaiseIfChanged();
         return Mathf.FloorToInt(delta + 0.0001f);
@@ -114,8 +135,8 @@ public class QiComponent : MonoBehaviour
 
     public void RestoreFull()
     {
-        if (currentQi >= maxQi) return;
-        currentQi = maxQi;
+        if (currentQi >= MaxQi) return;
+        currentQi = MaxQi;
         RaiseIfChanged();
     }
 
@@ -124,13 +145,13 @@ public class QiComponent : MonoBehaviour
     /// <summary>Жёстко задать значение (загрузка сохранения).</summary>
     public void SetCurrent(float value)
     {
-        currentQi = Mathf.Clamp(value, 0f, maxQi);
+        currentQi = Mathf.Clamp(value, 0f, MaxQi);
         ForceNotify();
     }
 
     private void ResetToStart()
     {
-        currentQi = startQi >= 0f ? Mathf.Clamp(startQi, 0f, maxQi) : maxQi;
+        currentQi = startQi >= 0f ? Mathf.Clamp(startQi, 0f, MaxQi) : MaxQi;
         lastCurrent = Current;
         lastMax = Max;
         depletedRaised = IsDepleted;
