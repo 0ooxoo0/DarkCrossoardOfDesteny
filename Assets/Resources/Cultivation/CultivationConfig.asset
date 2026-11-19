@@ -46,4 +46,12 @@ MonoBehaviour:
   calligraphyFont: {fileID: 0}
   showChineseNames: 0
   autoBootstrap: 1
-  meditationRisk: {fileID: 0}
+  meditationRisk: {fileID: 11400000, guid: ebb8a272a2df0984eb89f8e5f860547f, type: 2}
+  alchemyConfig: {fileID: 11400000, guid: 409d08bbc0d701d459b38d17d6747379, type: 2}
+  alchemyRecipes:
+  - {fileID: 11400000, guid: 76853b4c96ffe944fa85fbf94e23ec88, type: 2}
+  - {fileID: 11400000, guid: 234e003663969cb48afdce3c54456bdd, type: 2}
+  - {fileID: 11400000, guid: 538641c650277214e8c748a6e5abaacb, type: 2}
+  - {fileID: 11400000, guid: e70fbbe23702e6e43b27a57117fd2b4f, type: 2}
+  - {fileID: 11400000, guid: d363ca118f62613499ee36c17f18918c, type: 2}
+  vfxConfig: {fileID: 11400000, guid: 83f754adc2e55274f9e725bf3b90a1f3, type: 2}

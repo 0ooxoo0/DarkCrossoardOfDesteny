@@ -128,7 +128,7 @@ public class CultivationVfxBridge : MonoBehaviour
 
     private void HandleBreakthroughStarted()
     {
-        ParticleSystem prefab = config != null ? config.BreakthroughStartPrefab : null;
+        GameObject prefab = config != null ? config.BreakthroughStartPrefab : null;
         if (Spawn(prefab, transform) != null) return;
 
         WarnOnce("BreakthroughStart", "Нет префаба начала прорыва — используется плейсхолдер.");
@@ -182,7 +182,7 @@ public class CultivationVfxBridge : MonoBehaviour
     {
         if (origin == null) return;
 
-        ParticleSystem prefab = config != null
+        GameObject prefab = config != null
             ? (success ? config.BreakthroughSuccessPrefab : config.BreakthroughFailPrefab)
             : null;
 
@@ -206,7 +206,7 @@ public class CultivationVfxBridge : MonoBehaviour
         }
     }
 
-    private ParticleSystem PrefabFor(CultivationVfxKind kind)
+    private GameObject PrefabFor(CultivationVfxKind kind)
     {
         if (config == null) return null;
 
@@ -219,14 +219,23 @@ public class CultivationVfxBridge : MonoBehaviour
         }
     }
 
-    private ParticleSystem Spawn(ParticleSystem prefab, Transform origin = null)
+    private GameObject Spawn(GameObject prefab, Transform origin = null)
     {
         if (prefab == null || origin == null) return null;
 
-        ParticleSystem effect = Instantiate(prefab, origin.position + Vector3.up * effectHeight,
+        GameObject effect = Instantiate(prefab, origin.position + Vector3.up * effectHeight,
             Quaternion.identity);
-        Destroy(effect.gameObject, config != null ? config.EffectLifetime : fallbackLifetime);
+        PlayParticles(effect);
+        Destroy(effect, config != null ? config.EffectLifetime : fallbackLifetime);
         return effect;
+    }
+
+    /// <summary>Запускает все частицы префаба: у мешевых эффектов их может не быть.</summary>
+    private static void PlayParticles(GameObject root)
+    {
+        ParticleSystem[] systems = root.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+            systems[i].Play(true);
     }
 
     private void ShowVignette()

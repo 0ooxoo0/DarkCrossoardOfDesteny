@@ -12,6 +12,12 @@ TagManager:
   - Door2
   - Room
   - DammageObject
+  - Hitbox
+  - NarrowBeam
+  - SwingableLedge
+  - Slide
+  - NavmeshLink
+  - NavmeshSurface
   layers:
   - Default
   - TransparentFX
@@ -21,16 +27,16 @@ TagManager:
   - UI
   - Room
   - Player
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - Enemy
+  - VisionSensor
+  - Ledge
+  - NPC
+  - Vehicle
+  - FootTrigger
+  - Cover
+  - Hotspot
+  - PlayerAlly
+  - HitBone
   - 
   - 
   - 

@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51a569de28bb18de181ed5ce099da33c, type: 3}
+  m_Name: Recipe_Enlightenment
+  m_EditorClassIdentifier: Assembly-CSharp::AlchemyRecipe
+  recipeId: recipe.enlightenment
+  displayName: "\u041F\u0438\u043B\u044E\u043B\u044F \u043E\u0437\u0430\u0440\u0435\u043D\u0438\u044F"
+  description: "\u0414\u0430\u0440\u0443\u0435\u0442 \u041F\u0440\u043E\u0437\u0440\u0435\u043D\u0438\u0435.
+    \u0422\u0440\u0435\u0431\u0443\u0435\u0442 \u0434\u0443\u0445\u043E\u0432\u043D\u044B\u0445
+    \u0442\u0440\u0430\u0432."
+  output: {fileID: 11400000, guid: 573aa74f4b6df7b45bfd2ad1dce968e6, type: 2}
+  veinsOutput: {fileID: 11400000, guid: dcdf7ae731ae4b44bb35429dc625b63a, type: 2}
+  cloudOutput: {fileID: 11400000, guid: baf965ba54ac4f649aa9980b53cd056a, type: 2}
+  outputCount: 1
+  ingredients:
+  - item: {fileID: 11400000, guid: d6b5fc8417804224cbb45b2e9304d623, type: 2}
+    count: 1
+  - item: {fileID: 11400000, guid: 4721057a4eb778248918abb41a78487e, type: 2}
+    count: 1
+  requiredGrade:
+    gradeName: 1
+    subRank: 0
+  requiredDaoLevel: 3
+  requiredRealmIndex: 1
+  baseSuccessChance: 0.45
+  portableAllowed: 0
+  craftSeconds: 10
+  masteryReward: 12

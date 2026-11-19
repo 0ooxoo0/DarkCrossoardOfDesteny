@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95c6237c8a80d304d72882fdf0783291, type: 3}
+  m_Name: CultivationVfxConfig
+  m_EditorClassIdentifier: Assembly-CSharp::CultivationVfxConfig
+  auraPrefab: {fileID: 4410437682428655200, guid: 8cb25b0ec6d570548a7dcccb20913d60, type: 3}
+  meditationLoopPrefab: {fileID: 4426621991517509651, guid: e874c21a1b130514dad4dec710f9aed2, type: 3}
+  breakthroughStartPrefab: {fileID: 3536986080484332858, guid: 81d00e2244cb1d9489911e740c3300aa, type: 3}
+  breakthroughSuccessPrefab: {fileID: 6549543012873742316, guid: f9285319a911f494e9d13f569ca3b7ce, type: 3}
+  breakthroughFailPrefab: {fileID: 8851326773914328275, guid: 6ff3b991f6a015341b16ec3d7fc1791e, type: 3}
+  qiSurgePrefab: {fileID: 2486735990780404459, guid: 5c0619afb6111d5409f3d5705b33953e, type: 3}
+  qiDeviationPrefab: {fileID: 6865371433226509301, guid: 11ce63c71c268864ca9e369f27625eef, type: 3}
+  severingPrefab: {fileID: 4922659033416720293, guid: 06c236da5208ba44086f8e054bf77b8d, type: 3}
+  deathPrefab: {fileID: 8851326773914328275, guid: 6ff3b991f6a015341b16ec3d7fc1791e, type: 3}
+  effectLifetime: 4

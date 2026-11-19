@@ -41,14 +41,14 @@ public class MeditationController : MonoBehaviour
     [SerializeField] private string animatorTriggerName = "";
 
     [Header("VFX (опционально)")]
-    [Tooltip("Префаб частиц медитации. Пусто = процедурные частицы из CultivationVfxFactory.")]
-    [SerializeField] private ParticleSystem meditationVfxPrefab;
+    [Tooltip("Префаб эффекта медитации. Пусто = процедурные частицы из CultivationVfxFactory.")]
+    [SerializeField] private GameObject meditationVfxPrefab;
 
     private readonly List<MeditationZone> zones = new List<MeditationZone>();
     private readonly List<IMeditationInterrupter> interrupters = new List<IMeditationInterrupter>();
 
     private Coroutine tickRoutine;
-    private ParticleSystem meditationVfx;
+    private GameObject meditationVfx;
     private float savedRegenPerSecond;
     private bool savedRegenerate;
     private float restoreAccumulator;
@@ -130,7 +130,7 @@ public class MeditationController : MonoBehaviour
     }
 
     /// <summary>Префаб петли медитации из конфига VFX; пусто — процедурные частицы.</summary>
-    public void SetVfxPrefab(ParticleSystem prefab)
+    public void SetVfxPrefab(GameObject prefab)
     {
         meditationVfxPrefab = prefab;
     }
@@ -329,19 +329,27 @@ public class MeditationController : MonoBehaviour
         {
             meditationVfx = Instantiate(meditationVfxPrefab, transform);
             meditationVfx.transform.localPosition = Vector3.zero;
-        }
-        else
-        {
-            meditationVfx = CultivationVfxFactory.CreateMeditationMotes(transform, ResolveDaoColor());
+            PlayParticles(meditationVfx);
+            return;
         }
 
-        meditationVfx.Play();
+        ParticleSystem motes = CultivationVfxFactory.CreateMeditationMotes(transform, ResolveDaoColor());
+        meditationVfx = motes.gameObject;
+        motes.Play();
+    }
+
+    /// <summary>Запускает все частицы префаба: у мешевых эффектов их может не быть.</summary>
+    private static void PlayParticles(GameObject root)
+    {
+        ParticleSystem[] systems = root.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+            systems[i].Play(true);
     }
 
     private void StopMeditationVfx()
     {
         if (meditationVfx == null) return;
-        Destroy(meditationVfx.gameObject);
+        Destroy(meditationVfx);
         meditationVfx = null;
     }
 

@@ -242,6 +242,17 @@ inventory.OnItemUseRequested   += (item, inv, slotIndex) => { /* примени�
 * Клик по контейнеру и по панели не запускает атаку: `PointerGuard` проверяется
   в `PlayerInteraction.IsAttackBlocked()`.
 
+### Таблицы лута
+
+* `LootTable` — ScriptableObject со списком `LootRoll` (предмет, минимум/максимум, шанс,
+  гарантированный выпал). Ассеты лежат в `Assets/Inventary/Data/Loot`.
+* `LootRoll` умеет бросать количество и шанс, `LootDrop` — уже вычисленный результат.
+* `HarvestableObject` получает `lootTable` в инспекторе: при смерти он отдаёт `LootTable`
+  в `WorldLootService` и предметы падают контейнером. Если поле пустое — работает прежний
+  `DropManager`, поэтому старые деревья и камни ничего не теряют.
+* Таблицы создаёт `Tools → Cultivation → 4. Setup World Content (Game)`:
+  `Loot_Tree`, `Loot_Rock`, `Loot_Plant`, `Loot_Enemy`, `Loot_Animal`.
+
 Контейнеры не сохраняются: после перезагрузки сцены остаётся только то, что
 описано в сцене (стартовый `[Loot] Starter`).
 
@@ -307,7 +318,12 @@ inventory.OnItemUseRequested   += (item, inv, slotIndex) => { /* примени�
 
 * Броня, шлем, штаны и аксессуар работают: надеваются, меняют одежду и
   сохраняются. Отдельной модели обуви нет — слота `Boots` больше нет.
-* `useKind = Potion` пишет в лог: эффекта нет, пока нет системы здоровья.
+* `useKind = Pill` с `healAmount > 0` лечит через `PlayerHealth` (мост `CultivationItemBridge`);
+  пилюли с опытом, Прозрением и Ци работают так же — эффект выбирается по `useKind` и полям предмета.
+* `ItemData.healAmount` — единственное «медицинское» поле предмета. Инвентарь по-прежнему ничего
+  не знает о здоровье: лечение делает подписчик на `OnItemUseRequested`.
+* Качество пилюли — это отдельные ассеты (`Pill_QiReturn_Normal`, `_Veins`, `_Cloud`): инвентарь
+  хранит их как обычные стеки, алхимия выбирает вариант сама.
 * Экипировка сохраняется в JSON (`equippedItems`), но `InventorySaveSystem`
   восстанавливает только те предметы, которые есть в его списке `allItems`.
 * `[PLACEHOLDER]` намеренно бросается в глаза — это заглушка, а не баг.

@@ -72,9 +72,9 @@ public static class CultivationWorldSetup
 
         if (!OpenGameScene()) return;
 
+        EnsureWorldObjects();
         BindLootTables();
         EnsurePauseMenuButtons();
-        EnsureWorldObjects();
 
         Scene scene = SceneManager.GetActiveScene();
         EditorSceneManager.MarkSceneDirty(scene);
@@ -206,21 +206,32 @@ public static class CultivationWorldSetup
     }
 
     /// <summary>
-    /// Привязывает таблицы к объектам открытой сцены. Отсутствие объекта — предупреждение,
-    /// а не ошибка: сцена может быть ещё не заполнена.
+    /// Привязывает таблицы к объектам открытой сцены. Деревья, камни и растения
+    /// могут использовать старый <see cref="DestructibleObject"/> — для них
+    /// отсутствие <see cref="HarvestableObject"/> не предупреждение, а заметка.
     /// </summary>
     private static void BindLootTables()
     {
-        BindLootTable("Tree", "Loot_Tree");
-        BindLootTable("Rock", "Loot_Rock");
-        BindLootTable("Plant", "Loot_Plant");
+        BindLootTable("Tree", "Loot_Tree", false);
+        BindLootTable("Rock", "Loot_Rock", false);
+        BindLootTable("Plant", "Loot_Plant", false);
         BindLootTable("Enemy", "Loot_Enemy");
-        BindLootTable("Horse", "Loot_Animal");
-        BindLootTable("Pig", "Loot_Animal");
-        BindLootTable("Sheep", "Loot_Animal");
+        BindLootTable(AnimalObjectNames, "Loot_Animal");
     }
 
-    private static void BindLootTable(string objectName, string tableFileName)
+    /// <summary>Животные: в сцене встречаются и «Horse», и созданный сетапом «Animal_Horse».</summary>
+    private static readonly string[] AnimalObjectNames =
+    {
+        "Horse", "Pig", "Sheep",
+        "Animal_Horse", "Animal_Pig", "Animal_Sheep"
+    };
+
+    private static void BindLootTable(string objectName, string tableFileName, bool required = true)
+    {
+        BindLootTable(new[] { objectName }, tableFileName, required);
+    }
+
+    private static void BindLootTable(string[] objectNames, string tableFileName, bool required = true)
     {
         LootTable table = AssetDatabase.LoadAssetAtPath<LootTable>(LootFolder + "/" + tableFileName + ".asset");
         if (table == null)
@@ -236,7 +247,17 @@ public static class CultivationWorldSetup
         for (int i = 0; i < targets.Length; i++)
         {
             HarvestableObject target = targets[i];
-            if (target == null || !MatchesName(target.gameObject.name, objectName)) continue;
+            if (target == null) continue;
+
+            bool matches = false;
+            for (int n = 0; n < objectNames.Length; n++)
+            {
+                if (!MatchesName(target.gameObject.name, objectNames[n])) continue;
+                matches = true;
+                break;
+            }
+
+            if (!matches) continue;
 
             var serialized = new SerializedObject(target);
             SerializedProperty property = serialized.FindProperty("lootTable");
@@ -253,8 +274,13 @@ public static class CultivationWorldSetup
             bound = true;
         }
 
-        if (!bound)
-            Debug.LogWarning("[CultivationSetup] В сцене нет объекта " + objectName + " — таблица " + tableFileName + " не привязана.");
+        if (bound) return;
+
+        string missing = "[CultivationSetup] В сцене нет объекта " + string.Join("/", objectNames) +
+                         " — таблица " + tableFileName + " не привязана.";
+
+        if (required) Debug.LogWarning(missing);
+        else Debug.Log(missing);
     }
 
     private static bool MatchesName(string candidate, string target)
@@ -609,7 +635,7 @@ public static class CultivationWorldSetup
         {
             HarvestableObject candidate = objects[i];
             if (candidate == null || !candidate.gameObject.scene.IsValid()) continue;
-            if (!candidate.gameObject.name.StartsWith("Enemy", System.StringComparison.Ordinal)) continue;
+            if (!MatchesName(candidate.gameObject.name, "Enemy")) continue;
             if (candidate.GetComponent<EnemyAI>() != null) continue;
 
             candidate.gameObject.AddComponent<EnemyAI>();
@@ -801,7 +827,7 @@ public static class CultivationWorldSetup
             for (int i = 0; i < 4; i++)
             {
                 Vector3 direction = i == 0 ? right : i == 1 ? forward : i == 2 ? -right : -forward;
-                Vector3 candidate = GroundPoint(position + direction * StationOffset);
+                Vector3 candidate = GroundPoint(position + direction * StationOffset, smithy.transform);
                 if (Mathf.Abs(candidate.y - position.y) < StationOffset * 2f) return candidate;
             }
 
@@ -846,49 +872,35 @@ public static class CultivationWorldSetup
     {
         var serialized = new SerializedObject(vfx);
 
-        AssignParticle(serialized, "auraPrefab", MagicFolder + "PersonAura/Holy Aura.prefab");
-        AssignParticle(serialized, "meditationLoopPrefab", MagicFolder + "otherAura/Green Area.prefab");
-        AssignParticle(serialized, "breakthroughStartPrefab",
+        AssignPrefab(serialized, "auraPrefab", MagicFolder + "PersonAura/Holy Aura.prefab");
+        AssignPrefab(serialized, "meditationLoopPrefab", MagicFolder + "otherAura/Green Area.prefab");
+        AssignPrefab(serialized, "breakthroughStartPrefab",
             MagicFolder + "otherAura/Blue Area + Distort Sphere.prefab");
-        AssignParticle(serialized, "breakthroughSuccessPrefab", MagicFolder + "2Dammage/Explosion Galaxy.prefab");
-        AssignParticle(serialized, "breakthroughFailPrefab", MagicFolder + "Thick Smoke.prefab");
-        AssignParticle(serialized, "qiSurgePrefab", MagicFolder + "1Dammage/Blue Tornado.prefab");
-        AssignParticle(serialized, "qiDeviationPrefab", MagicFolder + "PersonAura/Dark Magic Orb.prefab");
-        AssignParticle(serialized, "severingPrefab", MagicFolder + "otherAura/Red Area.prefab");
-        AssignParticle(serialized, "deathPrefab", MagicFolder + "Thick Smoke.prefab");
+        AssignPrefab(serialized, "breakthroughSuccessPrefab", MagicFolder + "2Dammage/Explosion Galaxy.prefab");
+        AssignPrefab(serialized, "breakthroughFailPrefab", MagicFolder + "Thick Smoke.prefab");
+        AssignPrefab(serialized, "qiSurgePrefab", MagicFolder + "1Dammage/Blue Tornado.prefab");
+        AssignPrefab(serialized, "qiDeviationPrefab", MagicFolder + "PersonAura/Dark Magic Orb.prefab");
+        AssignPrefab(serialized, "severingPrefab", MagicFolder + "otherAura/Red Area.prefab");
+        AssignPrefab(serialized, "deathPrefab", MagicFolder + "Thick Smoke.prefab");
 
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    private static void AssignParticle(SerializedObject serialized, string propertyName, string assetPath)
+    private static void AssignPrefab(SerializedObject serialized, string propertyName, string assetPath)
     {
         SerializedProperty property = serialized.FindProperty(propertyName);
         if (property == null) return;
 
-        property.objectReferenceValue = LoadParticlePrefab(assetPath);
+        property.objectReferenceValue = LoadVfxPrefab(assetPath);
     }
 
-    private static ParticleSystem LoadParticlePrefab(string assetPath)
+    private static GameObject LoadVfxPrefab(string assetPath)
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
         if (prefab == null)
-        {
             Debug.LogWarning("[CultivationSetup] Не найден VFX: " + assetPath);
-            return null;
-        }
 
-        ParticleSystem root = prefab.GetComponent<ParticleSystem>();
-        if (root != null) return root;
-
-        // Корень многих префабов Magic — контейнер: берём первую частицу изнутри.
-        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-        for (int i = 0; i < assets.Length; i++)
-        {
-            if (assets[i] is ParticleSystem particles) return particles;
-        }
-
-        Debug.LogWarning("[CultivationSetup] В префабе нет ParticleSystem: " + assetPath);
-        return null;
+        return prefab;
     }
 
     private static T LoadOrCreateAsset<T>(string path) where T : ScriptableObject
@@ -903,14 +915,33 @@ public static class CultivationWorldSetup
 
     private static Vector3 GroundPoint(Vector3 origin)
     {
+        return GroundPoint(origin, null);
+    }
+
+    /// <summary>Ищет землю под точкой, пропуская коллайдеры указанного объекта.</summary>
+    private static Vector3 GroundPoint(Vector3 origin, Transform avoid)
+    {
         Vector3 from = new Vector3(origin.x, origin.y + GroundProbeHeight, origin.z);
-        if (Physics.Raycast(from, Vector3.down, out RaycastHit hit, GroundProbeDepth, ~0,
-                QueryTriggerInteraction.Ignore))
+        RaycastHit[] hits = Physics.RaycastAll(from, Vector3.down, GroundProbeDepth, ~0,
+            QueryTriggerInteraction.Ignore);
+
+        bool found = false;
+        float lowest = float.MaxValue;
+        Vector3 point = origin;
+
+        for (int i = 0; i < hits.Length; i++)
         {
-            return hit.point;
+            if (avoid != null && hits[i].transform != null && hits[i].transform.IsChildOf(avoid)) continue;
+
+            if (!found || hits[i].point.y < lowest)
+            {
+                lowest = hits[i].point.y;
+                point = hits[i].point;
+                found = true;
+            }
         }
 
-        return origin;
+        return found ? point : origin;
     }
 
     private static GameObject FindSceneObject(string name)

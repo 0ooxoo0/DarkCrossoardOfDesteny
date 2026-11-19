@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51a569de28bb18de181ed5ce099da33c, type: 3}
+  m_Name: Recipe_QiReturn
+  m_EditorClassIdentifier: Assembly-CSharp::AlchemyRecipe
+  recipeId: recipe.qi.return
+  displayName: "\u041F\u0438\u043B\u044E\u043B\u044F \u0432\u043E\u0437\u0432\u0440\u0430\u0442\u0430
+    \u0426\u0438"
+  description: "\u041F\u0440\u043E\u0441\u0442\u0430\u044F \u043F\u0438\u043B\u044E\u043B\u044F,
+    \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u044E\u0449\u0430\u044F \u0437\u0430\u043F\u0430\u0441
+    \u0426\u0438."
+  output: {fileID: 11400000, guid: dd65aa1242f1f04408d607a7695e9f0a, type: 2}
+  veinsOutput: {fileID: 11400000, guid: 81ed09c6b6bb7fb4588e207bb44e6ae6, type: 2}
+  cloudOutput: {fileID: 11400000, guid: 793fb24aefc128448a4a9c72ff8b191c, type: 2}
+  outputCount: 1
+  ingredients:
+  - item: {fileID: 11400000, guid: 357b7b815a18bb848a01a29d5c966e28, type: 2}
+    count: 2
+  - item: {fileID: 11400000, guid: d6b5fc8417804224cbb45b2e9304d623, type: 2}
+    count: 1
+  requiredGrade:
+    gradeName: 0
+    subRank: 0
+  requiredDaoLevel: 1
+  requiredRealmIndex: 0
+  baseSuccessChance: 0.6
+  portableAllowed: 1
+  craftSeconds: 5
+  masteryReward: 5

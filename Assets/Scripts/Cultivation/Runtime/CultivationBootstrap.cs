@@ -334,8 +334,13 @@ public class CultivationBootstrap : MonoBehaviour
         Vfx = AddOrGet<CultivationVfxBridge>(Player);
         Vfx.Initialize(vfx, Meditation, Breakthrough, Debuffs);
 
+        // DaoAuraController умеет работать только с частицами, поэтому из префаба
+        // ауры берётся первая ParticleSystem; без неё остаётся плейсхолдер контроллера.
         if (Aura != null && vfx != null && vfx.AuraPrefab != null)
-            Aura.SetAuraPrefab(vfx.AuraPrefab);
+        {
+            ParticleSystem auraParticles = vfx.AuraPrefab.GetComponentInChildren<ParticleSystem>(true);
+            if (auraParticles != null) Aura.SetAuraPrefab(auraParticles);
+        }
 
         if (Meditation != null && vfx != null && vfx.MeditationLoopPrefab != null)
             Meditation.SetVfxPrefab(vfx.MeditationLoopPrefab);

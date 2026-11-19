@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0d62f6a7007bb151ec9175232dd9a2f, type: 3}
+  m_Name: MeditationRiskConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MeditationRiskConfig
+  threatRadius: 8
+  threatScanInterval: 0.25
+  escalationDecaySeconds: 180
+  escalationResetSeconds: 600
+  stages:
+  - displayName: "\u0421\u0440\u044B\u0432 \u0426\u0438"
+    durationSeconds: 30
+    qiRegenMultiplier: 0.75
+    damageDealtMultiplier: 0.9
+    damageTakenMultiplier: 1
+    maxHealthMultiplier: 0.9
+    sessionExperienceLossPercent: 0.15
+    stageExperienceLossPercent: 0
+    meditationBlockSeconds: 5
+    vfx: 1
+  - displayName: "\u041E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435 \u0426\u0438"
+    durationSeconds: 90
+    qiRegenMultiplier: 0.4
+    damageDealtMultiplier: 0.75
+    damageTakenMultiplier: 1
+    maxHealthMultiplier: 0.8
+    sessionExperienceLossPercent: 0.35
+    stageExperienceLossPercent: 0.1
+    meditationBlockSeconds: 20
+    vfx: 2
+  - displayName: "\u041E\u0431\u0440\u044B\u0432 \u043A\u0443\u043B\u044C\u0442\u0438\u0432\u0430\u0446\u0438\u0438"
+    durationSeconds: 240
+    qiRegenMultiplier: 0
+    damageDealtMultiplier: 0.6
+    damageTakenMultiplier: 1
+    maxHealthMultiplier: 0.65
+    sessionExperienceLossPercent: 0.6
+    stageExperienceLossPercent: 0.25
+    meditationBlockSeconds: 60
+    vfx: 3
+  manualPenaltyStageIndex: 0
+  manualPenaltyOnlyUnsafe: 1
