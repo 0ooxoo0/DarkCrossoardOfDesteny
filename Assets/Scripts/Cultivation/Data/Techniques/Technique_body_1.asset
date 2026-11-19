@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b9e785a4a5ea9249af394e950172a94, type: 3}
+  m_Name: Technique_body_1
+  m_EditorClassIdentifier: Assembly-CSharp::TechniqueData
+  techniqueId: body_1
+  displayName: "\u0414\u044B\u0445\u0430\u043D\u0438\u0435 \u043A\u043E\u0441\u0442\u0435\u0439"
+  displayNameChinese: "\u9AA8\u606F"
+  icon: {fileID: 0}
+  description: "\u0414\u044B\u0445\u0430\u043D\u0438\u0435 \u043A\u043E\u0441\u0442\u0435\u0439
+    \u2014 Passive \u0442\u0435\u0445\u043D\u0438\u043A\u0430 \u043F\u0443\u0442\u0438
+    \u041F\u0443\u0442\u044C \u0422\u0435\u043B\u0430."
+  daoType: 2
+  kind: 1
+  rank: 1
+  requiredDaoLevel: 1
+  requiredRealmIndex: 0
+  qiCost: 0
+  cooldown: 0
+  power: 0
+  castAnimationClip: {fileID: 0}
+  vfxPrefab: {fileID: 0}
