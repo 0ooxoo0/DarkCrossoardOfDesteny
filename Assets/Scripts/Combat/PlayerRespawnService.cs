@@ -44,6 +44,23 @@ public class PlayerRespawnService : MonoBehaviour
         respawnPoint = point;
     }
 
+    /// <summary>Подключает ссылки после создания компонента в рантайме.</summary>
+    public void Initialize(PlayerHealth playerHealth, CultivationSystem cultivationSystem,
+        BreakthroughSequence sequence, Transform point, Transform player)
+    {
+        if (health != null)
+            health.OnDied -= HandleDied;
+
+        health = playerHealth;
+        cultivation = cultivationSystem;
+        breakthrough = sequence;
+        respawnPoint = point;
+        playerRoot = player;
+
+        if (isActiveAndEnabled && health != null)
+            health.OnDied += HandleDied;
+    }
+
     private void HandleDied()
     {
         Respawn();

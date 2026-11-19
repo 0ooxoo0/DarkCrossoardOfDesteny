@@ -97,6 +97,25 @@ public class PlayerHealth : MonoBehaviour
             cultivation.OnRealmBonusesChanged -= HandleRealmBonusesChanged;
     }
 
+    /// <summary>
+    /// Подключает систему культивации после создания компонента в рантайме:
+    /// иначе бонус HP реалма не учитывался бы.
+    /// </summary>
+    public void Initialize(CultivationSystem system)
+    {
+        if (cultivation == system) return;
+
+        if (cultivation != null)
+            cultivation.OnRealmBonusesChanged -= HandleRealmBonusesChanged;
+
+        cultivation = system;
+
+        if (cultivation != null)
+            cultivation.OnRealmBonusesChanged += HandleRealmBonusesChanged;
+
+        RecalculateMaxHealth();
+    }
+
     private void Update()
     {
         if (dead) return;

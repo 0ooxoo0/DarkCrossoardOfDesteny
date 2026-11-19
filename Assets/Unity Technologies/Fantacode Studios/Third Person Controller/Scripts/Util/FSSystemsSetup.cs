@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,7 +99,7 @@ namespace FS_Core
                 bool isPlayer = FSSystemsSetupEditorWindow.characterType == CharacterType.Player;
                 if (prefab != null)
                 {
-                    var characterPrefab = isPlayer ? prefab.GetComponentInChildren<PlayerController>().gameObject: prefab;
+                    var characterPrefab = isPlayer ? prefab.GetComponentInChildren<FS_ThirdPerson.PlayerController>().gameObject: prefab;
 
                     var animatorController = characterPrefab.GetComponent<Animator>().runtimeAnimatorController as AnimatorController;
 
@@ -112,7 +111,7 @@ namespace FS_Core
                     //{
                     //    var managedScript = characterObject.GetComponents<SystemBase>().ToList();
                     //    managedScript.Sort((x, y) => x.Priority.CompareTo(y.Priority));
-                    //    characterObject.GetComponent<PlayerController>().managedScripts = managedScript;
+                    //    characterObject.GetComponent<FS_ThirdPerson.PlayerController>().managedScripts = managedScript;
                     //}
                 }
                 return prefab;

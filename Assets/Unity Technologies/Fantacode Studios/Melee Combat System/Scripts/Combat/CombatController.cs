@@ -1,7 +1,6 @@
 using FS_CombatCore;
 using FS_Core;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -38,7 +37,7 @@ namespace FS_CombatSystem
         CombatInputManger combatInputManger;
         LocomotionICharacter locomotionICharacter;
         Damagable damagable;
-        PlayerController playerController;
+        FS_ThirdPerson.PlayerController playerController;
         CombatAIController targetEnemy;
         ItemEquipper itemEquipper;
         ItemAttacher itemAttacher;
@@ -92,7 +91,7 @@ namespace FS_CombatSystem
 
         private void Awake()
         {
-            playerController = GetComponent<PlayerController>();
+            playerController = GetComponent<FS_ThirdPerson.PlayerController>();
             locomotionICharacter = GetComponent<LocomotionICharacter>();
             damagable = GetComponent<Damagable>();
             characterController = GetComponent<CharacterController>();

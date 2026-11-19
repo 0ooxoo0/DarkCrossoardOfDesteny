@@ -1,7 +1,6 @@
 using FS_CombatCore;
 using FS_Core;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System.Collections;
 using UnityEngine;
 namespace FS_CombatSystem
@@ -10,12 +9,12 @@ namespace FS_CombatSystem
     {
         FighterCore fighter;
         MeleeFighter meleeFighter;
-        PlayerController player;
+        FS_ThirdPerson.PlayerController player;
         private void Awake()
         {
             fighter = GetComponent<FighterCore>();
             meleeFighter = GetComponent<MeleeFighter>();
-            player = GetComponent<PlayerController>();
+            player = GetComponent<FS_ThirdPerson.PlayerController>();
         }
 
         private void Start()

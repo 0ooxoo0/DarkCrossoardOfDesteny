@@ -33,6 +33,7 @@ public class CultivationBootstrap : MonoBehaviour
     public AlchemyService AlchemyService { get; private set; }
     public PassiveSkillService Passives { get; private set; }
     public CultivationVfxBridge Vfx { get; private set; }
+    public PlayerRespawnService Respawn { get; private set; }
     public BreakthroughSequence Breakthrough { get; private set; }
     public DaoAuraController Aura { get; private set; }
     public CultivationCastController Caster { get; private set; }
@@ -151,7 +152,8 @@ public class CultivationBootstrap : MonoBehaviour
         Meditation = AddOrGet<MeditationController>(Player);
         Breakthrough = AddOrGet<BreakthroughSequence>(Player);
         Aura = AddOrGet<DaoAuraController>(Player);
-        Health = Player.GetComponent<PlayerHealth>();
+        Health = AddOrGet<PlayerHealth>(Player);
+        Health.Initialize(Cultivation);
 
         baseMaxQi = Config.MaxQi;
         Qi.Configure(Config.MaxQi, Config.QiRegenPerSecond, true);
@@ -183,6 +185,7 @@ public class CultivationBootstrap : MonoBehaviour
         WireInventory();
         Aura.Initialize(Dao, Cultivation);
         WireVfx();
+        WireRespawn();
         SubscribeStateCapture();
 
         Debug.Log("[Cultivation] Подключено: " + Cultivation.GetProgressLabel() +
@@ -202,6 +205,8 @@ public class CultivationBootstrap : MonoBehaviour
         Caster = Player.GetComponent<CultivationCastController>();
         Bridge = Player.GetComponent<CultivationAbilityBridge>();
         Health = Player.GetComponent<PlayerHealth>();
+
+        if (Health != null) Health.Initialize(Cultivation);
 
         if (Qi != null) baseMaxQi = Qi.MaxQi;
         if (Qi != null) baseQiRegen = Qi.RegenPerSecond;
@@ -224,6 +229,7 @@ public class CultivationBootstrap : MonoBehaviour
         SetupTechniqueOutput();
         WireInventory();
         WireVfx();
+        WireRespawn();
         SubscribeStateCapture();
     }
 
@@ -330,6 +336,25 @@ public class CultivationBootstrap : MonoBehaviour
 
         if (Aura != null && vfx != null && vfx.AuraPrefab != null)
             Aura.SetAuraPrefab(vfx.AuraPrefab);
+
+        if (Meditation != null && vfx != null && vfx.MeditationLoopPrefab != null)
+            Meditation.SetVfxPrefab(vfx.MeditationLoopPrefab);
+    }
+
+    /// <summary>
+    /// Подключает смерть и респавн: здоровье, потеря опыта и возврат к алтарю.
+    /// Точка возрождения — первый алтарь в сцене, иначе сам игрок.
+    /// </summary>
+    private void WireRespawn()
+    {
+        if (Health == null) return;
+
+        Respawn = AddOrGet<PlayerRespawnService>(Player);
+
+        Altar altar = FindFirstObjectByType<Altar>();
+        Transform point = altar != null ? altar.transform : Player.transform;
+
+        Respawn.Initialize(Health, Cultivation, Breakthrough, point, Player.transform);
     }
 
     private void SubscribeDebuffEffects()

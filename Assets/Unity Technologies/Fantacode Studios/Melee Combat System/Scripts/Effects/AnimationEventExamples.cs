@@ -1,6 +1,5 @@
 using FS_CombatCore;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using FS_Util;
 using UnityEngine;
 
@@ -13,13 +12,13 @@ namespace FS_CombatSystem
 
         public void ChangeCamera(GameObject obj, CameraSettings cameraSettings)
         {
-            var playerController = obj.GetComponent<PlayerController>();
+            var playerController = obj.GetComponent<FS_ThirdPerson.PlayerController>();
             var cameraController = playerController?.cameraGameObject.GetComponent<CameraController>();
             cameraController.SetCustomCameraState(cameraSettings);
         }
         public void ResetCamera(GameObject obj)
         {
-            var playerController = obj.GetComponent<PlayerController>();
+            var playerController = obj.GetComponent<FS_ThirdPerson.PlayerController>();
             var cameraController = playerController?.cameraGameObject.GetComponent<CameraController>();
             cameraController.SetCustomCameraState(null);
         }

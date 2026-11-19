@@ -1,5 +1,4 @@
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,7 +35,7 @@ namespace FS_Core
         private CursorState prevCursorState;
 
         private LocomotionInputManager inputManager;
-        private PlayerController playerController;
+        private FS_ThirdPerson.PlayerController playerController;
 
         private ItemEquipper itemEquipper;
         private ItemAttacher itemAttacher;
@@ -87,7 +86,7 @@ namespace FS_Core
         private void InitializeComponents()
         {
             inputManager = GetComponent<LocomotionInputManager>();
-            playerController = GetComponent<PlayerController>();
+            playerController = GetComponent<FS_ThirdPerson.PlayerController>();
             itemEquipper = GetComponent<ItemEquipper>();
             itemAttacher = GetComponent<ItemAttacher>();
             player = GetComponent<LocomotionICharacter>();

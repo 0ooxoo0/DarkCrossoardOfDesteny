@@ -6,7 +6,7 @@ using UnityEngine;
 namespace FS_ThirdPerson
 {
     [CustomEditor(typeof(ArmorItem))]
-    public class ArmorItemEditor : ItemDataEditor
+    public class ArmorItemEditor : FS_Core.ItemDataEditor
     {
         public override void OnEnable()
         {

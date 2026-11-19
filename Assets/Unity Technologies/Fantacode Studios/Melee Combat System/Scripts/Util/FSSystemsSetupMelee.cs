@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using FS_CombatCore;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -63,7 +62,7 @@ namespace FS_Core
         {
             FSSystemsSetupEditorWindow.CopyComponents(playerParentObjectPrefab, createdPlayerParentObject);
 
-            SetMeleeTargetLayer(createdPlayerParentObject.GetComponentInChildren<PlayerController>().gameObject, "Enemy");
+            SetMeleeTargetLayer(createdPlayerParentObject.GetComponentInChildren<FS_ThirdPerson.PlayerController>().gameObject, "Enemy");
         }
 
         static void SetColliders(Animator modelAnimator)

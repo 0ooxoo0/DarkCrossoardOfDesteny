@@ -1,6 +1,5 @@
 using FS_CombatCore;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,9 +23,9 @@ namespace FS_CombatCore
         {
             i = this;
 
-            var playerController = GetComponentInChildren<PlayerController>();
+            var playerController = GetComponentInChildren<FS_ThirdPerson.PlayerController>();
             if (playerController == null)
-                playerController = GetComponentInParent<PlayerController>();
+                playerController = GetComponentInParent<FS_ThirdPerson.PlayerController>();
 
             player = playerController.GetComponent<FighterCore>();
             CombatAILookup.Init();

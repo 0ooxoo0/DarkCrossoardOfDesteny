@@ -3,6 +3,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -18,6 +19,20 @@ public static class CultivationWorldSetup
     private const string ResourcesFolder = "Assets/Resources/Cultivation";
     private const string AlchemyConfigPath = ResourcesFolder + "/AlchemyConfig.asset";
     private const string AlchemyRecipesFolder = ResourcesFolder + "/Alchemy";
+    private const string RiskConfigPath = ResourcesFolder + "/MeditationRiskConfig.asset";
+    private const string VfxConfigPath = ResourcesFolder + "/CultivationVfxConfig.asset";
+    private const string GameScenePath = "Assets/Scenes/Game.unity";
+    private const string AnimalPrefabFolder = "Assets/Prefabs/Animals";
+    private const string CraftingTablePath =
+        "Assets/Unity Technologies/Daniel Mistage/Stylized Fantasy Armory/Prefabs/" +
+        "Extra Content/Fantasy Workshops and Crafting Vol2/SFWC2_Crafting_Table.prefab";
+    private const string MagicFolder = "Assets/Magic/";
+
+    private const int AnimalMaxHealth = 30;
+    private const int AnimalCount = 3;
+    private const float StationOffset = 4f;
+    private const float GroundProbeHeight = 30f;
+    private const float GroundProbeDepth = 80f;
     private const string IconsFolder =
         "Assets/Ideals/Menu/MenuSaves/Brackeys/2D Mega Pack/Items & Icons/";
 
@@ -53,13 +68,32 @@ public static class CultivationWorldSetup
         EnsureFolder(LootFolder);
         EnsureItems();
         EnsureLootTables();
-        BindLootTables();
         EnsureAlchemy();
+
+        if (!OpenGameScene()) return;
+
+        BindLootTables();
         EnsurePauseMenuButtons();
+        EnsureWorldObjects();
+
+        Scene scene = SceneManager.GetActiveScene();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[CultivationSetup] Контент мира обновлён: ресурсы и пилюли.");
+        Debug.Log("[CultivationSetup] Контент мира и сцена Game обновлены.");
+    }
+
+    /// <summary>Открывает Game.unity, если она ещё не открыта.</summary>
+    private static bool OpenGameScene()
+    {
+        if (SceneManager.GetActiveScene().path == GameScenePath) return true;
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
+
+        EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
+        return true;
     }
 
     private static void EnsureItems()
@@ -524,6 +558,373 @@ public static class CultivationWorldSetup
             FileName = fileName;
             Count = count;
         }
+    }
+
+    // ------------------------------------------------------------- Мир и сцена
+
+    /// <summary>Наполняет сцену: алтарь, враги, животные, печь и конфиги VFX/риска.</summary>
+    private static void EnsureWorldObjects()
+    {
+        EnsureAltar();
+        EnsureEnemyAi();
+        EnsureAnimals();
+        EnsureCraftingStation();
+        EnsureRiskAndVfxConfigs();
+    }
+
+    private static void EnsureAltar()
+    {
+        if (Object.FindFirstObjectByType<Altar>(FindObjectsInactive.Include) != null) return;
+
+        var player = Object.FindFirstObjectByType<PlayerController>();
+        Vector3 position = player != null
+            ? GroundPoint(player.transform.position + player.transform.right * 3f)
+            : new Vector3(3f, 0f, 3f);
+
+        var altarGo = new GameObject("DaoAltar", typeof(BoxCollider), typeof(Altar));
+        altarGo.transform.position = position;
+
+        var trigger = altarGo.GetComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.center = new Vector3(0f, 1f, 0f);
+        trigger.size = new Vector3(1.8f, 2f, 1.8f);
+
+        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        visual.name = "AltarVisual";
+        Object.DestroyImmediate(visual.GetComponent<Collider>());
+        visual.transform.SetParent(altarGo.transform, false);
+        visual.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+        visual.transform.localScale = new Vector3(0.7f, 0.6f, 0.7f);
+
+        Debug.Log("[CultivationSetup] Создан DaoAltar в " + position + ".");
+    }
+
+    private static void EnsureEnemyAi()
+    {
+        HarvestableObject[] objects = Object.FindObjectsByType<HarvestableObject>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        int added = 0;
+        for (int i = 0; i < objects.Length; i++)
+        {
+            HarvestableObject candidate = objects[i];
+            if (candidate == null || !candidate.gameObject.scene.IsValid()) continue;
+            if (!candidate.gameObject.name.StartsWith("Enemy", System.StringComparison.Ordinal)) continue;
+            if (candidate.GetComponent<EnemyAI>() != null) continue;
+
+            candidate.gameObject.AddComponent<EnemyAI>();
+            EditorUtility.SetDirty(candidate.gameObject);
+            added++;
+        }
+
+        if (added == 0)
+            Debug.Log("[CultivationSetup] EnemyAI уже стоит на врагах или врагов нет в сцене.");
+    }
+
+    private static void EnsureAnimals()
+    {
+        LootTable loot = AssetDatabase.LoadAssetAtPath<LootTable>(LootFolder + "/Loot_Animal.asset");
+        if (loot == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Нет Loot_Animal — животные останутся без добычи.");
+        }
+
+        string[] prefabNames = { "Horse Variant", "Pig Variant", "Sheep Variant" };
+        string[] instanceNames = { "Animal_Horse", "Animal_Pig", "Animal_Sheep" };
+        Vector3[] offsets =
+        {
+            new Vector3(8f, 0f, 3f),
+            new Vector3(-7f, 0f, 5f),
+            new Vector3(3f, 0f, -9f)
+        };
+
+        var player = Object.FindFirstObjectByType<PlayerController>();
+        Vector3 center = player != null ? player.transform.position : Vector3.zero;
+
+        for (int i = 0; i < prefabNames.Length && i < AnimalCount; i++)
+        {
+            string prefabPath = AnimalPrefabFolder + "/" + prefabNames[i] + ".prefab";
+            PrepareAnimalPrefab(prefabPath, loot);
+
+            if (FindSceneObject(instanceNames[i]) != null) continue;
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[CultivationSetup] Не найден префаб " + prefabPath);
+                continue;
+            }
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            instance.name = instanceNames[i];
+            instance.transform.position = GroundPoint(center + offsets[i]);
+            EditorUtility.SetDirty(instance);
+        }
+    }
+
+    /// <summary>Готовит префаб животного: коллайдер, здоровье, добыча и побег.</summary>
+    private static void PrepareAnimalPrefab(string path, LootTable loot)
+    {
+        GameObject contents = PrefabUtility.LoadPrefabContents(path);
+        if (contents == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Не удалось открыть префаб " + path);
+            return;
+        }
+
+        try
+        {
+            if (contents.GetComponentInChildren<Collider>(true) == null &&
+                TryComputeLocalBounds(contents, out Bounds bounds))
+            {
+                var box = contents.AddComponent<BoxCollider>();
+                box.center = bounds.center;
+                box.size = bounds.size;
+            }
+
+            var harvestable = contents.GetComponent<HarvestableObject>();
+            if (harvestable == null) harvestable = contents.AddComponent<HarvestableObject>();
+
+            var serialized = new SerializedObject(harvestable);
+            SerializedProperty health = serialized.FindProperty("maxHealth");
+            if (health != null) health.floatValue = AnimalMaxHealth;
+
+            SerializedProperty table = serialized.FindProperty("lootTable");
+            if (table != null && loot != null) table.objectReferenceValue = loot;
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            if (contents.GetComponent<AnimalAI>() == null)
+                contents.AddComponent<AnimalAI>();
+
+            PrefabUtility.SaveAsPrefabAsset(contents, path);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+    }
+
+    private static bool TryComputeLocalBounds(GameObject root, out Bounds localBounds)
+    {
+        localBounds = new Bounds(Vector3.zero, Vector3.zero);
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds worldBounds = new Bounds(root.transform.position, Vector3.zero);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || !renderer.enabled) continue;
+
+            if (!hasBounds)
+            {
+                worldBounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                worldBounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (!hasBounds) return false;
+
+        Vector3 scale = root.transform.lossyScale;
+        scale = new Vector3(Mathf.Max(0.0001f, Mathf.Abs(scale.x)),
+            Mathf.Max(0.0001f, Mathf.Abs(scale.y)),
+            Mathf.Max(0.0001f, Mathf.Abs(scale.z)));
+
+        localBounds = new Bounds(root.transform.InverseTransformPoint(worldBounds.center),
+            new Vector3(worldBounds.size.x / scale.x, worldBounds.size.y / scale.y,
+                worldBounds.size.z / scale.z));
+        return true;
+    }
+
+    private static void EnsureCraftingStation()
+    {
+        GameObject existing = FindSceneObject("SFWC2_Crafting_Table");
+
+        if (existing == null)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CraftingTablePath);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[CultivationSetup] Не найден префаб печи: " + CraftingTablePath);
+                return;
+            }
+
+            existing = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            existing.name = "SFWC2_Crafting_Table";
+            existing.transform.position = FindStationPosition();
+            EditorUtility.SetDirty(existing);
+        }
+
+        var station = existing.GetComponent<AlchemyStation>();
+        if (station == null) station = existing.AddComponent<AlchemyStation>();
+
+        AlchemyConfig config = AssetDatabase.LoadAssetAtPath<AlchemyConfig>(AlchemyConfigPath);
+        CultivationConfig cultivationConfig = AssetDatabase.LoadAssetAtPath<CultivationConfig>(
+            ResourcesFolder + "/CultivationConfig.asset");
+
+        var serialized = new SerializedObject(station);
+        SerializedProperty configProperty = serialized.FindProperty("config");
+        if (configProperty != null) configProperty.objectReferenceValue = config;
+
+        SerializedProperty recipesProperty = serialized.FindProperty("recipes");
+        if (recipesProperty != null && cultivationConfig != null)
+        {
+            recipesProperty.ClearArray();
+            IReadOnlyList<AlchemyRecipe> recipes = cultivationConfig.AlchemyRecipes;
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                recipesProperty.InsertArrayElementAtIndex(i);
+                recipesProperty.GetArrayElementAtIndex(i).objectReferenceValue = recipes[i];
+            }
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(station);
+    }
+
+    private static Vector3 FindStationPosition()
+    {
+        GameObject smithy = FindSceneObject("Smithy");
+
+        if (smithy != null)
+        {
+            Vector3 position = smithy.transform.position;
+            Vector3 right = smithy.transform.right;
+            Vector3 forward = smithy.transform.forward;
+
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 direction = i == 0 ? right : i == 1 ? forward : i == 2 ? -right : -forward;
+                Vector3 candidate = GroundPoint(position + direction * StationOffset);
+                if (Mathf.Abs(candidate.y - position.y) < StationOffset * 2f) return candidate;
+            }
+
+            return position;
+        }
+
+        var player = Object.FindFirstObjectByType<PlayerController>();
+        if (player != null)
+            return GroundPoint(player.transform.position + player.transform.right * StationOffset);
+
+        return Vector3.zero;
+    }
+
+    /// <summary>Создаёт конфиги риска медитации и VFX и прописывает их в CultivationConfig.</summary>
+    private static void EnsureRiskAndVfxConfigs()
+    {
+        CultivationConfig cultivationConfig = AssetDatabase.LoadAssetAtPath<CultivationConfig>(
+            ResourcesFolder + "/CultivationConfig.asset");
+
+        if (cultivationConfig == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Нет CultivationConfig — конфиги риска и VFX не прописаны.");
+            return;
+        }
+
+        MeditationRiskConfig risk = LoadOrCreateAsset<MeditationRiskConfig>(RiskConfigPath);
+        CultivationVfxConfig vfx = LoadOrCreateAsset<CultivationVfxConfig>(VfxConfigPath);
+
+        EditorUtility.SetDirty(risk);
+        EditorUtility.SetDirty(vfx);
+
+        AssignVfx(vfx);
+
+        var serialized = new SerializedObject(cultivationConfig);
+        serialized.FindProperty("meditationRisk").objectReferenceValue = risk;
+        serialized.FindProperty("vfxConfig").objectReferenceValue = vfx;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(cultivationConfig);
+    }
+
+    private static void AssignVfx(CultivationVfxConfig vfx)
+    {
+        var serialized = new SerializedObject(vfx);
+
+        AssignParticle(serialized, "auraPrefab", MagicFolder + "PersonAura/Holy Aura.prefab");
+        AssignParticle(serialized, "meditationLoopPrefab", MagicFolder + "otherAura/Green Area.prefab");
+        AssignParticle(serialized, "breakthroughStartPrefab",
+            MagicFolder + "otherAura/Blue Area + Distort Sphere.prefab");
+        AssignParticle(serialized, "breakthroughSuccessPrefab", MagicFolder + "2Dammage/Explosion Galaxy.prefab");
+        AssignParticle(serialized, "breakthroughFailPrefab", MagicFolder + "Thick Smoke.prefab");
+        AssignParticle(serialized, "qiSurgePrefab", MagicFolder + "1Dammage/Blue Tornado.prefab");
+        AssignParticle(serialized, "qiDeviationPrefab", MagicFolder + "PersonAura/Dark Magic Orb.prefab");
+        AssignParticle(serialized, "severingPrefab", MagicFolder + "otherAura/Red Area.prefab");
+        AssignParticle(serialized, "deathPrefab", MagicFolder + "Thick Smoke.prefab");
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void AssignParticle(SerializedObject serialized, string propertyName, string assetPath)
+    {
+        SerializedProperty property = serialized.FindProperty(propertyName);
+        if (property == null) return;
+
+        property.objectReferenceValue = LoadParticlePrefab(assetPath);
+    }
+
+    private static ParticleSystem LoadParticlePrefab(string assetPath)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+        if (prefab == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Не найден VFX: " + assetPath);
+            return null;
+        }
+
+        ParticleSystem root = prefab.GetComponent<ParticleSystem>();
+        if (root != null) return root;
+
+        // Корень многих префабов Magic — контейнер: берём первую частицу изнутри.
+        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+        for (int i = 0; i < assets.Length; i++)
+        {
+            if (assets[i] is ParticleSystem particles) return particles;
+        }
+
+        Debug.LogWarning("[CultivationSetup] В префабе нет ParticleSystem: " + assetPath);
+        return null;
+    }
+
+    private static T LoadOrCreateAsset<T>(string path) where T : ScriptableObject
+    {
+        T asset = AssetDatabase.LoadAssetAtPath<T>(path);
+        if (asset != null) return asset;
+
+        asset = ScriptableObject.CreateInstance<T>();
+        AssetDatabase.CreateAsset(asset, path);
+        return asset;
+    }
+
+    private static Vector3 GroundPoint(Vector3 origin)
+    {
+        Vector3 from = new Vector3(origin.x, origin.y + GroundProbeHeight, origin.z);
+        if (Physics.Raycast(from, Vector3.down, out RaycastHit hit, GroundProbeDepth, ~0,
+                QueryTriggerInteraction.Ignore))
+        {
+            return hit.point;
+        }
+
+        return origin;
+    }
+
+    private static GameObject FindSceneObject(string name)
+    {
+        GameObject[] objects = Object.FindObjectsByType<GameObject>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < objects.Length; i++)
+        {
+            GameObject candidate = objects[i];
+            if (candidate != null && candidate.name == name && candidate.scene.IsValid()) return candidate;
+        }
+
+        return null;
     }
 
     private static void CreateResource(string fileName, string itemId, string displayName, string description,

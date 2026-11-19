@@ -2,7 +2,6 @@
 using FS_CombatCore;
 using FS_Core;
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using UnityEditor;
 using UnityEngine;
 namespace FS_CombatSystem
@@ -64,7 +63,7 @@ namespace FS_CombatSystem
 
                 var model = Instantiate(this.model, Vector3.zero, Quaternion.identity);
 
-                var playerController = combatController.GetComponentInChildren<PlayerController>();
+                var playerController = combatController.GetComponentInChildren<FS_ThirdPerson.PlayerController>();
                 var playerGameObject = playerController.gameObject;
                 var animator = playerGameObject.GetComponent<Animator>();
                 var modelAnimator = model.GetComponent<Animator>();

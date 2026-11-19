@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using FS_ThirdPerson;
-using PlayerController = FS_ThirdPerson.PlayerController;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -636,7 +635,7 @@ namespace FS_Core
                         }
                     }
                 }
-                var playerController = player.GetComponent<PlayerController>();
+                var playerController = player.GetComponent<FS_ThirdPerson.PlayerController>();
                 playerController.managedScripts = player.GetComponents<SystemBase>().ToList().OrderByDescending(x => x.Priority).ToList();
             }
             else if (characterType == CharacterType.AI)
@@ -728,7 +727,7 @@ namespace FS_Core
             GameObject instance = Instantiate(prefab);
             instance.name = "FS Player";
 
-            var player = instance.GetComponentInChildren<PlayerController>().gameObject;
+            var player = instance.GetComponentInChildren<FS_ThirdPerson.PlayerController>().gameObject;
             var camera = instance.GetComponentInChildren<CameraController>();
 
             camera.followTarget = player.transform;

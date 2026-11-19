@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace FS_ThirdPerson
 {
-    public class EquippableItemEditor : ItemDataEditor
+    public class EquippableItemEditor : FS_Core.ItemDataEditor
     {
         public enum Animations { Equip, UnEquip }
         private EquippableItem equippableItem;

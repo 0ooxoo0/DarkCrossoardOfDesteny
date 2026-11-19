@@ -129,6 +129,12 @@ public class MeditationController : MonoBehaviour
         comprehensionPerMinute = Mathf.Max(0f, comprehension);
     }
 
+    /// <summary>Префаб петли медитации из конфига VFX; пусто — процедурные частицы.</summary>
+    public void SetVfxPrefab(ParticleSystem prefab)
+    {
+        meditationVfxPrefab = prefab;
+    }
+
     /// <summary>Подключает риск медитации, дебафы и здоровье из bootstrap.</summary>
     public void InitializeRisk(MeditationRiskConfig risk, CultivationDebuffController debuffController,
         MeditationConsequenceService consequenceService, PlayerHealth health)
