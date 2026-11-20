@@ -23,6 +23,9 @@ public static class CultivationWorldSetup
     private const string VfxConfigPath = ResourcesFolder + "/CultivationVfxConfig.asset";
     private const string GameScenePath = "Assets/Scenes/Game.unity";
     private const string AnimalPrefabFolder = "Assets/Prefabs/Animals";
+    private const string ProximityTriggerName = "CultivationProximity";
+    private const float ProximityRadius = 0.6f;
+    private const float ProximityHeight = 1f;
     private const string CraftingTablePath =
         "Assets/Unity Technologies/Daniel Mistage/Stylized Fantasy Armory/Prefabs/" +
         "Extra Content/Fantasy Workshops and Crafting Vol2/SFWC2_Crafting_Table.prefab";
@@ -595,7 +598,37 @@ public static class CultivationWorldSetup
         EnsureEnemyAi();
         EnsureAnimals();
         EnsureCraftingStation();
+        EnsurePlayerProximityTrigger();
         EnsureRiskAndVfxConfigs();
+    }
+
+    /// <summary>
+    /// У игрока все коллайдеры выключены до атаки, поэтому триггеры алтаря и зоны
+    /// медитации не срабатывают. Отдельный дочерний триггер решает это, ничего
+    /// не включая в боевых коллайдерах.
+    /// </summary>
+    private static void EnsurePlayerProximityTrigger()
+    {
+        PlayerController player = Object.FindFirstObjectByType<PlayerController>();
+        if (player == null)
+        {
+            Debug.LogWarning("[CultivationSetup] Нет PlayerController — триггер близости не создан.");
+            return;
+        }
+
+        Transform existing = player.transform.Find(ProximityTriggerName);
+        if (existing != null) return;
+
+        var trigger = new GameObject(ProximityTriggerName);
+        trigger.transform.SetParent(player.transform, false);
+        trigger.transform.localPosition = new Vector3(0f, ProximityHeight, 0f);
+
+        var sphere = trigger.AddComponent<SphereCollider>();
+        sphere.radius = ProximityRadius;
+        sphere.isTrigger = true;
+        sphere.center = Vector3.zero;
+
+        EditorUtility.SetDirty(trigger);
     }
 
     private static void EnsureAltar()
