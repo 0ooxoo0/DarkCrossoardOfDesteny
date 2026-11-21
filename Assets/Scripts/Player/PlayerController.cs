@@ -3,7 +3,7 @@ using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(NavMeshAgent), typeof(Animator))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
@@ -12,12 +12,17 @@ public class PlayerController : MonoBehaviour
     [Header("Animation")]
     [SerializeField] private string speedParam = "Speed";
     [SerializeField] private string attackTrigger = "Attack";
+    [SerializeField] private string comboTrigger = "Combo";
+    [SerializeField] private string attackIndexParam = "AttackIndex";
+    [SerializeField, Min(0)] private int maxComboIndex = 2;
 
     [Header("Attack")]
-    [SerializeField] private float hitboxStart = 0.15f;
-    [SerializeField] private float hitboxEnd = 0.55f;
     [SerializeField] private Weapon weapon;
     [SerializeField] private WeaponManager weaponManager;
+
+    [Header("Combat References")]
+    [SerializeField] private PlayerBlockController blockController;
+    [SerializeField] private PlayerHealth health;
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -28,15 +33,13 @@ public class PlayerController : MonoBehaviour
     private float attackAimTimer;
     private Vector3 attackAimPoint;
     private bool isAttacking;
-    private bool attackStateEntered;
-    private bool hitboxActive;
+    private bool isDead;
+    private bool comboQueued;
+    private bool comboWindowOpen;
+    private int comboIndex;
     private float attackElapsed;
 
-    void Start()
-    {
-        AimController aim = GetComponentInChildren<AimController>();
-        if (aim != null) SetAimTarget(aim.transform);
-    }
+    private static readonly int AttackStateTag = Animator.StringToHash("Attack");
 
     private void Awake()
     {
@@ -45,11 +48,12 @@ public class PlayerController : MonoBehaviour
         mainCamera = Camera.main;
         controls = new PlayerControls();
 
+        if (blockController == null) blockController = GetComponent<PlayerBlockController>();
+        if (health == null) health = GetComponent<PlayerHealth>();
+
         agent.updateRotation = false;
         agent.speed = moveSpeed;
-        // ��������� �������������� ����������, ����� ����� �� �������� ��� ��� ������ ����
         agent.autoBraking = false;
-        // ����������� ��������� ��� ����� ������� ������/��������� (����� ���������� ��� ��������)
         agent.acceleration = 20f;
 
         if (weapon == null) weapon = GetComponentInChildren<Weapon>(true);
@@ -62,6 +66,7 @@ public class PlayerController : MonoBehaviour
         controls.Player.Move.performed += OnMove;
         controls.Player.Move.canceled += OnMove;
         controls.Player.Interact.performed += OnInteract;
+        controls.Player.Attack.performed += OnAttackPressed;
     }
 
     private void OnDisable()
@@ -69,7 +74,29 @@ public class PlayerController : MonoBehaviour
         controls.Player.Move.performed -= OnMove;
         controls.Player.Move.canceled -= OnMove;
         controls.Player.Interact.performed -= OnInteract;
+        controls.Player.Attack.performed -= OnAttackPressed;
         controls.Disable();
+    }
+
+    private void Start()
+    {
+        AimController aim = GetComponentInChildren<AimController>();
+        if (aim != null) SetAimTarget(aim.transform);
+
+        if (health != null)
+        {
+            health.OnDied += HandleDied;
+            health.OnRespawned += HandleRespawned;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (health != null)
+        {
+            health.OnDied -= HandleDied;
+            health.OnRespawned -= HandleRespawned;
+        }
     }
 
     public void SetAimTarget(Transform target)
@@ -84,7 +111,12 @@ public class PlayerController : MonoBehaviour
 
     private void OnInteract(InputAction.CallbackContext context)
     {
-        // ����� � �������������� �������������� ����� ������� ������
+        // Взаимодействие обрабатывается отдельными компонентами.
+    }
+
+    private void OnAttackPressed(InputAction.CallbackContext context)
+    {
+        TryAttack();
     }
 
     private void Update()
@@ -97,7 +129,7 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovement()
     {
-        if (isAttacking)
+        if (isAttacking || isDead || (blockController != null && blockController.IsBlocking))
         {
             agent.velocity = Vector3.zero;
             return;
@@ -105,28 +137,31 @@ public class PlayerController : MonoBehaviour
 
         if (moveInput == Vector2.zero)
         {
-            // ���� ��� �����, ������������� ������ ���������
             agent.velocity = Vector3.zero;
             return;
         }
 
-        // ����������� ������������ ������
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+            if (mainCamera == null) return;
+        }
+
         Vector3 forward = mainCamera.transform.forward;
         Vector3 right = mainCamera.transform.right;
-        forward.y = 0;
-        right.y = 0;
+        forward.y = 0f;
+        right.y = 0f;
         forward.Normalize();
         right.Normalize();
 
         Vector3 moveDirection = (forward * moveInput.y + right * moveInput.x).normalized;
-        Vector3 desiredVelocity = moveDirection * moveSpeed;
-
-        // ��������� �������� �������� ������. ������������� ��� ��� ��������� �������� ����� �����������.
-        agent.velocity = desiredVelocity;
+        agent.velocity = moveDirection * moveSpeed;
     }
 
     private void HandleRotation()
     {
+        if (isDead) return;
+
         if (attackAimTimer > 0f)
         {
             attackAimTimer -= Time.deltaTime;
@@ -143,8 +178,8 @@ public class PlayerController : MonoBehaviour
         if (aimTarget != null)
         {
             Vector3 direction = aimTarget.position - transform.position;
-            direction.y = 0;
-            if (direction != Vector3.zero)
+            direction.y = 0f;
+            if (direction.sqrMagnitude > 0.0001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(direction);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
@@ -152,7 +187,6 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // ������� �� ����������� �������� (������ ����� ���� ����)
         if (moveInput != Vector2.zero && agent.velocity.magnitude > 0.1f)
         {
             Vector3 moveDir = agent.velocity.normalized;
@@ -163,7 +197,8 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateAnimation()
     {
-        float speed = agent.velocity.magnitude / moveSpeed;
+        if (animator == null) return;
+        float speed = isDead ? 0f : agent.velocity.magnitude / Mathf.Max(0.1f, moveSpeed);
         animator.SetFloat(speedParam, Mathf.Clamp01(speed));
     }
 
@@ -177,85 +212,157 @@ public class PlayerController : MonoBehaviour
     {
         if (!isAttacking)
         {
-            SetWeaponHitbox(false);
+            if (animator != null)
+            {
+                AnimatorStateInfo idleState = animator.GetCurrentAnimatorStateInfo(0);
+                if (idleState.tagHash != AttackStateTag) comboIndex = 0;
+            }
             return;
         }
 
         attackElapsed += Time.deltaTime;
 
         AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
-        if (!state.IsName("Attack"))
+        if (state.tagHash != AttackStateTag)
         {
-            // The attack state may not be active yet during the transition.
-            if (attackStateEntered || attackElapsed > 0.3f) EndAttack();
+            // Переход из атаки в Locomotion/Block/Hit.
+            if (attackElapsed > 0.2f) EndAttack();
             return;
         }
 
-        attackStateEntered = true;
-        SetWeaponHitbox(state.normalizedTime >= hitboxStart && state.normalizedTime <= hitboxEnd);
-
-        if (state.normalizedTime >= 0.95f)
+        if (comboQueued && comboWindowOpen && comboIndex < maxComboIndex)
         {
-            EndAttack();
+            comboIndex++;
+            comboQueued = false;
+            comboWindowOpen = false;
+
+            animator.SetInteger(attackIndexParam, comboIndex);
+            animator.ResetTrigger(comboTrigger);
+            animator.SetTrigger(comboTrigger);
         }
+
+        if (state.normalizedTime >= 0.99f)
+            EndAttack();
     }
 
     private void EndAttack()
     {
         isAttacking = false;
-        attackStateEntered = false;
+        comboQueued = false;
+        comboWindowOpen = false;
         attackElapsed = 0f;
-        SetWeaponHitbox(false);
+
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+        else if (weapon != null) weapon.SetHitboxActive(false);
+
         ResumeMovement();
-    }
-
-    private void SetWeaponHitbox(bool active)
-    {
-        // При useAnimationEvents = true этот путь полностью отключён:
-        // хитбоксом управляет AnimationEventRelay.
-        if (weaponManager != null && weaponManager.UseAnimationEvents) return;
-
-        if (hitboxActive == active) return;
-        hitboxActive = active;
-
-        if (weaponManager != null) weaponManager.SetHitboxActive(active);
-        else if (weapon != null) weapon.SetHitboxActive(active);
     }
 
     public void ResetHitboxState()
     {
-        hitboxActive = false;
-        if (weaponManager == null && weapon != null) weapon.SetHitboxActive(false);
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+        else if (weapon != null) weapon.SetHitboxActive(false);
     }
 
     public bool IsAttacking => isAttacking;
 
+    /// <summary>Запускает новую атаку или ставит следующую атаку комбо в буфер.</summary>
     public bool PlayAttackAnimation()
     {
-        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
-        if (isAttacking || (state.IsName("Attack") && state.normalizedTime < 0.95f))
+        return TryAttack();
+    }
+
+    public bool TryAttack()
+    {
+        if (isDead) return false;
+        if (blockController != null && blockController.IsBlocking) return false;
+        if (animator == null) return false;
+
+        if (!isAttacking)
         {
-            return false;
+            StartAttack(0);
+            return true;
         }
 
-        isAttacking = true;
-        attackStateEntered = false;
-        attackElapsed = 0f;
-        SetWeaponHitbox(false);
-        StopMovement();
+        // Буфер: сработает, когда StateMachineBehaviour откроет окно комбо.
+        comboQueued = true;
+        return true;
+    }
 
+    private void StartAttack(int index)
+    {
+        isAttacking = true;
+        comboIndex = Mathf.Clamp(index, 0, maxComboIndex);
+        comboQueued = false;
+        comboWindowOpen = false;
+        attackElapsed = 0f;
+
+        animator.SetInteger(attackIndexParam, comboIndex);
         animator.ResetTrigger(attackTrigger);
         animator.SetTrigger(attackTrigger);
-        return true;
+
+        StopMovement();
     }
 
     public void StopMovement()
     {
-        agent.isStopped = true;
+        if (agent != null) agent.isStopped = true;
     }
 
     public void ResumeMovement()
     {
+        if (agent == null || isDead) return;
+        if (blockController != null && blockController.IsBlocking) return;
         agent.isStopped = false;
+    }
+
+    public void OnAttackWindowOpen()
+    {
+        if (weaponManager != null) weaponManager.SetHitboxActive(true, true);
+        else if (weapon != null) weapon.SetHitboxActive(true);
+    }
+
+    public void OnAttackWindowClose()
+    {
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+        else if (weapon != null) weapon.SetHitboxActive(false);
+    }
+
+    public void OnComboWindowOpen()
+    {
+        comboWindowOpen = true;
+    }
+
+    public void OnComboWindowClose()
+    {
+        comboWindowOpen = false;
+    }
+
+    private void HandleDied()
+    {
+        isDead = true;
+        isAttacking = false;
+        comboQueued = false;
+        comboWindowOpen = false;
+
+        if (animator != null) animator.SetBool("IsDead", true);
+        StopMovement();
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+    }
+
+    private void HandleRespawned()
+    {
+        isDead = false;
+        isAttacking = false;
+        comboQueued = false;
+        comboWindowOpen = false;
+
+        if (animator != null)
+        {
+            animator.SetBool("IsDead", false);
+            animator.ResetTrigger("Hit");
+        }
+
+        ResumeMovement();
     }
 }

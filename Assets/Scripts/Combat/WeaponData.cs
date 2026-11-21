@@ -26,6 +26,8 @@ public class WeaponData : ScriptableObject
     public List<AbilityData> abilities = new List<AbilityData>();
 
     [Header("Damage")]
+    [Tooltip("Урон за одно попадание этим оружием. Используется CombatHitbox.")]
+    [Min(0f)] public float damage = 15f;
     [Tooltip("Сейчас используется только первый тег (по умолчанию DammageObject). Список оставлен для расширения.")]
     public List<string> damageTags = new List<string> { "DammageObject" };
 

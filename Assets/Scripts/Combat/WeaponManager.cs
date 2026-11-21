@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Экипировка оружия: AnimatorOverrideController, модель в правой руке,
-/// активный хитбокс и передача способностей в AbilitySystem.
+/// Экипировка оружия: модель в правой руке, активный хитбокс и передача способностей.
+/// Один Animator Controller используется и для меча, и для кулаков;
+/// переключение делает параметр WeaponMode (0 = кулаки, 1 = меч).
 /// </summary>
 public class WeaponManager : MonoBehaviour
 {
@@ -18,8 +19,11 @@ public class WeaponManager : MonoBehaviour
     [SerializeField] private Weapon fistWeapon;
 
     [Header("Animation")]
+    [Tooltip("Базовый контроллер. Если пусто — берётся текущий контроллер Animator.")]
     [SerializeField] private RuntimeAnimatorController baseController;
+    [Tooltip("Клип, который временно заменяется клипом каста из AbilitySystem.")]
     [SerializeField] private AnimationClip baseAttackClip;
+    [SerializeField] private string weaponModeParam = "WeaponMode";
 
     [Header("Sword")]
     [SerializeField] private Transform rightHand;
@@ -46,8 +50,8 @@ public class WeaponManager : MonoBehaviour
     private Garderob[] garderobs;
     private WeaponData currentWeapon;
     private GameObject weaponModelInstance;
-    private AttackHitbox swordHitbox;
-    private RuntimeAnimatorController currentWeaponController;
+    private CombatHitbox swordHitbox;
+    private CombatHitbox fistHitbox;
     private AnimatorOverrideController castOverrideInstance;
     private Coroutine castRestoreRoutine;
     private bool suppressHitbox;
@@ -58,10 +62,24 @@ public class WeaponManager : MonoBehaviour
         if (playerController == null) playerController = GetComponent<PlayerController>();
         if (abilitySystem == null) abilitySystem = GetComponent<AbilitySystem>();
 
-        if (baseController == null) baseController = animator != null ? animator.runtimeAnimatorController : null;
-        if (baseAttackClip == null) baseAttackClip = FindClipByName(baseController, "PunchRight");
-        if (rightHand == null && animator != null) rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+        if (animator != null && animator.runtimeAnimatorController != null)
+            baseController = animator.runtimeAnimatorController;
+
+        if (baseAttackClip == null)
+            baseAttackClip = FindClipByName(baseController, "Left Jab");
+        if (baseAttackClip == null)
+            baseAttackClip = FindClipByName(baseController, "Normal Attack 1");
+
+        if (rightHand == null && animator != null)
+            rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+
         if (fistWeapon == null) fistWeapon = FindFistWeapon();
+        if (fistWeapon != null)
+        {
+            fistHitbox = fistWeapon.GetComponent<CombatHitbox>();
+            if (fistHitbox == null)
+                fistHitbox = fistWeapon.gameObject.AddComponent<CombatHitbox>();
+        }
 
         EnsureFistRigidbody();
     }
@@ -74,7 +92,15 @@ public class WeaponManager : MonoBehaviour
             if (garderob != null) garderob.OnWeaponChanged += EquipWeapon;
         }
 
-        if (startingWeapon != null && currentWeapon == null) EquipWeapon(startingWeapon);
+        if (startingWeapon == null)
+        {
+            startingWeapon = ScriptableObject.CreateInstance<WeaponData>();
+            startingWeapon.type = WeaponType.Fists;
+            startingWeapon.damage = 12f;
+            startingWeapon.useAnimationEvents = true;
+        }
+
+        if (currentWeapon == null) EquipWeapon(startingWeapon);
     }
 
     private void OnDestroy()
@@ -100,9 +126,6 @@ public class WeaponManager : MonoBehaviour
     public void EquipWeapon(WeaponData weapon)
     {
         if (weapon == null) return;
-
-        // В сцене два Garderob (BasicHero_M и игрок). Оба шлют событие —
-        // повторная экипировка того же оружия не должна сбрасывать Animator.
         if (currentWeapon == weapon) return;
 
         if (castRestoreRoutine != null)
@@ -111,21 +134,15 @@ public class WeaponManager : MonoBehaviour
             castRestoreRoutine = null;
         }
 
-        RestoreWeaponController();
         DestroyCastOverride();
-
         if (abilitySystem != null) abilitySystem.CancelCurrentAbility();
 
         currentWeapon = weapon;
 
-        RuntimeAnimatorController controller = weapon.animatorOverride != null
-            ? (RuntimeAnimatorController)weapon.animatorOverride
-            : baseController;
+        // Один контроллер на оба оружия: Animator сам выбирает ветку атак.
+        if (animator != null)
+            animator.SetInteger(weaponModeParam, weapon.type == WeaponType.Sword ? 1 : 0);
 
-        if (animator != null && controller != null)
-            animator.runtimeAnimatorController = controller;
-
-        currentWeaponController = controller;
         ClearWeaponModel();
 
         if (weapon.type == WeaponType.Sword)
@@ -140,6 +157,9 @@ public class WeaponManager : MonoBehaviour
                 fistWeapon.gameObject.SetActive(true);
                 fistWeapon.SetHitboxActive(false);
                 EnsureFistRigidbody();
+
+                if (fistHitbox != null)
+                    fistHitbox.Configure(weapon.damage, CombatTeam.Player, transform);
             }
         }
 
@@ -152,8 +172,8 @@ public class WeaponManager : MonoBehaviour
     }
 
     /// <summary>
-    /// fromAnimationEvent = true только из AnimationEventRelay. Флаг
-    /// useAnimationEvents решает, какой источник управляет хитбоксом.
+    /// fromAnimationEvent = true только из PlayerController/AnimationEventRelay.
+    /// Флаг useAnimationEvents решает, какой источник управляет хитбоксом.
     /// </summary>
     public void SetHitboxActive(bool active, bool fromAnimationEvent = false)
     {
@@ -183,17 +203,18 @@ public class WeaponManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Проигрывает клип каста в состоянии Attack через временный override,
-    /// затем возвращает контроллер текущего оружия.
+    /// Временно заменяет боевой клип клипом каста и запускает атаку.
     /// </summary>
     public bool PlayCastAnimation(AnimationClip clip)
     {
         if (clip == null || animator == null || playerController == null) return false;
 
-        if (baseAttackClip == null) baseAttackClip = FindClipByName(baseController, "PunchRight");
+        if (baseAttackClip == null)
+            baseAttackClip = FindClipByName(baseController, "Left Jab");
+
         if (baseAttackClip == null)
         {
-            Debug.LogWarning("[WeaponManager] В базовом контроллере нет клипа PunchRight.");
+            Debug.LogWarning("[WeaponManager] В контроллере нет клипа Left Jab / Normal Attack 1 для каста.");
             return false;
         }
 
@@ -206,21 +227,6 @@ public class WeaponManager : MonoBehaviour
         DestroyCastOverride();
 
         AnimatorOverrideController castOverride = new AnimatorOverrideController(baseController);
-
-        // Сохраняем overrides текущего оружия (стойка/бег), но Attack заменяем кастом.
-        if (currentWeaponController is AnimatorOverrideController weaponOverride)
-        {
-            List<KeyValuePair<AnimationClip, AnimationClip>> overrides =
-                new List<KeyValuePair<AnimationClip, AnimationClip>>();
-            weaponOverride.GetOverrides(overrides);
-
-            foreach (KeyValuePair<AnimationClip, AnimationClip> pair in overrides)
-            {
-                if (pair.Key != null && pair.Value != null && pair.Key != baseAttackClip)
-                    castOverride[pair.Key] = pair.Value;
-            }
-        }
-
         castOverride[baseAttackClip] = clip;
         castOverrideInstance = castOverride;
         animator.runtimeAnimatorController = castOverride;
@@ -256,12 +262,7 @@ public class WeaponManager : MonoBehaviour
     private void RestoreWeaponController()
     {
         if (animator == null) return;
-
-        RuntimeAnimatorController controller = currentWeaponController != null
-            ? currentWeaponController
-            : baseController;
-
-        if (controller != null) animator.runtimeAnimatorController = controller;
+        if (baseController != null) animator.runtimeAnimatorController = baseController;
     }
 
     private void DestroyCastOverride()
@@ -275,8 +276,15 @@ public class WeaponManager : MonoBehaviour
     {
         bool swordActive = currentWeapon != null && currentWeapon.type == WeaponType.Sword;
 
-        if (fistWeapon != null) fistWeapon.SetHitboxActive(!swordActive && active);
-        if (swordHitbox != null) swordHitbox.SetActive(swordActive && active);
+        if (fistWeapon != null)
+        {
+            bool fistActive = !swordActive && active;
+            fistWeapon.SetHitboxActive(fistActive);
+            if (fistHitbox != null) fistHitbox.SetActive(fistActive);
+        }
+
+        if (swordHitbox != null)
+            swordHitbox.SetActive(swordActive && active);
     }
 
     private void CreateSword(WeaponData weapon)
@@ -292,8 +300,6 @@ public class WeaponManager : MonoBehaviour
         weaponModelInstance.transform.localEulerAngles = weapon.weaponLocalEulerAngles;
         weaponModelInstance.transform.localScale = weapon.weaponLocalScale;
 
-        // Коллайдеры модели не должны участвовать в физике — урон наносит
-        // отдельный trigger-хитбокс на клинке.
         foreach (Collider modelCollider in weaponModelInstance.GetComponentsInChildren<Collider>(true))
             modelCollider.enabled = false;
 
@@ -312,9 +318,9 @@ public class WeaponManager : MonoBehaviour
         body.isKinematic = true;
         body.useGravity = false;
 
-        AttackHitbox hitbox = hitboxObject.AddComponent<AttackHitbox>();
-        hitbox.SetActive(false);
-        swordHitbox = hitbox;
+        swordHitbox = hitboxObject.AddComponent<CombatHitbox>();
+        swordHitbox.Configure(weapon.damage, CombatTeam.Player, transform);
+        swordHitbox.SetActive(false);
     }
 
     private void ClearWeaponModel()
@@ -329,9 +335,6 @@ public class WeaponManager : MonoBehaviour
     private void EnsureFistRigidbody()
     {
         if (fistWeapon == null) return;
-
-        // Rigidbody нужен, чтобы trigger-хитбокс получал OnTriggerEnter.
-        // Существующий Rigidbody (например, в Game.unity) не меняем.
         if (fistWeapon.GetComponent<Rigidbody>() != null) return;
 
         Rigidbody body = fistWeapon.gameObject.AddComponent<Rigidbody>();

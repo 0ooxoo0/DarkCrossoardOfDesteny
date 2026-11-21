@@ -7,7 +7,7 @@ using UnityEngine;
 /// оставались снаружи и не ломали <c>PlayerController</c>.
 /// </summary>
 [DisallowMultipleComponent]
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : MonoBehaviour, IDamageable
 {
     [Header("Базовые значения")]
     [SerializeField, Min(1f)] private float baseMaxHealth = 100f;
@@ -17,6 +17,8 @@ public class PlayerHealth : MonoBehaviour
     [Header("Ссылки")]
     [Tooltip("Необязательно: если задан, к максимуму HP прибавляется бонус реалма.")]
     [SerializeField] private CultivationSystem cultivation;
+    [Tooltip("Animator игрока. Должен иметь параметры Hit (Trigger) и IsDead (Bool).")]
+    [SerializeField] private Animator animator;
 
     private float current;
     private float regenDelayRemaining;
@@ -43,6 +45,9 @@ public class PlayerHealth : MonoBehaviour
 
     /// <summary>Мёртв ли игрок. Сбрасывается только через <see cref="NotifyRespawned"/>.</summary>
     public bool IsDead => dead;
+
+    /// <summary>Корень, по которому CombatHitbox отличает владельца от цели.</summary>
+    public Transform DamageRoot => transform;
 
     /// <summary>Множитель получаемого урона: дебафы и защита.</summary>
     public float IncomingDamageMultiplier { get; set; } = 1f;
@@ -81,6 +86,7 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
+        if (animator == null) animator = GetComponent<Animator>();
         current = Max;
         RaiseHealthChanged();
     }
@@ -153,6 +159,9 @@ public class PlayerHealth : MonoBehaviour
         OnDamaged?.Invoke(applied);
         RaiseHealthChanged();
 
+        if (animator != null && current > 0f)
+            animator.SetTrigger("Hit");
+
         if (current <= 0f)
             Die();
     }
@@ -197,6 +206,12 @@ public class PlayerHealth : MonoBehaviour
         if (current <= 0f)
             current = 1f;
 
+        if (animator != null)
+        {
+            animator.SetBool("IsDead", false);
+            animator.ResetTrigger("Hit");
+        }
+
         RaiseHealthChanged();
         OnRespawned?.Invoke();
     }
@@ -207,6 +222,7 @@ public class PlayerHealth : MonoBehaviour
 
         dead = true;
         current = 0f;
+        if (animator != null) animator.SetBool("IsDead", true);
         RaiseHealthChanged();
         OnDied?.Invoke();
     }
