@@ -16,6 +16,12 @@ using UnityEngine.UI;
 public class GameMenuController : MonoBehaviour
 {
     [Header("Кнопки паузы")]
+    [SerializeField] private Button cultivationButton;
+    [SerializeField] private Button skillsButton;
+    [SerializeField] private Button craftingButton;
+    [SerializeField] private Button journalButton;
+
+    [Header("Legacy scene lookup")]
     [SerializeField] private string pauseMenuRootName = "PauseMenu";
     [SerializeField] private string buttonContainerName = "Кнопки";
 
@@ -156,10 +162,10 @@ public class GameMenuController : MonoBehaviour
         if (ui != null && ui.Alchemy != null) ui.Alchemy.OpenPortable();
     }
 
-    /// <summary>Заглушка журнала до появления квестов.</summary>
+    /// <summary>Журнал пока не реализован; его кнопка отключена.</summary>
     public void OpenJournal()
     {
-        Debug.Log("[GameMenu] Журнал появится вместе с квестами.");
+        Debug.LogWarning(name + ": journal is not implemented.", this);
     }
 
     private void ResolveUiManager()
@@ -171,25 +177,44 @@ public class GameMenuController : MonoBehaviour
     private void WirePauseButtons()
     {
         if (buttonsWired) return;
-
-        Transform container = FindButtonContainer();
-        if (container == null) return;
-
         buttonsWired = true;
-        Button[] buttons = container.GetComponentsInChildren<Button>(true);
-        for (int i = 0; i < buttons.Length; i++)
-        {
-            Button button = buttons[i];
-            if (button == null) continue;
 
-            switch (button.name)
+        ResolveButton(ref cultivationButton, "Культивация", nameof(cultivationButton));
+        ResolveButton(ref skillsButton, "Техники", nameof(skillsButton));
+        ResolveButton(ref craftingButton, "Крафт", nameof(craftingButton));
+        ResolveButton(ref journalButton, "Журнал", nameof(journalButton));
+
+        WireButton(cultivationButton, OpenCultivation, nameof(cultivationButton));
+        WireButton(skillsButton, OpenSkills, nameof(skillsButton));
+        WireButton(craftingButton, OpenCrafting, nameof(craftingButton));
+
+        if (journalButton != null)
+        {
+            journalButton.interactable = false;
+            Debug.LogWarning(name + ": journalButton disabled because the journal is not implemented.", this);
+        }
+    }
+
+    private void ResolveButton(ref Button button, string legacyName, string fieldName)
+    {
+        if (button == null)
+        {
+            Transform container = FindButtonContainer();
+            if (container != null)
             {
-                case "Культивация": button.onClick.AddListener(OpenCultivation); break;
-                case "Техники": button.onClick.AddListener(OpenSkills); break;
-                case "Крафт": button.onClick.AddListener(OpenCrafting); break;
-                case "Журнал": button.onClick.AddListener(OpenJournal); break;
+                Transform legacyObject = container.Find(legacyName);
+                if (legacyObject != null) button = legacyObject.GetComponent<Button>();
             }
         }
+
+        if (button == null)
+            Debug.LogWarning(name + ": " + fieldName + " is not assigned or found.", this);
+    }
+
+    private void WireButton(Button button, UnityEngine.Events.UnityAction action, string fieldName)
+    {
+        if (button == null) return;
+        button.onClick.AddListener(action);
     }
 
     private Transform FindButtonContainer()

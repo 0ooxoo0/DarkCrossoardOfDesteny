@@ -69293,6 +69293,7 @@ GameObject:
   - component: {fileID: 766535538}
   - component: {fileID: 766535542}
   - component: {fileID: 766535543}
+  - component: {fileID: 8800000000000000000}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -99862,7 +99863,7 @@ MonoBehaviour:
     m_PressedTrigger: Pressed
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
-  m_Interactable: 1
+  m_Interactable: 0
   m_TargetGraphic: {fileID: 1084136359}
   m_OnClick:
     m_PersistentCalls:
@@ -230570,3 +230571,21 @@ SceneRoots:
   - {fileID: 1423976775}
   - {fileID: 1258995897}
   - {fileID: 215258864}
+--- !u!114 &8800000000000000000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 766535537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e751154b588f2ded42bd7717b636e1a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::GameMenuController
+  cultivationButton: {fileID: 2058292564}
+  skillsButton: {fileID: 2046899784}
+  craftingButton: {fileID: 71015242}
+  journalButton: {fileID: 1084136358}
+  pauseMenuRootName: PauseMenu
+  buttonContainerName: "\u041A\u043D\u043E\u043F\u043A\u0438"
