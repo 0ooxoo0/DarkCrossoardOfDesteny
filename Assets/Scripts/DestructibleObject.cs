@@ -25,7 +25,7 @@ public class DestructibleObject : MonoBehaviour
         GameObject obj = Instantiate(Destructeffect, transform.position, transform.rotation);
         if (obj != null && obj.TryGetComponent(out ParticleSystem particleSystem))
         {
-            ParticleSystem.MainModule main = particleSystem.main;
+            var main = particleSystem.main;
             main.startColor = _color;
         }
     }

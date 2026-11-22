@@ -6,4 +6,5 @@
   <Project Path="AllIn1VfxAssmebly.csproj" />
   <Project Path="AllIn1VfxTexDemoAssembly.csproj" />
   <Project Path="Unity.AI.Navigation.Samples.Initialization.Editor.csproj" />
+  <Project Path="DarkCrossroad.EditModeTests.csproj" />
 </Solution>

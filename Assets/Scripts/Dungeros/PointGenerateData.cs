@@ -39,7 +39,7 @@ void Awake()
     }
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("Stena") || !CompareTag("Untaggeed"))
+        if (!other.CompareTag("Stena") || !CompareTag("Untagged"))
             return;
 
         bool hasSameParent = other.transform.parent == transform.parent;
