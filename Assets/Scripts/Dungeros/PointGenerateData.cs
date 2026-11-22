@@ -9,9 +9,15 @@ public class PointGenerateData : MonoBehaviour
     private int StenaNumber = 0;
 void Awake()
 {
-        if(Random.Range(0,5) == Random.Range(0, 5))
+        if (Random.Range(0,5) == Random.Range(0, 5))
         {
-            GameObject obj = Instantiate(transform.GetComponentInParent<GenerateData>().RoomList.Stop[Random.Range(0, transform.GetComponentInParent<GenerateData>().RoomList.Stop.Count)], transform);
+            GenerateData generateData = transform.GetComponentInParent<GenerateData>();
+            if (generateData == null || generateData.RoomList == null || generateData.RoomList.Stop == null || generateData.RoomList.Stop.Count == 0)
+            {
+                Debug.LogError(name + ": RoomList.Stop is null or empty.", this);
+                return;
+            }
+            GameObject obj = Instantiate(generateData.RoomList.Stop[Random.Range(0, generateData.RoomList.Stop.Count)], transform);
             obj.transform.parent = transform.parent;
             transform.GetComponentInParent<Room>().PointArray.Remove(GetComponent<PointGenerateData>());
             gameObject.SetActive(false);
@@ -33,32 +39,29 @@ void Awake()
     }
     private void OnTriggerEnter(Collider other)
     {
-        if (other.transform.parent != transform.parent)
-        {
-            if (other.tag == "Stena" && transform.tag == "Untaggeed")
-            {
-                Debug.Log("Position:" + transform.position +" ThisName:" + transform.name + "name:" + other.name + "tag: " + other.tag);
-                if (other.transform.parent != transform.parent)
-                {
-                    StenaNumber++;
-                }
-                if (other.transform.parent = transform.parent)
-                {
-                    if (StenaNumber>0)
-                        Destroy(gameObject);
+        if (!other.CompareTag("Stena") || !CompareTag("Untaggeed"))
+            return;
 
-                    if (other.transform.parent != transform.parent)
-                        Destroy(other.gameObject);
-                }
-                Destroy(gameObject);
-            }
-        }
+        bool hasSameParent = other.transform.parent == transform.parent;
+        if (!hasSameParent)
+            return;
+
+        Debug.Log("Position:" + transform.position + " ThisName:" + transform.name + "name:" + other.name + "tag: " + other.tag);
+        StenaNumber++;
+        if (StenaNumber > 0)
+            Destroy(gameObject);
     }
     private void OnTriggerExit(Collider other)
     {
         if (other.tag == "Untagged")
         {
-            GameObject obj = Instantiate(transform.GetComponentInParent<GenerateData>().RoomList.Stop[Random.Range(0, transform.GetComponentInParent<GenerateData>().RoomList.Stop.Count)], transform);
+            GenerateData generateData = transform.GetComponentInParent<GenerateData>();
+            if (generateData == null || generateData.RoomList == null || generateData.RoomList.Stop == null || generateData.RoomList.Stop.Count == 0)
+            {
+                Debug.LogError(name + ": RoomList.Stop is null or empty.", this);
+                return;
+            }
+            GameObject obj = Instantiate(generateData.RoomList.Stop[Random.Range(0, generateData.RoomList.Stop.Count)], transform);
             obj.transform.parent = transform.parent;
             transform.GetComponentInParent<Room>().PointArray.Remove(GetComponent<PointGenerateData>());
             gameObject.SetActive(false);

@@ -15,17 +15,31 @@ public class GenerateData : MonoBehaviour
 
     public void _Instanse(Transform pos, pointPos PosName)
     {
+        if (RoomList == null)
+        {
+            Debug.LogError(name + ": RoomList is null.", this);
+            return;
+        }
+        if (RoomArray == null)
+        {
+            Debug.LogError(name + ": RoomArray is null.", this);
+            return;
+        }
         if (RoomArray.Count > MaxRoom)
         {
             if (nav != null)
                 nav.BuildNavMesh(); 
 
                     Debug.Log("Forward");
-            if (RoomList.forward != null && RoomList.forward.Count > 0)
+            if (RoomList.Stop != null && RoomList.Stop.Count > 0)
             {
                 GameObject obj = Instantiate(RoomList.Stop[Random.Range(0, RoomList.Stop.Count)], pos);
                 obj.transform.parent = transform;
                 obj.transform.localScale = Vector3.one;
+            }
+            else
+            {
+                Debug.LogError(name + ": RoomList.Stop is null or empty.", this);
             }
 
             if (RoomArray.Count > MaxRoom * 2)
@@ -36,6 +50,10 @@ public class GenerateData : MonoBehaviour
             GameObject obj = Instantiate(RoomList.forward[Random.Range(0, RoomList.forward.Count)], pos);
             obj.transform.parent = transform;
             obj.transform.localScale = Vector3.one;
+        }
+        else
+        {
+            Debug.LogError(name + ": RoomList.forward is null or empty.", this);
         }
 
             //switch (PosName)

@@ -59,6 +59,7 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
     private int comboIndex;
     private bool comboWindowOpen;
     private bool blocking;
+    private float manualSpeed;
 
     public bool IsBlocking => blocking;
     public bool IsDead => state == State.Dead;
@@ -202,8 +203,11 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
             ResolveTarget();
 
         float dt = Time.deltaTime;
-        if (agent != null && animator != null && agent.enabled)
-            animator.SetFloat(speedParam, agent.velocity.magnitude / Mathf.Max(0.1f, EffectiveMoveSpeed));
+        if (animator != null)
+        {
+            float planarSpeed = AgentReady ? agent.velocity.magnitude : manualSpeed;
+            animator.SetFloat(speedParam, planarSpeed / Mathf.Max(0.1f, EffectiveMoveSpeed));
+        }
 
         if (target == null || targetHealth == null || targetHealth.IsDead)
         {
@@ -400,8 +404,9 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
 
     private void MoveTo(Vector3 position)
     {
-        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        if (AgentReady)
         {
+            manualSpeed = 0f;
             agent.isStopped = false;
             agent.SetDestination(position);
             return;
@@ -409,24 +414,36 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
 
         Vector3 direction = position - transform.position;
         direction.y = 0f;
-        if (direction.sqrMagnitude < 0.0001f) return;
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            manualSpeed = 0f;
+            return;
+        }
 
         transform.position += direction.normalized * (EffectiveMoveSpeed * Time.deltaTime);
         transform.rotation = Quaternion.LookRotation(direction.normalized);
+        manualSpeed = EffectiveMoveSpeed;
     }
 
     private void StopMoving()
     {
-        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        manualSpeed = 0f;
+        if (AgentReady)
         {
             agent.isStopped = true;
             agent.ResetPath();
         }
     }
 
+    /// <summary>Агент реально стоит на навмеше; без запечённой сетки работаем напрямую.</summary>
+    private bool AgentReady
+    {
+        get { return agent != null && agent.enabled && agent.isOnNavMesh; }
+    }
+
     private void SetAgentStopped(bool stopped)
     {
-        if (agent == null || !agent.enabled || !agent.isOnNavMesh) return;
+        if (!AgentReady) return;
         agent.isStopped = stopped;
         if (stopped) agent.ResetPath();
     }

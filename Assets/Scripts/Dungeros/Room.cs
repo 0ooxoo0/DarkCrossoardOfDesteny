@@ -33,10 +33,13 @@ public class Room : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
         int removedCount = PointArray.RemoveAll(room => room == null);
-        for (int i=0; i<PointArray.Count; i++)
+        for (int i = PointArray.Count - 1; i >= 0; i--)
         {
-            if(PointArray[i] == null)
+            if (PointArray[i] == null)
+            {
                 PointArray.RemoveAt(i);
+                continue;
+            }
             _Parent._Instanse(PointArray[i].transform, PointArray[i]._PointPos);
         }
         //yield return new WaitForSeconds(Random.Range(0f,2f));

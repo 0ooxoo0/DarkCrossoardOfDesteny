@@ -27,6 +27,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private NavMeshAgent agent;
     private Animator animator;
     private PlayerControls controls;
+    private PlayerInteraction playerInteraction;
     private Camera mainCamera;
     private Vector2 moveInput;
     private Transform aimTarget;
@@ -34,9 +35,12 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private Vector3 attackAimPoint;
     private bool isAttacking;
     private bool isDead;
+    private float currentSpeed;
+    private Vector3 lastMoveDirection;
     private bool comboQueued;
     private bool comboWindowOpen;
     private int comboIndex;
+    public event System.Action AttackStarted;
     private float attackElapsed;
 
     private static readonly int AttackStateTag = Animator.StringToHash("Attack");
@@ -47,6 +51,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         animator = GetComponent<Animator>();
         mainCamera = Camera.main;
         controls = new PlayerControls();
+        playerInteraction = GetComponent<PlayerInteraction>();
 
         if (blockController == null) blockController = GetComponent<PlayerBlockController>();
         if (health == null) health = GetComponent<PlayerHealth>();
@@ -116,7 +121,11 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
     private void OnAttackPressed(InputAction.CallbackContext context)
     {
-        TryAttack();
+        if (playerInteraction != null && !playerInteraction.CanStartAttack(comboWindowOpen))
+            return;
+
+        if (TryAttack())
+            AttackStarted?.Invoke();
     }
 
     private void Update()
@@ -131,13 +140,13 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     {
         if (isAttacking || isDead || (blockController != null && blockController.IsBlocking))
         {
-            agent.velocity = Vector3.zero;
+            StopVelocity();
             return;
         }
 
         if (moveInput == Vector2.zero)
         {
-            agent.velocity = Vector3.zero;
+            StopVelocity();
             return;
         }
 
@@ -155,7 +164,30 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         right.Normalize();
 
         Vector3 moveDirection = (forward * moveInput.y + right * moveInput.x).normalized;
-        agent.velocity = moveDirection * moveSpeed;
+        currentSpeed = moveSpeed * Mathf.Clamp01(moveInput.magnitude);
+        lastMoveDirection = moveDirection;
+
+        if (AgentReady)
+        {
+            agent.velocity = moveDirection * moveSpeed;
+        }
+        else
+        {
+            // Навмеш не запечён или агент вне сетки — двигаем трансформ напрямую.
+            transform.position += moveDirection * (moveSpeed * Time.deltaTime);
+        }
+    }
+
+    /// <summary>Агент реально стоит на навмеше и может принимать velocity/isStopped.</summary>
+    private bool AgentReady
+    {
+        get { return agent != null && agent.enabled && agent.isOnNavMesh; }
+    }
+
+    private void StopVelocity()
+    {
+        currentSpeed = 0f;
+        if (AgentReady) agent.velocity = Vector3.zero;
     }
 
     private void HandleRotation()
@@ -187,18 +219,17 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             return;
         }
 
-        if (moveInput != Vector2.zero && agent.velocity.magnitude > 0.1f)
+        if (moveInput != Vector2.zero && currentSpeed > 0.1f)
         {
-            Vector3 moveDir = agent.velocity.normalized;
+            Vector3 moveDir = lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward;
             Quaternion targetRotation = Quaternion.LookRotation(moveDir);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        }
-    }
+        }    }
 
     private void UpdateAnimation()
     {
         if (animator == null) return;
-        float speed = isDead ? 0f : agent.velocity.magnitude / Mathf.Max(0.1f, moveSpeed);
+        float speed = isDead ? 0f : currentSpeed / Mathf.Max(0.1f, moveSpeed);
         animator.SetFloat(speedParam, Mathf.Clamp01(speed));
     }
 
@@ -284,9 +315,14 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             return true;
         }
 
-        // Буфер: сработает, когда StateMachineBehaviour откроет окно комбо.
-        comboQueued = true;
-        return true;
+        // Одно нажатие ставит одно комбо только в открытом окне.
+        if (comboWindowOpen && comboIndex < maxComboIndex && !comboQueued)
+        {
+            comboQueued = true;
+            return true;
+        }
+
+        return false;
     }
 
     private void StartAttack(int index)
@@ -306,14 +342,14 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
     public void StopMovement()
     {
-        if (agent != null) agent.isStopped = true;
+        if (AgentReady) agent.isStopped = true;
     }
 
     public void ResumeMovement()
     {
-        if (agent == null || isDead) return;
+        if (isDead) return;
         if (blockController != null && blockController.IsBlocking) return;
-        agent.isStopped = false;
+        if (AgentReady) agent.isStopped = false;
     }
 
     public void OnAttackWindowOpen()

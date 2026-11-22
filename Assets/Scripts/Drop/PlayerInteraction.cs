@@ -22,42 +22,43 @@ public class PlayerInteraction : MonoBehaviour
     [SerializeField] private LayerMask blockAttackLayers;
 
     private PlayerController playerController;
-    private PlayerControls controls;
     private float nextAttackTime;
-    private bool isAttacking;
 
     private void Awake()
     {
         playerController = GetComponent<PlayerController>();
         if (playerCamera == null) playerCamera = Camera.main;
-        controls = new PlayerControls();
     }
 
     private void OnEnable()
     {
-        controls.Enable();
-        controls.Player.Attack.performed += OnAttack;
+        if (playerController != null)
+            playerController.AttackStarted += OnAttackStarted;
     }
 
     private void OnDisable()
     {
-        controls.Player.Attack.performed -= OnAttack;
-        controls.Disable();
+        if (playerController != null)
+            playerController.AttackStarted -= OnAttackStarted;
     }
 
-    private void OnAttack(InputAction.CallbackContext context)
+    public bool CanStartAttack(bool comboWindowOpen)
     {
-        if (Time.time < nextAttackTime || isAttacking) return;
-        if (playerController == null) return;
+        if (playerController == null || IsAttackBlocked())
+            return false;
 
-        if (IsAttackBlocked()) return;
+        if (playerController.IsAttacking)
+            return comboWindowOpen;
+
+        return Time.time >= nextAttackTime;
+    }
+
+    private void OnAttackStarted()
+    {
+        if (playerController == null) return;
 
         Vector3 aimPoint = GetAimPoint();
         playerController.FaceTowards(aimPoint, 0.45f);
-
-        if (!playerController.PlayAttackAnimation()) return;
-
-        isAttacking = true;
         nextAttackTime = Time.time + attackCooldown;
         StartCoroutine(AttackRoutine());
     }
@@ -163,7 +164,6 @@ public class PlayerInteraction : MonoBehaviour
             interactable.TakeDamage(attackDamage, hit.bounds.ClosestPoint(origin));
         }
 
-        isAttacking = false;
     }
 
     private void OnDrawGizmosSelected()

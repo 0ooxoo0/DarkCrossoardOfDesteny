@@ -3,6 +3,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
+#if UNITY_ANDROID
+#error This project currently targets PC only; Android touch input is not supported.
+#endif
+
 /// <summary>
 /// Единый владелец Esc: стек открытых панелей, пауза и кнопки меню.
 /// Панели сообщают об открытии и закрытии, Esc закрывает верхнюю панель,
