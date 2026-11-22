@@ -174,12 +174,13 @@ public class DungeonReliabilityTests
         Type generateType = FindType("GenerateData");
         Type spawnerType = FindType("Spawner");
         GameObject generatorObject = CreateObject("Generator");
-        generatorObject.AddComponent(generateType);
+        Component generator = generatorObject.AddComponent(generateType);
         GameObject spawnerObject = CreateObject("Spawner", generatorObject.transform);
         Component spawner = spawnerObject.AddComponent(spawnerType);
-        LogAssert.Expect(LogType.Error, new Regex("SpawnObjects list is null or empty"));
+        SetField(spawner, "ChangeSpawn", 100);
+        LogAssert.Expect(LogType.Error, new Regex("SpawnObjects|EnemySpawn list is null or empty"));
 
-        Assert.DoesNotThrow(() => Invoke(spawner, "SpawnObjects"));
+        Assert.DoesNotThrow(() => Invoke(spawner, "GetSelectedPrefab", generator));
     }
 
     private GameObject CreateObject(string objectName, Transform parent = null)

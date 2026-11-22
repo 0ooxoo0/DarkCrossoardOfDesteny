@@ -7,82 +7,195 @@ public class Room : MonoBehaviour
     private GenerateData _Parent;
     public List<PointGenerateData> PointArray = new List<PointGenerateData>();
     private Coroutine myCoroutine;
+    private bool coroutineCancelled;
+    private bool isRegistered;
+    private static int nextCreationOrder;
+    private int creationOrder;
+    private bool warnedMissingRoomTag;
 
-    void Awake()
+    private const string RoomTag = "Room";
+
+    private void Awake()
     {
+        creationOrder = ++nextCreationOrder;
         GenerateData parentGen = transform.GetComponentInParent<GenerateData>();
         if (parentGen != null && parentGen.RoomArray != null)
         {
-            parentGen.RoomArray.Add(this);
             _Parent = parentGen;
+            RegisterRoom();
         }
         else
         {
-            Debug.LogError("Room: не удалось найти GenerateData или RoomArray не инициализирован", this);
+            Debug.LogError(name + ": GenerateData parent or RoomArray is not configured.", this);
         }
-        //GetComponent<BoxCollider>().enabled = false;
     }
-    void Start()
+
+    private void OnEnable()
     {
-        transform.GetComponent<BoxCollider>().isTrigger = true; 
-        int removedCount = PointArray.RemoveAll(room => room == null);
+        coroutineCancelled = false;
+        if (_Parent == null)
+            _Parent = GetComponentInParent<GenerateData>();
+        RegisterRoom();
+        StartPointProcessing();
+    }
+
+    private void Start()
+    {
+        BoxCollider boxCollider = GetComponent<BoxCollider>();
+        if (boxCollider == null)
+        {
+            Debug.LogError(name + ": BoxCollider is missing.", this);
+            return;
+        }
+        boxCollider.isTrigger = true;
+        StartPointProcessing();
+    }
+
+    private void RegisterRoom()
+    {
+        if (isRegistered || _Parent == null || _Parent.RoomArray == null) return;
+        if (!_Parent.RoomArray.Contains(this)) _Parent.RoomArray.Add(this);
+        if (!isRegistered) GenerateData.RegisterActiveRoom();
+        isRegistered = true;
+    }
+
+    private void UnregisterRoom()
+    {
+        if (!isRegistered) return;
+        if (_Parent != null && _Parent.RoomArray != null)
+            _Parent.RoomArray.Remove(this);
+        GenerateData.UnregisterActiveRoom();
+        isRegistered = false;
+    }
+
+    public void RegisterPoint(PointGenerateData point)
+    {
+        if (point == null || PointArray == null || PointArray.Contains(point)) return;
+        PointArray.Add(point);
+    }
+
+    public void UnregisterPoint(PointGenerateData point)
+    {
+        if (PointArray != null && point != null) PointArray.Remove(point);
+    }
+
+    private void StartPointProcessing()
+    {
+        if (myCoroutine != null || coroutineCancelled) return;
+        if (_Parent == null)
+        {
+            Debug.LogError(name + ": GenerateData parent is missing; points were not processed.", this);
+            return;
+        }
+        _Parent.BeginGenerationWork();
         myCoroutine = StartCoroutine(InstanseCoroutine());
     }
 
-    IEnumerator InstanseCoroutine()
+    private IEnumerator InstanseCoroutine()
     {
         yield return new WaitForEndOfFrame();
-        int removedCount = PointArray.RemoveAll(room => room == null);
-        for (int i = PointArray.Count - 1; i >= 0; i--)
+        if (coroutineCancelled || this == null) yield break;
+
+        // FIX: P3.2 вЂ” snapshot before recursive room creation; points added by new rooms cannot mutate this iteration.
+        List<PointGenerateData> points = PointArray != null
+            ? new List<PointGenerateData>(PointArray)
+            : new List<PointGenerateData>();
+
+        for (int i = points.Count - 1; i >= 0; i--)
         {
-            if (PointArray[i] == null)
-            {
-                PointArray.RemoveAt(i);
+            if (coroutineCancelled || this == null) yield break;
+            PointGenerateData point = points[i];
+            if (point == null || !point.TryBeginProcessing()) continue;
+
+            if (TrySpawnStopForCap(point))
                 continue;
-            }
-            _Parent._Instanse(PointArray[i].transform, PointArray[i]._PointPos);
+
+            _Parent._Instanse(point.transform, point._PointPos);
+            point.EndProcessing();
+            yield return null;
         }
-        //yield return new WaitForSeconds(Random.Range(0f,2f));
-        //GetComponent<BoxCollider>().enabled = true;
-                yield return null;
+
+        myCoroutine = null;
+        if (_Parent != null) _Parent.EndGenerationWork();
+    }
+
+    private bool TrySpawnStopForCap(PointGenerateData point)
+    {
+        if (_Parent == null || _Parent.RoomArray == null || _Parent.RoomList == null)
+            return false;
+        if (_Parent.RoomArray.Count < _Parent.RoomLimit)
+            return false;
+
+        // FIX: P2.5 вЂ” create Stop from the room coroutine, and count it against the same cap.
+        if (!_Parent.TrySpawnStop(point.transform))
+            Debug.LogWarning(name + ": room cap reached but no Stop room could be spawned.", this);
+        point.gameObject.SetActive(false);
+        return true;
+    }
+
+    private void CancelCoroutine()
+    {
+        // FIX: P2.3/P3.2 вЂ” request cancellation cooperatively; Unity stops disabled/destroyed component coroutines.
+        coroutineCancelled = true;
+        if (myCoroutine != null && _Parent != null)
+            _Parent.EndGenerationWork();
+        myCoroutine = null;
     }
 
     private void OnDestroy()
     {
-        StopCoroutine(myCoroutine);
+        CancelCoroutine();
+        UnregisterRoom();
     }
+
     private void OnDisable()
     {
-        StopCoroutine(myCoroutine);
+        CancelCoroutine();
+        UnregisterRoom();
     }
+
     private void OnTriggerStay(Collider other)
     {
-        if (other.tag == "Room" && transform.tag == "Room")
-        {
-        Debug.Log("ThisName:" + transform.name + " name:" + other.name + " tag: " + other.tag);
-            //GameObject obj = Instantiate(transform.GetComponentInParent<GenerateData>().RoomList.Stop[Random.Range(0, transform.parent.GetComponentInParent<GenerateData>().RoomList.Stop.Count)], transform.parent.position, transform.parent.rotation);
-            //obj.transform.parent = transform.parent;
-            //obj.transform.localScale = Vector3.one;
-            GenerateData parentGen = transform.GetComponentInParent<GenerateData>();
-            if (parentGen != null && parentGen.RoomArray != null)
-            {
-                parentGen.RoomArray.Remove(this);
-            }
-            int i = 0;
-            while (i < other.transform.childCount)
-            {
-                other.transform.GetChild(0).gameObject.SetActive(true);
-                i++;
-            }
-            gameObject.SetActive(false);
+        if (other == null) return;
 
-                //Destroy(gameObject);
+        bool thisIsRoom = CompareTag(RoomTag);
+        Room otherRoom = other.GetComponent<Room>();
+        if (otherRoom == null) otherRoom = other.GetComponentInParent<Room>();
+        bool otherIsRoom = other.CompareTag(RoomTag) || otherRoom != null;
+
+        // FIX: P4.5 вЂ” report a missing room tag once, without logging every physics stay frame.
+        if ((!thisIsRoom || (otherRoom != null && !other.CompareTag(RoomTag))) && !warnedMissingRoomTag)
+        {
+            Debug.LogWarning(name + ": room overlap involves an object without the Room tag.", this);
+            warnedMissingRoomTag = true;
         }
+        if (!thisIsRoom || !otherIsRoom) return;
+        if (otherRoom == null || otherRoom == this) return;
+
+        // FIX: P2.2 вЂ” keep the room with more direct children; if tied, keep the older room.
+        Room roomToDisable;
+        if (transform.childCount != otherRoom.transform.childCount)
+            roomToDisable = transform.childCount < otherRoom.transform.childCount ? this : otherRoom;
+        else
+            roomToDisable = creationOrder > otherRoom.creationOrder ? this : otherRoom;
+
+        Room roomToKeep = roomToDisable == this ? otherRoom : this;
+        // FIX: P2.1 ? activate every child of the kept room using the loop index, not child zero repeatedly.
+        foreach (Transform child in roomToKeep.transform)
+        {
+            if (child.GetComponent<PointGenerateData>() != null) continue;
+            child.gameObject.SetActive(true);
+        }
+
+        roomToDisable.UnregisterRoom();
+        roomToDisable.gameObject.SetActive(false);
+        roomToKeep._Parent?.NotifyGenerationProgress();
     }
 
     public void ColliderTrue()
     {
-        transform.GetComponent<BoxCollider>().isTrigger = true;
+        BoxCollider boxCollider = GetComponent<BoxCollider>();
+        if (boxCollider != null) boxCollider.isTrigger = true;
     }
 }
 

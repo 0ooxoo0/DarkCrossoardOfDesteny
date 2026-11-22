@@ -1,73 +1,138 @@
-
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PointGenerateData : MonoBehaviour
 {
-    [SerializeField] List<PointGenerateData> array;
+    private const string RoomTag = "Room";
+    [SerializeField] private string wallTag = "Stena";
+
     public pointPos _PointPos;
-    private int StenaNumber = 0;
-void Awake()
-{
-        if (Random.Range(0,5) == Random.Range(0, 5))
-        {
-            GenerateData generateData = transform.GetComponentInParent<GenerateData>();
-            if (generateData == null || generateData.RoomList == null || generateData.RoomList.Stop == null || generateData.RoomList.Stop.Count == 0)
-            {
-                Debug.LogError(name + ": RoomList.Stop is null or empty.", this);
-                return;
-            }
-            GameObject obj = Instantiate(generateData.RoomList.Stop[Random.Range(0, generateData.RoomList.Stop.Count)], transform);
-            obj.transform.parent = transform.parent;
-            transform.GetComponentInParent<Room>().PointArray.Remove(GetComponent<PointGenerateData>());
-            gameObject.SetActive(false);
-            //Destroy(gameObject);
-        }
+    private int StenaNumber;
+    private Room parentRoom;
+    private bool isRegistered;
+    private bool isProcessing;
+    private static readonly System.Collections.Generic.HashSet<int> ProcessingPoints = new System.Collections.Generic.HashSet<int>();
 
-}
-    private void Start()
+    private void Awake()
     {
-        Room parentRoom = transform.parent.GetComponent<Room>();
-        if (parentRoom != null && parentRoom.PointArray != null)
+        parentRoom = GetComponentInParent<Room>();
+    }
+
+    private void OnEnable()
+    {
+        if (parentRoom == null)
+            parentRoom = GetComponentInParent<Room>();
+
+        if (parentRoom != null && !isRegistered)
         {
-            parentRoom.PointArray.Add(this);
-        }
-        else
-        {
-            Debug.LogError("PointGenerateData: не удалось найти Room или PointArray не инициализирован", this);
+            parentRoom.RegisterPoint(this);
+            isRegistered = true;
         }
     }
-    private void OnTriggerEnter(Collider other)
+
+    private void OnDisable()
     {
-        if (!other.CompareTag("Stena") || !CompareTag("Untagged"))
-            return;
-
-        bool hasSameParent = other.transform.parent == transform.parent;
-        if (!hasSameParent)
-            return;
-
-        Debug.Log("Position:" + transform.position + " ThisName:" + transform.name + "name:" + other.name + "tag: " + other.tag);
-        StenaNumber++;
-        if (StenaNumber > 0)
-            Destroy(gameObject);
+        UnregisterPoint();
     }
+
+    private void OnDestroy()
+    {
+        UnregisterPoint();
+    }
+
+    private void UnregisterPoint()
+    {
+        ProcessingPoints.Remove(GetInstanceID());
+        isProcessing = false;
+        if (!isRegistered) return;
+        if (parentRoom != null) parentRoom.UnregisterPoint(this);
+        isRegistered = false;
+    }
+
+    // FIX: P2.5 вЂ” Stop creation is deferred to Room's managed coroutine; never Instantiate from Awake.
+    public bool TryBeginProcessing()
+    {
+        int instanceId = GetInstanceID();
+        if (isProcessing || !isActiveAndEnabled || ProcessingPoints.Contains(instanceId)) return false;
+        isProcessing = true;
+        ProcessingPoints.Add(instanceId);
+        return true;
+    }
+
+    public void EndProcessing()
+    {
+        isProcessing = false;
+        ProcessingPoints.Remove(GetInstanceID());
+    }
+
+    // FIX: P1.2 вЂ” only a Room collider means the point left an opening; generic Untagged colliders are ignored.
     private void OnTriggerExit(Collider other)
     {
-        if (other.tag == "Untagged")
+        if (other == null) return;
+        Room otherRoom = other.GetComponent<Room>();
+        if (otherRoom == null) otherRoom = other.GetComponentInParent<Room>();
+        if (otherRoom == null) return;
+
+        // FIX: P1.2 вЂ” a point exiting a different room opening gets exactly one guarded Stop; the same room is ignored.
+        if (otherRoom == parentRoom) return;
+        if (other.isTrigger) return;
+        SpawnStopAndDisable();
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // FIX: P1.1 вЂ” accept the serialized wall tag and do not depend on the point's own tag.
+        if (other == null || string.IsNullOrWhiteSpace(wallTag) || !other.CompareTag(wallTag))
+            return;
+
+        Room wallRoom = other.GetComponentInParent<Room>();
+        bool hasSameParent = other.transform.parent == transform.parent;
+        bool belongsToDifferentRoom = wallRoom != null && wallRoom != parentRoom;
+
+        // FIX: P1.1 вЂ” a wall from this point's room closes the point; a foreign room wall also closes it to prevent corridors entering that room.
+        if (!hasSameParent && !belongsToDifferentRoom)
+            return;
+
+        StenaNumber++;
+        if (StenaNumber > 0)
+            DisablePoint();
+    }
+
+    // FIX: P1.2 вЂ” shared, guarded Stop placement replaces duplicate Awake/trigger spawn code.
+    public void SpawnStopAndDisable()
+    {
+        if (!TryBeginProcessing()) return;
+
+        GenerateData generateData = GetComponentInParent<GenerateData>();
+        if (generateData == null)
         {
-            GenerateData generateData = transform.GetComponentInParent<GenerateData>();
-            if (generateData == null || generateData.RoomList == null || generateData.RoomList.Stop == null || generateData.RoomList.Stop.Count == 0)
-            {
-                Debug.LogError(name + ": RoomList.Stop is null or empty.", this);
-                return;
-            }
-            GameObject obj = Instantiate(generateData.RoomList.Stop[Random.Range(0, generateData.RoomList.Stop.Count)], transform);
-            obj.transform.parent = transform.parent;
-            transform.GetComponentInParent<Room>().PointArray.Remove(GetComponent<PointGenerateData>());
-            gameObject.SetActive(false);
+            Debug.LogWarning(name + ": Stop room could not be spawned; point remains available.", this);
+            EndProcessing();
+            return;
         }
+
+        if (!generateData.TrySpawnStop(transform))
+        {
+            if (generateData.RoomArray != null && generateData.RoomArray.Count > generateData.RoomLimit)
+                DisablePoint();
+            else
+            {
+                Debug.LogWarning(name + ": Stop room could not be spawned; point remains available.", this);
+                EndProcessing();
+            }
+            return;
+        }
+
+        DisablePoint();
+    }
+
+    private void DisablePoint()
+    {
+        UnregisterPoint();
+        isProcessing = false;
+        gameObject.SetActive(false);
     }
 }
+
 public enum pointPos
 {
     Forward,

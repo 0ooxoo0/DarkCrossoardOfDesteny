@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.Experimental.GlobalIllumination;
+using UnityEngine.AI;
 
 public class Spawner : MonoBehaviour
 {
@@ -7,6 +7,8 @@ public class Spawner : MonoBehaviour
     [SerializeField] private bool Chest = false;
     [SerializeField] private int time = 5;
     private float i = 0;
+    private int navAttempts;
+
     public void SpawnObjects()
     {
         GenerateData generateData = transform.GetComponentInParent<GenerateData>();
@@ -16,63 +18,86 @@ public class Spawner : MonoBehaviour
             enabled = false;
             return;
         }
-        if (Chest && (generateData.Chest == null || generateData.Chest.Count == 0))
+
+        // FIX: P4.2 — do not place runtime objects at spawn points outside the baked navigation surface.
+        // FIX: P4.2 — wait for generation's single NavMesh bake rather than silently disabling every room spawner before it exists.
+        if (!NavMesh.SamplePosition(transform.position, out NavMeshHit navHit, 2f, NavMesh.AllAreas))
         {
-            Debug.LogError(generateData.name + ": Chest list is null or empty.", generateData);
+            if (++navAttempts > 300)
+            {
+                Debug.LogError(name + ": NavMesh not available after 300 frames; spawner disabled.", this);
+                enabled = false;
+            }
+            return;
+        }
+
+        navAttempts = 0;
+        spawnPosition = navHit.position;
+        GameObject prefabToSpawn = GetSelectedPrefab(generateData);
+        if (prefabToSpawn == null)
+        {
             enabled = false;
             return;
         }
-        if (generateData.SpawnObjects == null || generateData.SpawnObjects.Count == 0)
-        {
-            Debug.LogError(generateData.name + ": SpawnObjects list is null or empty.", generateData);
-            enabled = false;
-            return;
-        }
-        if (generateData.EnemySpawn == null || generateData.EnemySpawn.Count == 0)
-        {
-            Debug.LogError(generateData.name + ": EnemySpawn list is null or empty.", generateData);
-            enabled = false;
-            return;
-        }
+
+        Instantiate(prefabToSpawn, spawnPosition, transform.rotation, transform);
+        enabled = false;
+    }
+
+    private GameObject GetSelectedPrefab(GenerateData generateData)
+    {
         if (Chest)
         {
             if (Random.Range(0, 100) <= ChangeSpawn)
             {
-                Instantiate(generateData.Chest[Random.Range(0, generateData.Chest.Count)], transform);
+                return GetRandomPrefab(generateData.Chest, generateData, "Chest");
             }
-            else
+            else if (Random.Range(0, 100) <= ChangeSpawn)
             {
+                // FIX: P4.1 — validate a spawn list only in the random branch that uses it.
                 if (Random.Range(0, 100) <= ChangeSpawn)
-                {
-                    if (Random.Range(0, 100) <= ChangeSpawn)
-                        Instantiate(generateData.SpawnObjects[Random.Range(0, generateData.SpawnObjects.Count)], transform);
-                    else
-                        Instantiate(generateData.EnemySpawn[Random.Range(0, generateData.EnemySpawn.Count)], transform);
-
-                }
-            }
-        }
-        else
-        {
-            if (Random.Range(0, 100) <= ChangeSpawn)
-            {
-                if (Random.Range(0, 100) <= ChangeSpawn)
-                    Instantiate(generateData.SpawnObjects[Random.Range(0, generateData.SpawnObjects.Count)], transform);
+                    return GetRandomPrefab(generateData.SpawnObjects, generateData, "SpawnObjects");
                 else
-                    Instantiate(generateData.EnemySpawn[Random.Range(0, generateData.EnemySpawn.Count)], transform);
+                    return GetRandomPrefab(generateData.EnemySpawn, generateData, "EnemySpawn");
             }
         }
-        enabled = false;
+        else if (Random.Range(0, 100) <= ChangeSpawn)
+        {
+            // FIX: P4.1 — empty unused lists no longer disable this spawner.
+            if (Random.Range(0, 100) <= ChangeSpawn)
+                return GetRandomPrefab(generateData.SpawnObjects, generateData, "SpawnObjects");
+            else
+                return GetRandomPrefab(generateData.EnemySpawn, generateData, "EnemySpawn");
+        }
+
+        return null;
     }
 
-    // Update is called once per frame
-    void Update()
+    private GameObject GetRandomPrefab(System.Collections.Generic.List<GameObject> prefabs, GenerateData owner, string fieldName)
+    {
+        if (prefabs == null || prefabs.Count == 0)
+        {
+            Debug.LogError(owner.name + ": " + fieldName + " list is null or empty.", owner);
+            return null;
+        }
+
+        GameObject prefab = prefabs[Random.Range(0, prefabs.Count)];
+        if (prefab == null)
+            Debug.LogError(owner.name + ": " + fieldName + " contains a null prefab.", owner);
+        return prefab;
+    }
+
+    private Vector3 spawnPosition;
+
+    private void Update()
     {
         if (i <= time)
         {
             i += Time.deltaTime;
         }
         else
+        {
             SpawnObjects();
+        }
     }
 }
