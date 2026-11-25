@@ -18,6 +18,10 @@ public class PlayerRespawnService : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float experienceLossPercent = 0.25f;
     [SerializeField, Range(0f, 1f)] private float hpRestorePercent = 0.5f;
     [SerializeField, Min(0f)] private float invulnerabilityAfterRespawn = 3f;
+    [Tooltip("Неуязвимость продлевается, пока живой враг ближе его aggroRadius + этот запас.")]
+    [SerializeField, Min(0f)] private float invulnerabilitySafetyMargin = 5f;
+    [Tooltip("Предел продления неуязвимости после респауна, сек. Дальше она истекает даже рядом с врагом.")]
+    [SerializeField, Min(0f)] private float invulnerabilityMaxExtension = 10f;
 
     [Header("Ссылки")]
     [SerializeField] private PlayerHealth health;
@@ -25,6 +29,9 @@ public class PlayerRespawnService : MonoBehaviour
     [SerializeField] private BreakthroughSequence breakthrough;
 
     public float ExperienceLossPercent => experienceLossPercent;
+
+    private EnemyCombatAI[] enemies;
+    private float invulnerabilityExtension;
 
     private void OnEnable()
     {
@@ -94,7 +101,40 @@ public class PlayerRespawnService : MonoBehaviour
 
         health.RestorePercent(hpRestorePercent);
         health.SetInvulnerable(invulnerabilityAfterRespawn);
+        invulnerabilityExtension = invulnerabilityMaxExtension;
+        enemies = null;
         health.NotifyRespawned();
+    }
+
+    /// <summary>
+    /// Продлевает неуязвимость, пока игрок стоит в зоне агро живого врага:
+    /// иначе после респауна враг убивает его сразу по истечении базовых секунд.
+    /// </summary>
+    private void Update()
+    {
+        if (health == null || playerRoot == null) return;
+        if (health.IsDead || invulnerabilityExtension <= 0f) return;
+        if (!EnemyWithinAggro(playerRoot.position)) return;
+
+        invulnerabilityExtension = Mathf.Max(0f, invulnerabilityExtension - Time.deltaTime);
+        health.SetInvulnerable(0.5f);
+    }
+
+    private bool EnemyWithinAggro(Vector3 position)
+    {
+        // ponytail: пересканируем только пока идёт продление (<=10 с). При десятках врагов — реестр.
+        if (enemies == null)
+            enemies = FindObjectsByType<EnemyCombatAI>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
+        foreach (EnemyCombatAI enemy in enemies)
+        {
+            if (enemy == null || enemy.IsDead) continue;
+
+            float radius = enemy.AggroRadius + invulnerabilitySafetyMargin;
+            if ((enemy.transform.position - position).sqrMagnitude <= radius * radius) return true;
+        }
+
+        return false;
     }
 
     private static void Teleport(Transform target, Vector3 position, Quaternion rotation)

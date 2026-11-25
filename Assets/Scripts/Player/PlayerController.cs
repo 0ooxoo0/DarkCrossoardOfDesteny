@@ -243,7 +243,10 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
         if (AgentReady)
         {
-            agent.velocity = moveDirection * moveSpeed;
+            // Ручная запись agent.velocity конфликтовала с внутренним состоянием
+            // NavMeshAgent: агент гасил скорость и персонаж залипал на месте.
+            agent.isStopped = false;
+            agent.Move(moveDirection * (moveSpeed * Time.deltaTime));
         }
         else
         {
@@ -261,7 +264,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private void StopVelocity()
     {
         currentSpeed = 0f;
-        if (AgentReady) agent.velocity = Vector3.zero;
+        if (AgentReady) agent.isStopped = true;
     }
 
     private void HandleRotation()
