@@ -15,14 +15,14 @@ using UnityEngine.UI;
 public static class InventorySetup
 {
     private const string GameScenePath = "Assets/Scenes/Game.unity";
-    private const string TestDataFolder = "Assets/Inventary/TestData";
-    private const string PrefabFolder = "Assets/Inventary/Prefabs";
+    private const string TestDataFolder = "Assets/Scripts/Inventary/TestData";
+    private const string PrefabFolder = "Assets/Scripts/Inventary/Prefabs";
     private const string ThemePath = TestDataFolder + "/InventoryTheme.asset";
     private const string SlotPrefabPath = PrefabFolder + "/InventorySlot.prefab";
     private const string EquipmentSlotPrefabPath = PrefabFolder + "/EquipmentSlot.prefab";
     private const string LootRowPrefabPath = PrefabFolder + "/LootRow.prefab";
     private const string LootContainerPrefabPath = PrefabFolder + "/WorldLootContainer.prefab";
-    private const string OutlineMaterialPath = "Assets/Inventary/Materials/OutlineMaterial.mat";
+    private const string OutlineMaterialPath = "Assets/Scripts/Inventary/Materials/OutlineMaterial.mat";
     private const string ItemEffectPrefabPath = "Assets/Effects/ItemEffect.prefab";
 
     private const string CharacterName = "BasicHero_M";
@@ -1110,11 +1110,11 @@ public static class InventorySetup
         Shader shader = Shader.Find("Inventory/Outline");
         if (shader == null)
         {
-            Debug.LogError("[InventorySetup] Шейдер Inventory/Outline не найден. Переимпортируйте Assets/Inventary/Shaders.");
+            Debug.LogError("[InventorySetup] Шейдер Inventory/Outline не найден. Переимпортируйте Assets/Scripts/Inventary/Shaders.");
             return null;
         }
 
-        EnsureFolder("Assets/Inventary/Materials");
+        EnsureFolder("Assets/Scripts/Inventary/Materials");
 
         Material material = AssetDatabase.LoadAssetAtPath<Material>(OutlineMaterialPath);
         if (material == null)

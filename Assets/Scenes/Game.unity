@@ -203778,7 +203778,7 @@ PrefabInstance:
     - target: {fileID: 2797467021992692300, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: blockController
       value: 
-      objectReference: {fileID: 32509306278097770}
+      objectReference: {fileID: 32509306278097765}
     - target: {fileID: 2834073555751256475, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_Layer
       value: 0
@@ -204358,9 +204358,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4621653112199636550, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       insertIndex: -1
       addedObject: {fileID: 32509306278097768}
-    - targetCorrespondingSourceObject: {fileID: 4621653112199636550, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 32509306278097770}
     - targetCorrespondingSourceObject: {fileID: 5854201483630845358, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1519239132}
@@ -204392,6 +204389,17 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 8940506487072268590, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
   m_PrefabInstance: {fileID: 32509306278097761}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &32509306278097765 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 856261746011144612, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+  m_PrefabInstance: {fileID: 32509306278097761}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1031398586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4685c6ee6385334fbf7a6b7d9c655d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerBlockController
 --- !u!195 &32509306278097766 stripped
 NavMeshAgent:
   m_CorrespondingSourceObject: {fileID: 7126891075537836384, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
@@ -204453,25 +204461,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerEquipmentBridge
   inventory: {fileID: 1203554729}
   visuals: {fileID: 394657651}
---- !u!114 &32509306278097770
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1031398586}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4685c6ee6385334fbf7a6b7d9c655d0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerBlockController
-  blockKey: 51
-  alsoRightMouse: 1
-  blockAngle: 120
-  blockHitCooldown: 0.25
-  animator: {fileID: 32509306278097764}
-  playerController: {fileID: 1161921856}
-  playerHealth: {fileID: 0}
 --- !u!224 &59666551707832596
 RectTransform:
   m_ObjectHideFlags: 0
@@ -229423,6 +229412,24 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &8800000000000000000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 766535537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e751154b588f2ded42bd7717b636e1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameMenuController
+  cultivationButton: {fileID: 2058292564}
+  skillsButton: {fileID: 2046899784}
+  craftingButton: {fileID: 71015242}
+  journalButton: {fileID: 1084136358}
+  pauseMenuRootName: PauseMenu
+  buttonContainerName: "\u041A\u043D\u043E\u043F\u043A\u0438"
 --- !u!114 &8806654076502701027
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230571,21 +230578,3 @@ SceneRoots:
   - {fileID: 1423976775}
   - {fileID: 1258995897}
   - {fileID: 215258864}
---- !u!114 &8800000000000000000
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 766535537}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e751154b588f2ded42bd7717b636e1a, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::GameMenuController
-  cultivationButton: {fileID: 2058292564}
-  skillsButton: {fileID: 2046899784}
-  craftingButton: {fileID: 71015242}
-  journalButton: {fileID: 1084136358}
-  pauseMenuRootName: PauseMenu
-  buttonContainerName: "\u041A\u043D\u043E\u043F\u043A\u0438"

@@ -3,6 +3,8 @@ using UnityEngine;
 public class PointGenerateData : MonoBehaviour
 {
     private const string RoomTag = "Room";
+
+    [Tooltip("Тег стены, закрывающей проход. Переопределяется в сценах подземелья.")]
     [SerializeField] private string wallTag = "Stena";
 
     public pointPos _PointPos;
@@ -79,6 +81,15 @@ public class PointGenerateData : MonoBehaviour
     }
 
     private void OnTriggerEnter(Collider other)
+    {
+        HandleTriggerEnter(other);
+    }
+
+    /// <summary>
+    /// Обработка входа в триггер. Вынесена из <c>OnTriggerEnter</c>, чтобы тесты
+    /// вызывали ту же логику напрямую, без отправки сообщений и отражения.
+    /// </summary>
+    internal void HandleTriggerEnter(Collider other)
     {
         // FIX: P1.1 — accept the serialized wall tag and do not depend on the point's own tag.
         if (other == null || string.IsNullOrWhiteSpace(wallTag) || !other.CompareTag(wallTag))

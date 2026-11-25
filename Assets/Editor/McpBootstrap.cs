@@ -8,36 +8,39 @@ using UnityEngine;
 /// <summary>
 /// Временный помощник: подключает редактор к запущенному MCP-серверу
 /// без ручного нажатия кнопки Connect. Удаляется после использования.
+/// Повторяет попытки и пишет диагностику в Console/Editor.log.
 /// </summary>
 [InitializeOnLoad]
 public static class McpBootstrap
 {
+    private const string LogTag = "[McpBootstrap] ";
+
     private static double _nextAttempt;
     private static int _attempts;
-    private static bool _connected;
+    private static bool _done;
 
     static McpBootstrap()
     {
-        _nextAttempt = 0.0;
+        Debug.Log(LogTag + "init");
         EditorApplication.update += Tick;
     }
 
     private static void Tick()
     {
-        if (_connected)
+        if (_done)
         {
             EditorApplication.update -= Tick;
             return;
         }
 
         if (EditorApplication.timeSinceStartup < _nextAttempt) return;
-        _nextAttempt = EditorApplication.timeSinceStartup + 3.0;
+        _nextAttempt = EditorApplication.timeSinceStartup + 5.0;
         _attempts++;
 
-        if (_attempts > 60)
+        if (_attempts > 120)
         {
             EditorApplication.update -= Tick;
-            Debug.LogWarning("[McpBootstrap] Попытки подключения исчерпаны.");
+            Debug.LogWarning(LogTag + "попытки исчерпаны");
             return;
         }
 
@@ -45,37 +48,64 @@ public static class McpBootstrap
 
         try
         {
-            Type locator = AppDomain.CurrentDomain.GetAssemblies()
-                .Select(a => a.GetType("MCPForUnity.Editor.Services.MCPServiceLocator"))
-                .FirstOrDefault(t => t != null);
+            // Снимаем «сессия уже стартовала» у штатного автозапуска,
+            // иначе он больше не пробует подключиться в этой сессии Unity.
+            SessionState.EraseBool("HttpAutoStartHandler.SessionInitialized");
+            SessionState.EraseBool("HttpAutoStartHandler.ConnectPending");
 
+            Assembly asm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "MCPForUnity.Editor");
+            if (asm == null)
+            {
+                if (_attempts % 6 == 1) Debug.Log(LogTag + "сборка MCPForUnity.Editor не найдена");
+                return;
+            }
+
+            Type handler = asm.GetType("MCPForUnity.Editor.Services.HttpAutoStartHandler");
+            if (handler != null)
+            {
+                MethodInfo auto = handler.GetMethod("AutoStartAsync", BindingFlags.NonPublic | BindingFlags.Static);
+                if (auto != null)
+                {
+                    object result = auto.Invoke(null, null);
+                    Task task = result as Task;
+                    if (task != null)
+                    {
+                        task.ContinueWith(t =>
+                        {
+                            if (t.IsFaulted)
+                                Debug.LogWarning(LogTag + "AutoStartAsync fault: " + t.Exception);
+                            else
+                                Debug.Log(LogTag + "AutoStartAsync завершён");
+                        });
+                    }
+                    Debug.Log(LogTag + "AutoStartAsync вызван (попытка " + _attempts + ")");
+                    return;
+                }
+            }
+
+            Type locator = asm.GetType("MCPForUnity.Editor.Services.MCPServiceLocator");
             if (locator == null) return;
-
-            PropertyInfo bridgeProperty = locator.GetProperty("Bridge", BindingFlags.Public | BindingFlags.Static);
-            if (bridgeProperty == null) return;
-
-            object bridge = bridgeProperty.GetValue(null, null);
-            if (bridge == null) return;
-
-            MethodInfo start = bridge.GetType().GetMethod("StartAsync", Type.EmptyTypes);
+            PropertyInfo bridgeProp = locator.GetProperty("Bridge", BindingFlags.Public | BindingFlags.Static);
+            if (bridgeProp == null) return;
+            object bridge = bridgeProp.GetValue(null, null);
+            MethodInfo start = bridge != null ? bridge.GetType().GetMethod("StartAsync", Type.EmptyTypes) : null;
             if (start == null) return;
 
-            Task<bool> task = start.Invoke(bridge, null) as Task<bool>;
-            if (task == null) return;
-
-            task.ContinueWith(t =>
+            Task<bool> connect = start.Invoke(bridge, null) as Task<bool>;
+            if (connect == null) return;
+            connect.ContinueWith(t =>
             {
                 if (t.IsFaulted)
-                    Debug.Log("[McpBootstrap] Ошибка подключения: " + t.Exception.Message);
+                    Debug.LogWarning(LogTag + "StartAsync fault: " + t.Exception);
                 else
-                    Debug.Log("[McpBootstrap] StartAsync -> " + t.Result);
-
-                if (!t.IsFaulted && t.Result) _connected = true;
+                    Debug.Log(LogTag + "StartAsync -> " + t.Result);
+                if (!t.IsFaulted && t.Result) _done = true;
             });
         }
         catch (Exception e)
         {
-            Debug.Log("[McpBootstrap] Исключение: " + e.Message);
+            Debug.LogWarning(LogTag + "исключение: " + e);
         }
     }
 }

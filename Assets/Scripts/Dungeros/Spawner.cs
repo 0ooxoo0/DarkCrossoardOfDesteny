@@ -4,6 +4,14 @@ using UnityEngine.AI;
 public class Spawner : MonoBehaviour
 {
     [SerializeField] private int ChangeSpawn = 50;
+
+    /// <summary>Шанс выбора ветки добычи. Тесты задают значение явно.</summary>
+    internal int ChangeSpawnForTests
+    {
+        get => ChangeSpawn;
+        set => ChangeSpawn = value;
+    }
+
     [SerializeField] private bool Chest = false;
     [SerializeField] private int time = 5;
     private float i = 0;
@@ -45,6 +53,20 @@ public class Spawner : MonoBehaviour
     }
 
     private GameObject GetSelectedPrefab(GenerateData generateData)
+    {
+        return SelectPrefab(generateData);
+    }
+
+    /// <summary>
+    /// Выбор префаба для спавна. Тесты вызывают ту же логику напрямую,
+    /// без отражения и без запуска физического цикла обновления.
+    /// </summary>
+    internal GameObject GetSelectedPrefabForTests(GenerateData generateData)
+    {
+        return SelectPrefab(generateData);
+    }
+
+    private GameObject SelectPrefab(GenerateData generateData)
     {
         if (Chest)
         {

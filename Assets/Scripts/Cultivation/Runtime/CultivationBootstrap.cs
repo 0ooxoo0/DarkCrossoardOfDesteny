@@ -566,7 +566,11 @@ public class CultivationBootstrap : MonoBehaviour
     private void HandleTechniqueLearnedCapture(TechniqueData technique) => CaptureState();
     private void HandleQiChangedCapture(int current, int max) => CaptureState();
 
-    private static T AddOrGet<T>(GameObject target) where T : Component
+    /// <summary>
+    /// Возвращает компонент, добавляя его только при отсутствии.
+    /// Тесты проверяют, что повторный вызов не создаёт дубликат.
+    /// </summary>
+    internal static T AddOrGet<T>(GameObject target) where T : Component
     {
         var component = target.GetComponent<T>();
         if (component == null)

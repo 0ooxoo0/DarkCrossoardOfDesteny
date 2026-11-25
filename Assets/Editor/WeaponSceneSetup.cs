@@ -15,7 +15,7 @@ public static class WeaponSceneSetup
 {
     private const string PlayerPrefabPath = "Assets/Player.prefab";
     private const string GameScenePath = "Assets/Scenes/Game.unity";
-    private const string SampleScenePath = "Assets/Inventary/Scenes/SampleScene.unity";
+    private const string SampleScenePath = "Assets/Scripts/Inventary/Scenes/SampleScene.unity";
     private const string BaseControllerPath = "Assets/PlayerAnimations/PlayerController.controller";
     private const string FistsWeaponPath = "Assets/Combat/Weapons/Fists.asset";
     private const string SwordWeaponPath = "Assets/Combat/Weapons/Sword.asset";

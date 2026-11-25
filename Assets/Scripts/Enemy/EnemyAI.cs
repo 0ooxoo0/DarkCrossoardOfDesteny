@@ -55,6 +55,7 @@ public class EnemyAI : MonoBehaviour
 
         if (agent == null) agent = GetComponent<NavMeshAgent>();
         if (health == null) health = GetComponent<HarvestableObject>();
+        if (animator == null) animator = GetComponentInChildren<Animator>();
 
         if (agent != null) agent.speed = moveSpeed;
     }
@@ -254,7 +255,13 @@ public class EnemyAI : MonoBehaviour
         if (targetHealth == null) return;
 
         var damage = new DamageInfo(attackDamage, gameObject, target.position);
-        targetHealth.TakeDamage(damage);
+
+        // Блок игрока важнее прямого урона: удачный блок не отнимает здоровье.
+        ICombatBlockable blockable = targetHealth.GetComponent<ICombatBlockable>();
+        if (blockable != null && blockable.IsBlocking && blockable.CanBlockFrom(transform.position))
+            blockable.OnBlocked(damage);
+        else
+            targetHealth.TakeDamage(damage);
 
         PlayAttackAnimation();
     }

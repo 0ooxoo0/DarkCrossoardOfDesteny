@@ -2,12 +2,15 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Player block. Uses the existing Input System devices (no second input manager).
-/// Hold Shift or Right Mouse Button. A blocked hit deals no damage and plays BlockHit.
+/// Блок игрока: удержание Shift или ПКМ. Удачный блок не пропускает урон
+/// и проигрывает BlockHit. Смерть снимает блок подпиской на <see cref="IHealthProvider"/>.
 /// </summary>
 [DisallowMultipleComponent]
 public class PlayerBlockController : MonoBehaviour, ICombatBlockable
 {
+    private const string BlockingParam = "IsBlocking";
+    private const string BlockHitTrigger = "BlockHit";
+
     [Header("Input")]
     [SerializeField] private Key blockKey = Key.LeftShift;
     [SerializeField] private bool alsoRightMouse = true;
@@ -18,49 +21,59 @@ public class PlayerBlockController : MonoBehaviour, ICombatBlockable
     [SerializeField, Min(0f)] private float blockHitCooldown = 0.25f;
 
     [Header("References")]
-    [SerializeField] private Animator animator;
-    [SerializeField] private PlayerController playerController;
+    [Tooltip("Смерть снимает блок; ссылка обязательна.")]
     [SerializeField] private PlayerHealth playerHealth;
+    [Tooltip("Блок останавливает и возобновляет движение; ссылка обязательна.")]
+    [SerializeField] private PlayerController playerController;
+    [SerializeField] private Animator animator;
 
     private bool blocking;
     private float lastBlockHitTime = -10f;
+    private bool initialized;
 
     public bool IsBlocking => blocking;
     public float BlockAngle => blockAngle;
 
-    private void Awake()
+    /// <summary>
+    /// Идемпотентно подписывает блок на смерть. В EditMode Unity не вызывает
+    /// <c>OnEnable</c>, поэтому тесты входят тем же путём, что и игра.
+    /// </summary>
+    internal void EnsureInitialized()
     {
-        if (animator == null) animator = GetComponent<Animator>();
-        if (playerController == null) playerController = GetComponent<PlayerController>();
-        if (playerHealth == null) playerHealth = GetComponent<PlayerHealth>();
+        if (initialized) return;
+        initialized = true;
+
+        playerHealth.OnDied += HandleDied;
+    }
+
+    private void OnEnable()
+    {
+        EnsureInitialized();
     }
 
     private void OnDisable()
     {
+        playerHealth.OnDied -= HandleDied;
         SetBlocking(false);
     }
 
     private void Update()
     {
-        if (playerHealth != null && playerHealth.IsDead)
+        if (playerHealth.IsDead || playerController.IsAttacking)
         {
             SetBlocking(false);
             return;
         }
 
-        if (playerController != null && playerController.IsAttacking)
-        {
-            SetBlocking(false);
-            return;
-        }
+        SetBlocking(IsBlockInputHeld());
+    }
 
-        bool wantBlock = false;
+    private bool IsBlockInputHeld()
+    {
         if (Keyboard.current != null && Keyboard.current[blockKey].isPressed)
-            wantBlock = true;
-        if (alsoRightMouse && Mouse.current != null && Mouse.current.rightButton.isPressed)
-            wantBlock = true;
+            return true;
 
-        SetBlocking(wantBlock);
+        return alsoRightMouse && Mouse.current != null && Mouse.current.rightButton.isPressed;
     }
 
     private void SetBlocking(bool value)
@@ -68,11 +81,27 @@ public class PlayerBlockController : MonoBehaviour, ICombatBlockable
         if (blocking == value) return;
 
         blocking = value;
-        if (animator != null) animator.SetBool("IsBlocking", value);
+        if (animator != null) animator.SetBool(BlockingParam, value);
 
-        if (playerController == null) return;
-        if (value) playerController.StopMovement();
-        else playerController.ResumeMovement();
+        if (value)
+        {
+            playerController.StopMovement();
+            return;
+        }
+
+        // Мёртвый игрок остаётся обездвиженным: движение вернёт респавн.
+        if (!playerHealth.IsDead) playerController.ResumeMovement();
+    }
+
+    private void HandleDied()
+    {
+        SetBlocking(false);
+    }
+
+    /// <summary>Включает и выключает блок. Тесты входят тем же путём, что и ввод.</summary>
+    internal void SetBlockingForTests(bool value)
+    {
+        SetBlocking(value);
     }
 
     public bool CanBlockFrom(Vector3 attackerPosition)
@@ -91,7 +120,7 @@ public class PlayerBlockController : MonoBehaviour, ICombatBlockable
         if (Time.time - lastBlockHitTime < blockHitCooldown) return;
         lastBlockHitTime = Time.time;
 
-        if (animator != null) animator.SetTrigger("BlockHit");
+        if (animator != null) animator.SetTrigger(BlockHitTrigger);
     }
 
     private void OnDrawGizmosSelected()

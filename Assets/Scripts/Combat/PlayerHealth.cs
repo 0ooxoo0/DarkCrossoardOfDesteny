@@ -7,7 +7,7 @@ using UnityEngine;
 /// оставались снаружи и не ломали <c>PlayerController</c>.
 /// </summary>
 [DisallowMultipleComponent]
-public class PlayerHealth : MonoBehaviour, IDamageable
+public class PlayerHealth : MonoBehaviour, IDamageable, IHealthProvider
 {
     [Header("Базовые значения")]
     [SerializeField, Min(1f)] private float baseMaxHealth = 100f;
@@ -24,6 +24,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     private float regenDelayRemaining;
     private float invulnerableRemaining;
     private bool dead;
+    private bool initialized;
 
     /// <summary>Текущее здоровье, округлённое для UI.</summary>
     public int Current => Mathf.Clamp(Mathf.RoundToInt(current), 0, Max);
@@ -86,6 +87,18 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     private void Awake()
     {
+        EnsureInitialized();
+    }
+
+    /// <summary>
+    /// Идемпотентная инициализация здоровья. В EditMode Unity не вызывает <c>Awake</c>,
+    /// поэтому состояние готовится явным вызовом — тем же путём, что и в игре.
+    /// </summary>
+    internal void EnsureInitialized()
+    {
+        if (initialized) return;
+        initialized = true;
+
         if (animator == null) animator = GetComponent<Animator>();
         current = Max;
         RaiseHealthChanged();
@@ -93,6 +106,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     private void OnEnable()
     {
+        EnsureInitialized();
+
         if (cultivation != null)
             cultivation.OnRealmBonusesChanged += HandleRealmBonusesChanged;
     }

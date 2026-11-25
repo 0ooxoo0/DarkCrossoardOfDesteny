@@ -16,13 +16,23 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     [SerializeField] private string attackIndexParam = "AttackIndex";
     [SerializeField, Min(0)] private int maxComboIndex = 2;
 
+    [Header("Jump")]
+    [Tooltip("Слой Animator с фазами прыжка. 0 — слой выключен.")]
+    [SerializeField] private string jumpLayerName = "Jump";
+    [Tooltip("Int-параметр слоя Jump: 1 — взлёт, 2 — падение, 3 — приземление.")]
+    [SerializeField] private string jumpPhaseParam = "JumpPhase";
+    [SerializeField, Min(0.1f)] private float jumpHeight = 1.2f;
+    [SerializeField, Min(0.2f)] private float jumpDuration = 0.9f;
+
     [Header("Attack")]
     [SerializeField] private Weapon weapon;
     [SerializeField] private WeaponManager weaponManager;
 
     [Header("Combat References")]
-    [SerializeField] private PlayerBlockController blockController;
+    [Tooltip("Здоровье игрока. Обязательно: смерть останавливает управление.")]
     [SerializeField] private PlayerHealth health;
+    [Tooltip("Блок игрока. Обязателен: блок запрещает атаку и движение.")]
+    [SerializeField] private PlayerBlockController blockController;
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -42,44 +52,93 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private int comboIndex;
     public event System.Action AttackStarted;
     private float attackElapsed;
+    private bool isJumping;
+    private float jumpElapsed;
+    private int jumpLayerIndex = -1;
+    private int jumpPhaseHash;
+    private bool initialized;
+    private bool subscribed;
 
     private static readonly int AttackStateTag = Animator.StringToHash("Attack");
 
     private void Awake()
     {
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
-        mainCamera = Camera.main;
-        controls = new PlayerControls();
-        playerInteraction = GetComponent<PlayerInteraction>();
+        EnsureInitialized();
+    }
 
-        if (blockController == null) blockController = GetComponent<PlayerBlockController>();
-        if (health == null) health = GetComponent<PlayerHealth>();
+    /// <summary>
+    /// Идемпотентная активация: ссылки, агент и подписка на смерть.
+    /// В EditMode Unity не вызывает <c>Awake</c>/<c>OnEnable</c>, поэтому тесты
+    /// входят этим же путём, что и игра.
+    /// </summary>
+    internal void EnsureInitialized()
+    {
+        if (!initialized)
+        {
+            initialized = true;
 
-        agent.updateRotation = false;
-        agent.speed = moveSpeed;
-        agent.autoBraking = false;
-        agent.acceleration = 20f;
+            agent = GetComponent<NavMeshAgent>();
+            animator = GetComponent<Animator>();
+            mainCamera = Camera.main;
+            controls = new PlayerControls();
+            playerInteraction = GetComponent<PlayerInteraction>();
 
-        if (weapon == null) weapon = GetComponentInChildren<Weapon>(true);
-        if (weapon != null) weapon.SetHitboxActive(false);
+            if (agent != null)
+            {
+                agent.updateRotation = false;
+                agent.speed = moveSpeed;
+                agent.autoBraking = false;
+                agent.acceleration = 20f;
+            }
+
+            if (weapon == null) weapon = GetComponentInChildren<Weapon>(true);
+            if (weapon != null) weapon.SetHitboxActive(false);
+        }
+
+        SubscribeHealth();
+    }
+
+    private void SubscribeHealth()
+    {
+        if (subscribed) return;
+        subscribed = true;
+
+        health.OnDied += HandleDied;
+        health.OnRespawned += HandleRespawned;
+    }
+
+    private void UnsubscribeHealth()
+    {
+        if (!subscribed) return;
+        subscribed = false;
+
+        health.OnDied -= HandleDied;
+        health.OnRespawned -= HandleRespawned;
     }
 
     private void OnEnable()
+    {
+        EnsureInitialized();
+        EnableControls();
+    }
+
+    private void EnableControls()
     {
         controls.Enable();
         controls.Player.Move.performed += OnMove;
         controls.Player.Move.canceled += OnMove;
         controls.Player.Interact.performed += OnInteract;
         controls.Player.Attack.performed += OnAttackPressed;
+        controls.Player.Jump.performed += OnJumpPressed;
     }
 
-    private void OnDisable()
+    private void DisableControls()
     {
         controls.Player.Move.performed -= OnMove;
         controls.Player.Move.canceled -= OnMove;
         controls.Player.Interact.performed -= OnInteract;
         controls.Player.Attack.performed -= OnAttackPressed;
+        controls.Player.Jump.performed -= OnJumpPressed;
         controls.Disable();
     }
 
@@ -88,20 +147,19 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         AimController aim = GetComponentInChildren<AimController>();
         if (aim != null) SetAimTarget(aim.transform);
 
-        if (health != null)
-        {
-            health.OnDied += HandleDied;
-            health.OnRespawned += HandleRespawned;
-        }
+        // Смерть могла наступить до подписки: приводим управление в согласованное состояние.
+        if (health.IsDead) HandleDied();
+    }
+
+    private void OnDisable()
+    {
+        DisableControls();
+        UnsubscribeHealth();
     }
 
     private void OnDestroy()
     {
-        if (health != null)
-        {
-            health.OnDied -= HandleDied;
-            health.OnRespawned -= HandleRespawned;
-        }
+        UnsubscribeHealth();
     }
 
     public void SetAimTarget(Transform target)
@@ -131,14 +189,30 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private void Update()
     {
         UpdateAttackState();
+        UpdateJump();
         HandleMovement();
         HandleRotation();
         UpdateAnimation();
     }
 
+    /// <summary>Текущая скорость как доля от максимума. Тесты проверяют остановку после смерти.</summary>
+    internal float CurrentSpeedForTests => currentSpeed;
+
+    /// <summary>Задаёт ввод движения. Тесты вызывают ту же логику, что и Input System.</summary>
+    internal void SetMoveInputForTests(Vector2 input)
+    {
+        moveInput = input;
+    }
+
+    /// <summary>Прогон шага движения. В EditMode <c>Update</c> не тикает.</summary>
+    internal void HandleMovementForTests()
+    {
+        HandleMovement();
+    }
+
     private void HandleMovement()
     {
-        if (isAttacking || isDead || (blockController != null && blockController.IsBlocking))
+        if (isAttacking || isDead || blockController.IsBlocking)
         {
             StopVelocity();
             return;
@@ -224,13 +298,18 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             Vector3 moveDir = lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward;
             Quaternion targetRotation = Quaternion.LookRotation(moveDir);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        }    }
+        }
+    }
 
     private void UpdateAnimation()
     {
-        if (animator == null) return;
         float speed = isDead ? 0f : currentSpeed / Mathf.Max(0.1f, moveSpeed);
-        animator.SetFloat(speedParam, Mathf.Clamp01(speed));
+        SetAnimationSpeed(Mathf.Clamp01(speed));
+    }
+
+    private void SetAnimationSpeed(float normalizedSpeed)
+    {
+        if (animator != null) animator.SetFloat(speedParam, normalizedSpeed);
     }
 
     public void FaceTowards(Vector3 worldPoint, float duration)
@@ -296,6 +375,72 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     }
 
     public bool IsAttacking => isAttacking;
+    public bool IsJumping => isJumping;
+
+    private void OnJumpPressed(InputAction.CallbackContext context)
+    {
+        TryJump();
+    }
+
+    /// <summary>
+    /// Прыжок по дуге: NavMeshAgent.baseOffset поднимает агента над сеткой,
+    /// горизонтальное движение при этом остаётся обычным.
+    /// </summary>
+    public bool TryJump()
+    {
+        if (isDead || isJumping) return false;
+        if (isAttacking) return false;
+        if (blockController.IsBlocking) return false;
+        if (!AgentReady) return false;
+
+        isJumping = true;
+        jumpElapsed = 0f;
+
+        ResolveJumpLayer();
+        SetJumpPhase(1);
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+
+        return true;
+    }
+
+    private void UpdateJump()
+    {
+        if (!isJumping) return;
+
+        float duration = Mathf.Max(0.2f, jumpDuration);
+        jumpElapsed += Time.deltaTime;
+
+        float t = Mathf.Clamp01(jumpElapsed / duration);
+        if (agent != null) agent.baseOffset = Mathf.Sin(t * Mathf.PI) * Mathf.Max(0.1f, jumpHeight);
+
+        if (t >= 0.85f) SetJumpPhase(3);
+        else if (t >= 0.45f) SetJumpPhase(2);
+
+        if (t >= 1f) CancelJump();
+    }
+
+    private void ResolveJumpLayer()
+    {
+        if (animator == null || string.IsNullOrEmpty(jumpLayerName)) return;
+        jumpLayerIndex = animator.GetLayerIndex(jumpLayerName);
+        jumpPhaseHash = Animator.StringToHash(jumpPhaseParam);
+    }
+
+    private void SetJumpPhase(int phase)
+    {
+        if (animator == null || jumpLayerIndex < 0) return;
+        animator.SetLayerWeight(jumpLayerIndex, phase > 0 ? 1f : 0f);
+        animator.SetInteger(jumpPhaseHash, phase);
+    }
+
+    private void CancelJump()
+    {
+        isJumping = false;
+        jumpElapsed = 0f;
+
+        if (agent != null) agent.baseOffset = 0f;
+        if (animator != null && jumpLayerIndex >= 0) animator.SetInteger(jumpPhaseHash, 0);
+    }
 
     /// <summary>Запускает новую атаку или ставит следующую атаку комбо в буфер.</summary>
     public bool PlayAttackAnimation()
@@ -306,7 +451,8 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public bool TryAttack()
     {
         if (isDead) return false;
-        if (blockController != null && blockController.IsBlocking) return false;
+        if (isJumping) return false;
+        if (blockController.IsBlocking) return false;
         if (animator == null) return false;
 
         if (!isAttacking)
@@ -348,7 +494,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public void ResumeMovement()
     {
         if (isDead) return;
-        if (blockController != null && blockController.IsBlocking) return;
+        if (blockController.IsBlocking) return;
         if (AgentReady) agent.isStopped = false;
     }
 
@@ -374,6 +520,10 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         comboWindowOpen = false;
     }
 
+    /// <summary>
+    /// Смерть касается только управления: движение и атака прекращаются.
+    /// Анимация смерти и хитбокс — забота <see cref="PlayerDeathPresentation"/>.
+    /// </summary>
     private void HandleDied()
     {
         isDead = true;
@@ -381,9 +531,9 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         comboQueued = false;
         comboWindowOpen = false;
 
-        if (animator != null) animator.SetBool("IsDead", true);
+        CancelJump();
         StopMovement();
-        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+        SetAnimationSpeed(0f);
     }
 
     private void HandleRespawned()
@@ -392,12 +542,6 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         isAttacking = false;
         comboQueued = false;
         comboWindowOpen = false;
-
-        if (animator != null)
-        {
-            animator.SetBool("IsDead", false);
-            animator.ResetTrigger("Hit");
-        }
 
         ResumeMovement();
     }

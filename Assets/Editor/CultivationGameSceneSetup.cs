@@ -18,7 +18,7 @@ public static class CultivationGameSceneSetup
 {
     private const string GameScenePath = "Assets/Scenes/Game.unity";
     private const string ConfigPath = "Assets/Resources/Cultivation/CultivationConfig.asset";
-    private const string ItemPrefabPath = "Assets/Inventary/Prefabs/Item.prefab";
+    private const string ItemPrefabPath = "Assets/Scripts/Inventary/Prefabs/Item.prefab";
     private const string CombatItemsFolder = "Assets/Combat/Items";
     private const string ScrollPath = CombatItemsFolder + "/Scroll_SwordStrike.asset";
 
@@ -353,7 +353,7 @@ public static class CultivationGameSceneSetup
     private static List<ItemData> CollectItemAssets()
     {
         var result = new List<ItemData>();
-        string[] folders = { CombatItemsFolder, "Assets/Inventary/Script/SO" };
+        string[] folders = { CombatItemsFolder, "Assets/Scripts/Inventary/Script/SO" };
 
         string[] guids = AssetDatabase.FindAssets("t:ItemData", folders);
         foreach (string guid in guids)

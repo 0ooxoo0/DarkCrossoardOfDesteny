@@ -197,7 +197,7 @@ public class ConfirmationDialog : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindObjectOfType<ConfirmationDialog>(true);
+                instance = FindFirstObjectByType<ConfirmationDialog>(FindObjectsInactive.Include);
                 if (instance == null)
                 {
                     Debug.LogError("ConfirmationDialog not found in scene!");

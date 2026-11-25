@@ -7,15 +7,15 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Контент мира культивации: ресурсы и пилюли в Assets/Inventary/Data/Content.
+/// Контент мира культивации: ресурсы и пилюли в Assets/Scripts/Inventary/Data/Content.
 /// Меню: Tools → Cultivation → 4. Setup World Content (Game).
 /// Повторный запуск обновляет существующие ассеты, а не создаёт дубли.
 /// </summary>
 public static class CultivationWorldSetup
 {
-    private const string ContentFolder = "Assets/Inventary/Data/Content";
+    private const string ContentFolder = "Assets/Scripts/Inventary/Data/Content";
     private const string PillsFolder = ContentFolder + "/Pills";
-    private const string LootFolder = "Assets/Inventary/Data/Loot";
+    private const string LootFolder = "Assets/Scripts/Inventary/Data/Loot";
     private const string ResourcesFolder = "Assets/Resources/Cultivation";
     private const string AlchemyConfigPath = ResourcesFolder + "/AlchemyConfig.asset";
     private const string AlchemyRecipesFolder = ResourcesFolder + "/Alchemy";

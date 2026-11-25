@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Room : MonoBehaviour
 {
-    private GenerateData _Parent;
+    private GenerateData parentGenerator;
     public List<PointGenerateData> PointArray = new List<PointGenerateData>();
     private Coroutine myCoroutine;
     private bool coroutineCancelled;
@@ -21,7 +21,7 @@ public class Room : MonoBehaviour
         GenerateData parentGen = transform.GetComponentInParent<GenerateData>();
         if (parentGen != null && parentGen.RoomArray != null)
         {
-            _Parent = parentGen;
+            parentGenerator = parentGen;
             RegisterRoom();
         }
         else
@@ -30,11 +30,18 @@ public class Room : MonoBehaviour
         }
     }
 
+    /// <summary>Генератор, которому принадлежит комната. Задаётся извне в тестах и префабах без родителя.</summary>
+    internal GenerateData ParentGenerator
+    {
+        get => parentGenerator;
+        set => parentGenerator = value;
+    }
+
     private void OnEnable()
     {
         coroutineCancelled = false;
-        if (_Parent == null)
-            _Parent = GetComponentInParent<GenerateData>();
+        if (parentGenerator == null)
+            parentGenerator = GetComponentInParent<GenerateData>();
         RegisterRoom();
         StartPointProcessing();
     }
@@ -53,8 +60,8 @@ public class Room : MonoBehaviour
 
     private void RegisterRoom()
     {
-        if (isRegistered || _Parent == null || _Parent.RoomArray == null) return;
-        if (!_Parent.RoomArray.Contains(this)) _Parent.RoomArray.Add(this);
+        if (isRegistered || parentGenerator == null || parentGenerator.RoomArray == null) return;
+        if (!parentGenerator.RoomArray.Contains(this)) parentGenerator.RoomArray.Add(this);
         if (!isRegistered) GenerateData.RegisterActiveRoom();
         isRegistered = true;
     }
@@ -62,8 +69,8 @@ public class Room : MonoBehaviour
     private void UnregisterRoom()
     {
         if (!isRegistered) return;
-        if (_Parent != null && _Parent.RoomArray != null)
-            _Parent.RoomArray.Remove(this);
+        if (parentGenerator != null && parentGenerator.RoomArray != null)
+            parentGenerator.RoomArray.Remove(this);
         GenerateData.UnregisterActiveRoom();
         isRegistered = false;
     }
@@ -82,18 +89,17 @@ public class Room : MonoBehaviour
     private void StartPointProcessing()
     {
         if (myCoroutine != null || coroutineCancelled) return;
-        if (_Parent == null)
+        if (parentGenerator == null)
         {
             Debug.LogError(name + ": GenerateData parent is missing; points were not processed.", this);
             return;
         }
-        _Parent.BeginGenerationWork();
+        parentGenerator.BeginGenerationWork();
         myCoroutine = StartCoroutine(InstanseCoroutine());
     }
 
     private IEnumerator InstanseCoroutine()
-    {
-        yield return new WaitForEndOfFrame();
+    {        yield return new WaitForEndOfFrame();
         if (coroutineCancelled || this == null) yield break;
 
         // FIX: P3.2 — snapshot before recursive room creation; points added by new rooms cannot mutate this iteration.
@@ -110,35 +116,44 @@ public class Room : MonoBehaviour
             if (TrySpawnStopForCap(point))
                 continue;
 
-            _Parent._Instanse(point.transform, point._PointPos);
+            parentGenerator._Instanse(point.transform, point._PointPos);
             point.EndProcessing();
             yield return null;
         }
 
         myCoroutine = null;
-        if (_Parent != null) _Parent.EndGenerationWork();
+        if (parentGenerator != null) parentGenerator.EndGenerationWork();
     }
 
     private bool TrySpawnStopForCap(PointGenerateData point)
     {
-        if (_Parent == null || _Parent.RoomArray == null || _Parent.RoomList == null)
+        if (parentGenerator == null || parentGenerator.RoomArray == null || parentGenerator.RoomList == null)
             return false;
-        if (_Parent.RoomArray.Count < _Parent.RoomLimit)
+        if (parentGenerator.RoomArray.Count < parentGenerator.RoomLimit)
             return false;
 
         // FIX: P2.5 — create Stop from the room coroutine, and count it against the same cap.
-        if (!_Parent.TrySpawnStop(point.transform))
+        if (!parentGenerator.TrySpawnStop(point.transform))
             Debug.LogWarning(name + ": room cap reached but no Stop room could be spawned.", this);
         point.gameObject.SetActive(false);
         return true;
+    }
+
+    /// <summary>
+    /// Прогон обработки точек. Тесты вызывают ту же корутину, что и игра,
+    /// без <c>StartCoroutine</c>, который в EditMode не тикает.
+    /// </summary>
+    internal IEnumerator RunGenerationForTests()
+    {
+        return InstanseCoroutine();
     }
 
     private void CancelCoroutine()
     {
         // FIX: P2.3/P3.2 — request cancellation cooperatively; Unity stops disabled/destroyed component coroutines.
         coroutineCancelled = true;
-        if (myCoroutine != null && _Parent != null)
-            _Parent.EndGenerationWork();
+        if (myCoroutine != null && parentGenerator != null)
+            parentGenerator.EndGenerationWork();
         myCoroutine = null;
     }
 
@@ -189,7 +204,7 @@ public class Room : MonoBehaviour
 
         roomToDisable.UnregisterRoom();
         roomToDisable.gameObject.SetActive(false);
-        roomToKeep._Parent?.NotifyGenerationProgress();
+        roomToKeep.parentGenerator?.NotifyGenerationProgress();
     }
 
     public void ColliderTrue()

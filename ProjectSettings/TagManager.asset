@@ -18,6 +18,7 @@ TagManager:
   - Slide
   - NavmeshLink
   - NavmeshSurface
+  - Attack
   layers:
   - Default
   - TransparentFX

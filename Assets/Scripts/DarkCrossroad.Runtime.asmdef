@@ -1,0 +1,23 @@
+{
+  "name": "DarkCrossroad.Runtime",
+  "rootNamespace": "",
+  "references": [
+    "Unity.InputSystem",
+    "Unity.AI.Navigation",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI",
+    "Unity.Addressables",
+    "Unity.ResourceManager",
+    "Unity.VisualScripting.Core",
+    "Unity.VisualScripting.Flow"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

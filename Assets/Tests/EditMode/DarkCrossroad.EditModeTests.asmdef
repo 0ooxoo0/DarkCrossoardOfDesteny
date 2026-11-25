@@ -1,6 +1,10 @@
 {
   "name": "DarkCrossroad.EditModeTests",
-  "references": [],
+  "rootNamespace": "",
+  "references": [
+    "DarkCrossroad.Runtime",
+    "Unity.InputSystem"
+  ],
   "includePlatforms": [
     "Editor"
   ],

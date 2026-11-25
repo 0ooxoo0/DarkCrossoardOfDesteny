@@ -4861,6 +4861,9 @@ GameObject:
   - component: {fileID: 7359351532270535140}
   - component: {fileID: 4103899246082561591}
   - component: {fileID: 2246605590019494017}
+  - component: {fileID: 3106896249760669837}
+  - component: {fileID: 856261746011144612}
+  - component: {fileID: 3141240944209533031}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -4947,10 +4950,17 @@ MonoBehaviour:
   rotationSpeed: 7
   speedParam: Speed
   attackTrigger: Attack
-  hitboxStart: 0.15
-  hitboxEnd: 0.55
+  comboTrigger: Combo
+  attackIndexParam: AttackIndex
+  maxComboIndex: 2
+  jumpLayerName: Jump
+  jumpPhaseParam: JumpPhase
+  jumpHeight: 1.2
+  jumpDuration: 0.9
   weapon: {fileID: 7312054840095821453}
   weaponManager: {fileID: 7359351532270535140}
+  health: {fileID: 3106896249760669837}
+  blockController: {fileID: 856261746011144612}
 --- !u!114 &3473364565530580050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4991,6 +5001,7 @@ MonoBehaviour:
   fistWeapon: {fileID: 7312054840095821453}
   baseController: {fileID: 9100000, guid: d72ac30c17265054499cbbf60f69b7ee, type: 2}
   baseAttackClip: {fileID: 190365492218098281, guid: b4ed12fcea5716a4b88a664cf716cfc6, type: 3}
+  weaponModeParam: WeaponMode
   rightHand: {fileID: 2186707679935301323}
   startingWeapon: {fileID: 11400000, guid: d65852f5b49641d47aa67796aaf57fa3, type: 2}
 --- !u!114 &4103899246082561591
@@ -5025,6 +5036,57 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationEventRelay
   weaponManager: {fileID: 7359351532270535140}
+--- !u!114 &3106896249760669837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68695014ef81105bf8e7d9c7bcb01e03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerHealth
+  baseMaxHealth: 100
+  regenPerSecond: 0.5
+  regenDelayAfterDamage: 5
+  cultivation: {fileID: 0}
+  animator: {fileID: 8940506487072268590}
+--- !u!114 &856261746011144612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4685c6ee6385334fbf7a6b7d9c655d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerBlockController
+  blockKey: 51
+  alsoRightMouse: 1
+  blockAngle: 120
+  blockHitCooldown: 0.25
+  playerHealth: {fileID: 3106896249760669837}
+  playerController: {fileID: 2797467021992692300}
+  animator: {fileID: 8940506487072268590}
+--- !u!114 &3141240944209533031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ce9a2fe99a00da43b8b84dc576a89bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerDeathPresentation
+  animator: {fileID: 8940506487072268590}
+  weaponManager: {fileID: 7359351532270535140}
+  playerHealth: {fileID: 3106896249760669837}
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0

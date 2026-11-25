@@ -114,7 +114,9 @@ public class GenerateData : MonoBehaviour
 
         if (roomPool == null || roomPool.Count == 0)
         {
-            Debug.LogWarning(name + ": RoomList.forward fallback is null or empty.", this);
+            // Пул для этого направления пуст и запасной forward тоже: комната не появится,
+            // это неисправимая ошибка конфигурации, а не предупреждение.
+            Debug.LogError(name + ": RoomList.forward is null or empty.", this);
             return;
         }
 

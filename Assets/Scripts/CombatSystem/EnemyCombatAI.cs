@@ -243,7 +243,9 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
         }
 
         // Smart defence: read the player's current attack and sometimes block it.
-        if (intelligence >= 2 && targetController != null && targetController.IsAttacking &&
+        // Only from a neutral state: an enemy that is already swinging must finish the swing.
+        bool canReact = state == State.Idle || state == State.Chase;
+        if (intelligence >= 2 && canReact && targetController != null && targetController.IsAttacking &&
             distance <= blockRange && Time.time >= nextBlockDecision)
         {
             nextBlockDecision = Time.time + ReactionDelay;
