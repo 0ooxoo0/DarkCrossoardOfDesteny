@@ -20,6 +20,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
     private float currentHealth;
     private bool dead;
+    private bool deathPending;
 
     public bool IsDead => dead;
     public Transform DamageRoot => transform;
@@ -50,7 +51,16 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         if (ai != null) ai.NotifyDamaged(info);
 
-        if (currentHealth <= 0f) Die();
+        // Смерть доводится в конце кадра: урон приходит из физического колбэка
+        // хитбокса, а отключение коллайдера и Destroy внутри него роняют редактор.
+        if (currentHealth <= 0f) deathPending = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (!deathPending) return;
+        deathPending = false;
+        Die();
     }
 
     public void Heal(float amount)
@@ -65,6 +75,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
     {
         if (dead) return;
         dead = true;
+        deathPending = false;
 
         if (ai != null) ai.NotifyDeath();
         if (animator != null) animator.SetBool("IsDead", true);

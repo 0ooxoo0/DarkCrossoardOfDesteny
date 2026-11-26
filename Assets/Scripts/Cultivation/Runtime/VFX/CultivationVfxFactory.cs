@@ -207,6 +207,10 @@ public static class CultivationVfxFactory
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         var particles = go.AddComponent<ParticleSystem>();
+
+        // AddComponent создаёт уже играющую систему, а запись main.duration в неё
+        // даёт предупреждение "Setting the duration while system is still playing".
+        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         var renderer = go.GetComponent<ParticleSystemRenderer>();
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
         return particles;

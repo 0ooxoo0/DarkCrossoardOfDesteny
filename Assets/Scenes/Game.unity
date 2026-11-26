@@ -205155,15 +205155,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4660197657826289883, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -49.4
+      value: -46.777405
       objectReference: {fileID: 0}
     - target: {fileID: 4660197657826289883, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0.8742057
       objectReference: {fileID: 0}
     - target: {fileID: 4660197657826289883, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -220.2
+      value: -228.06786
       objectReference: {fileID: 0}
     - target: {fileID: 4660197657826289883, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       propertyPath: m_LocalRotation.w
@@ -205595,6 +205595,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4621653112199636550, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       insertIndex: -1
       addedObject: {fileID: 32509306278097768}
+    - targetCorrespondingSourceObject: {fileID: 4621653112199636550, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 32509306278097775}
+    - targetCorrespondingSourceObject: {fileID: 4621653112199636550, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 32509306278097774}
     - targetCorrespondingSourceObject: {fileID: 5854201483630845358, guid: 515408867bd7d844691cdde1e3d9b603, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1519239132}
@@ -205684,6 +205690,7 @@ MonoBehaviour:
   hideDelay: 0.2
   reopenDelay: 1.5
   panelHeightOffset: 0.5
+  keyboardController: {fileID: 32509306278097774}
 --- !u!114 &32509306278097769
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -205698,6 +205705,49 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerEquipmentBridge
   inventory: {fileID: 1203554729}
   visuals: {fileID: 394657651}
+--- !u!114 &32509306278097774
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1031398586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4be2585c8dc59c94dbd3390437ceba68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::LootKeyboardController
+  viewArea: {fileID: 32509306278097775}
+  panel: {fileID: 1794842990}
+  pickupController: {fileID: 32509306278097767}
+  playerController: {fileID: 1161921856}
+  inventoryPanel: {fileID: 1203554727}
+  takeAllKey: 32
+  takeOneKey: 19
+  nextKey: 64
+  previousKey: 63
+  mouseIdleSeconds: 1.5
+  selectionGrace: 0.4
+--- !u!114 &32509306278097775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1031398586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0623142ebb793a749bffdf80c0dbca9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::LootViewArea
+  viewCamera: {fileID: 1612850764}
+  viewDistance: 12
+  viewHalfWidth: 6
+  viewHalfHeight: 4
+  nearOffset: 0.5
+  containerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!224 &59666551707832596
 RectTransform:
   m_ObjectHideFlags: 0

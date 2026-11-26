@@ -4865,6 +4865,8 @@ GameObject:
   - component: {fileID: 856261746011144612}
   - component: {fileID: 3141240944209533031}
   - component: {fileID: 8124775686166788488}
+  - component: {fileID: -8517592409972041374}
+  - component: {fileID: 2662949645083648763}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -5218,6 +5220,49 @@ MonoBehaviour:
   hitColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   criticalColor: {r: 1, g: 0.35, b: 0.15, a: 1}
   blockedColor: {r: 0.6, g: 0.8, b: 1, a: 1}
+--- !u!114 &-8517592409972041374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0623142ebb793a749bffdf80c0dbca9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::LootViewArea
+  viewCamera: {fileID: 0}
+  viewDistance: 12
+  viewHalfWidth: 6
+  viewHalfHeight: 4
+  nearOffset: 0.5
+  containerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &2662949645083648763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4be2585c8dc59c94dbd3390437ceba68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::LootKeyboardController
+  viewArea: {fileID: -8517592409972041374}
+  panel: {fileID: 0}
+  pickupController: {fileID: 0}
+  playerController: {fileID: 2797467021992692300}
+  inventoryPanel: {fileID: 0}
+  takeAllKey: 32
+  takeOneKey: 19
+  nextKey: 64
+  previousKey: 63
+  mouseIdleSeconds: 1.5
+  selectionGrace: 0.4
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0

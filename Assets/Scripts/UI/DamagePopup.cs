@@ -25,6 +25,10 @@ public static class DamagePopup
     {
         if (string.IsNullOrEmpty(text)) return;
 
+        // Вне плеера пул не создаём: DontDestroyOnLoad в редакторе бросает исключение,
+        // а созданный объект остаётся в сцене и попадает в сохранение.
+        if (!Application.isPlaying) return;
+
         DamagePopupInstance instance = Take();
         if (instance == null) return;
 

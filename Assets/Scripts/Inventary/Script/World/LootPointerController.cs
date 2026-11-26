@@ -35,8 +35,19 @@ public class LootPointerController : MonoBehaviour
     private OutlineTarget currentOutline;
     private float hideTimer;
 
+    [Header("Клавиатурный подбор")]
+    [Tooltip("Пока клавиатура ведёт подбор, луч мыши молчит: панель держит выбор.")]
+    [SerializeField] private LootKeyboardController keyboardController;
+
     private void Update()
     {
+        // Клавиатура ведёт подбор — мышиный луч не вмешивается.
+        if (keyboardController != null && keyboardController.IsKeyboardActive)
+        {
+            PointerGuard.IsBlockingAttack = keyboardController.Selected != null;
+            return;
+        }
+
         // Пока открыт инвентарь, луч не нужен: он только мешал бы панели.
         if (inventoryPanel != null && inventoryPanel.IsOpen)
         {

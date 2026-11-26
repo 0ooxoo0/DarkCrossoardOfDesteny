@@ -38,6 +38,11 @@ public class CombatFeedback : MonoBehaviour
 
     private bool subscribed;
 
+    // Удар приходит из OnTriggerStay: Instantiate, Destroy и работа с пулом
+    // цифр внутри физического шага роняли редактор нативным падением.
+    private readonly System.Collections.Generic.List<CombatImpact> pending =
+        new System.Collections.Generic.List<CombatImpact>(8);
+
     private void OnEnable()
     {
         EnsureInitialized();
@@ -51,6 +56,7 @@ public class CombatFeedback : MonoBehaviour
             subscribed = false;
         }
 
+        pending.Clear();
         EndHitStop();
     }
 
@@ -108,6 +114,18 @@ public class CombatFeedback : MonoBehaviour
     /// <summary>Идёт ли замедление прямо сейчас.</summary>
     internal bool IsHitStopActiveForTests => hitStopRemaining > 0f;
 
+    /// <summary>
+    /// Кладёт удар в очередь и сразу отдаёт её размер. В EditMode LateUpdate
+    /// чистит очередь без спавна, поэтому проверять надо в том же вызове.
+    /// </summary>
+    internal int QueueImpactForTests(CombatImpact impact)
+    {
+        HandleImpact(impact);
+        int count = pending.Count;
+        pending.Clear();
+        return count;
+    }
+
     private void HandleImpact(CombatImpact impact)
     {
         if (impact.Kind != ImpactKind.Blocked)
@@ -116,11 +134,35 @@ public class CombatFeedback : MonoBehaviour
             ShakeCamera(impact.Kind == ImpactKind.Killed ? killShake : hitShake);
         }
 
-        // Вне игры визуал не спавним: в EditMode нельзя ни Destroy, ни DontDestroyOnLoad.
-        if (!Application.isPlaying) return;
+        // Сам спавн откладывается: сейчас мы внутри физического шага.
+        // Проверка режима стоит в LateUpdate: в EditMode спавнить нельзя,
+        // но очередь обязана наполняться — иначе это нечем проверить.
+        pending.Add(impact);
+    }
 
-        SpawnEffect(impact);
-        if (showDamageNumbers) SpawnPopup(impact);
+    /// <summary>
+    /// Визуал удара создаётся в конце кадра, а не в колбэке физики:
+    /// Instantiate тяжёлого VFX-префаба прямо из OnTriggerStay роняет редактор.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (pending.Count == 0) return;
+
+        // Вне игры визуал не спавним: в EditMode нельзя ни Destroy, ни DontDestroyOnLoad.
+        if (!Application.isPlaying)
+        {
+            pending.Clear();
+            return;
+        }
+
+        for (int i = 0; i < pending.Count; i++)
+        {
+            CombatImpact impact = pending[i];
+            SpawnEffect(impact);
+            if (showDamageNumbers) SpawnPopup(impact);
+        }
+
+        pending.Clear();
     }
 
     /// <summary>Короткая остановка времени. Паузу меню не снимает и не ставит.</summary>

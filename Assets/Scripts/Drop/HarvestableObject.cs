@@ -24,6 +24,7 @@ public class HarvestableObject : MonoBehaviour, IInteractable
     [SerializeField] private LootTable lootTable;
 
     private bool isDead;
+    private bool deathPending;
 
     public event Action<float> Damaged;
 
@@ -37,6 +38,18 @@ public class HarvestableObject : MonoBehaviour, IInteractable
         currentHealth = maxHealth;
     }
 
+    /// <summary>
+    /// Смерть доводится до конца здесь. Урон приходит из физического колбэка
+    /// (OnTriggerStay/FixedUpdate хитбокса), а Instantiate эффекта, выброс лута
+    /// и Destroy внутри физического шага роняют редактор нативным падением.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (!deathPending) return;
+        deathPending = false;
+        Die();
+    }
+
     public void TakeDamage(float damage, Vector3 hitPoint)
     {
         if (isDead) return;
@@ -46,13 +59,14 @@ public class HarvestableObject : MonoBehaviour, IInteractable
         Debug.Log($"{gameObject.name} получил {damage}, осталось {currentHealth} HP");
 
         if (currentHealth <= 0f)
-            Die();
+            deathPending = true;
     }
 
     private void Die()
     {
         if (isDead) return;
         isDead = true;
+        deathPending = false;
 
         if (destroyEffectPrefab != null)
             Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);

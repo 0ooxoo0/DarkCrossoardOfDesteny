@@ -19,6 +19,9 @@ public class DestructibleObject : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Instantiate из OnDestroy при выходе из плеера роняет редактор:
+        // владельца уже нет, а префаб грузится вслепую.
+        if (!Application.isPlaying) return;
         if (!destroyedByGameplay || Destructeffect == null)
             return;
 

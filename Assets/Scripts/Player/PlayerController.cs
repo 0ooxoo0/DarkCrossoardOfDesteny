@@ -104,6 +104,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private float testTimeOffset;
     private bool initialized;
     private bool subscribed;
+    private bool lootLocked;
 
     private static readonly int AttackStateTag = Animator.StringToHash("Attack");
 
@@ -325,7 +326,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private void HandleMovement()
     {
         // Кувырок ведёт себя сам: WASD во время него не мешает.
-        if (isAttacking || isDead || isDodging || blockController.IsBlocking)
+        if (isAttacking || isDead || isDodging || lootLocked || blockController.IsBlocking)
         {
             StopVelocity();
             return;
@@ -374,6 +375,9 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         // Разворот задан мгновенно на старте ролла: клип катится вдоль своей
         // оси, и доворот здесь уводил бы модель вбок от траектории.
         if (isDodging) return;
+
+        // В клавиатурном меню подбора стрелки листают список: разворот не трогаем.
+        if (lootLocked) return;
 
         if (attackAimTimer > 0f)
         {
@@ -486,6 +490,20 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public bool IsAttacking => isAttacking;
     public bool IsJumping => isJumping;
     public bool IsDodging => isDodging;
+
+    /// <summary>
+    /// Клавиатурный подбор лута забирает WASD и стрелки: на это время
+    /// персонаж стоит, иначе выбор в меню двигал бы его же.
+    /// </summary>
+    public bool LootLocked
+    {
+        get { return lootLocked; }
+        set
+        {
+            lootLocked = value;
+            if (value) StopVelocity();
+        }
+    }
 
     private void OnJumpPressed(InputAction.CallbackContext context)
     {
