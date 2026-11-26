@@ -314,7 +314,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dodge Back
-  m_Speed: 1
+  m_Speed: 1.3333846
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 4568600760340428739}
@@ -515,7 +515,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dodge Left
-  m_Speed: 1
+  m_Speed: 1.3333846
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4992421216931865709}
@@ -1636,7 +1636,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dodge Forward
-  m_Speed: 1
+  m_Speed: 1.3333846
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2696945485870158623}
@@ -2005,7 +2005,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dodge Right
-  m_Speed: 1
+  m_Speed: 1.3333846
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3721500541977352813}

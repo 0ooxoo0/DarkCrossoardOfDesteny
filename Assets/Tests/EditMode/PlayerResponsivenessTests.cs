@@ -192,6 +192,83 @@ public class PlayerResponsivenessTests
         Assert.That(controller.TryAttack(), Is.False, "Нельзя атаковать в начале кувырка.");
     }
 
+    [Test]
+    public void ViewCamera_IsTheGameplayCamera()
+    {
+        Camera view = controller.ViewCameraForTests;
+
+        Assert.That(view, Is.Not.Null,
+            "Игровая камера не найдена: ходьба, удары и кувырки пойдут по осям персонажа.");
+        Assert.That(view.targetTexture, Is.Null,
+            "Выбрана портретная камера инвентаря вместо игровой.");
+        Assert.That(view.cullingMask, Is.Not.EqualTo(0), "Игровая камера не должна быть пустой.");
+    }
+
+    [Test]
+    public void Dodge_WithoutInput_GoesForwardAlongModel()
+    {
+        // Сбрасываем разворот: без ввода кувырок обязан идти туда, куда смотрит модель.
+        player.transform.rotation = Quaternion.LookRotation(Vector3.forward);
+
+        Vector3 direction = controller.DodgeDirectionForTests(Vector2.zero);
+        Vector3 flat = new Vector3(direction.x, 0f, direction.z).normalized;
+
+        Assert.That(flat.z, Is.GreaterThan(0.9f), "Без WASD кувырок обязан уходить вперёд, а не назад.");
+        Assert.That(Mathf.Abs(flat.x), Is.LessThan(0.1f), "Кувырок не должен уходить вбок.");
+    }
+
+    [Test]
+    public void Dodge_WithInput_FollowsCameraDirection()
+    {
+        Camera view = controller.ViewCameraForTests;
+        if (view == null)
+        {
+            Assert.Pass("Игровая камера недоступна в EditMode — проверка пропущена.");
+            return;
+        }
+
+        Vector3 forward = view.transform.forward;
+        forward.y = 0f;
+        forward.Normalize();
+
+        Vector3 pressedW = controller.DodgeDirectionForTests(new Vector2(0f, 1f));
+        Vector3 flatW = new Vector3(pressedW.x, 0f, pressedW.z).normalized;
+
+        Assert.That(Vector3.Dot(flatW, forward), Is.GreaterThan(0.9f),
+            "Кувырок по W обязан идти по направлению камеры.");
+
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        Vector3 pressedD = controller.DodgeDirectionForTests(new Vector2(1f, 0f));
+        Vector3 flatD = new Vector3(pressedD.x, 0f, pressedD.z).normalized;
+
+        Assert.That(Vector3.Dot(flatD, right), Is.GreaterThan(0.9f),
+            "Кувырок по D обязан идти вправо от камеры.");
+    }
+
+    [Test]
+    public void DodgeIndex_MatchesModelOrientation()
+    {
+        player.transform.rotation = Quaternion.LookRotation(Vector3.forward);
+
+        // 0 — вперёд, 1 — назад, 2 — влево, 3 — вправо относительно модели.
+        Assert.That(controller.DodgeIndexForTests(Vector3.forward), Is.EqualTo(0), "Вперёд — индекс 0.");
+        Assert.That(controller.DodgeIndexForTests(Vector3.back), Is.EqualTo(1), "Назад — индекс 1.");
+        Assert.That(controller.DodgeIndexForTests(Vector3.left), Is.EqualTo(2), "Влево — индекс 2.");
+        Assert.That(controller.DodgeIndexForTests(Vector3.right), Is.EqualTo(3), "Вправо — индекс 3.");
+    }
+
+    [Test]
+    public void DodgeIndex_StaysCorrectAfterModelTurns()
+    {
+        // Модель развёрнута на 90: вперёд для неё — мировое +X.
+        player.transform.rotation = Quaternion.LookRotation(Vector3.right);
+
+        Assert.That(controller.DodgeIndexForTests(Vector3.right), Is.EqualTo(0),
+            "Индекс обязан считаться в осях модели, а не в мировых.");
+        Assert.That(controller.DodgeIndexForTests(Vector3.back), Is.EqualTo(3),
+            "При развороте на 90 мир-назад становится правым боком модели.");
+    }
+
     private static GameObject FindPlayerRoot()
     {
         GameObject[] roots = SceneManager.GetActiveScene().GetRootGameObjects();

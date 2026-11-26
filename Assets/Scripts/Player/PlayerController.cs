@@ -36,8 +36,12 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     [SerializeField] private string dodgeActiveParam = "IsDodging";
     [SerializeField] private Key dodgeKey = Key.LeftCtrl;
     [SerializeField] private bool alsoGamepadDodge = true;
-    [SerializeField, Min(0.1f)] private float dodgeDistance = 3.2f;
-    [SerializeField, Min(0.1f)] private float dodgeDuration = 0.85f;
+    [Tooltip("Путь ролла по сторонам в метрах: вперёд, назад, влево, вправо. Снят с root motion клипов.")]
+    [SerializeField] private float[] dodgeDistances = { 5.54f, 5.04f, 5.05f, 5.06f };
+    [Tooltip("Длительность ролла. Должна совпадать с длиной клипа, иначе ноги скользят.")]
+    [SerializeField, Min(0.1f)] private float dodgeDuration = 0.867f;
+    [Tooltip("Профиль пройденного пути ролла: 0..1 от пути по доле времени. Снят с root motion клипов.")]
+    [SerializeField] private AnimationCurve dodgeTravelProfile = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
     [Tooltip("Окно неуязвимости от начала кувырка, в секундах.")]
     [SerializeField, Min(0f)] private float dodgeInvulnerability = 0.45f;
     [SerializeField, Min(0f)] private float dodgeCooldown = 0.12f;
@@ -88,6 +92,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private bool isDodging;
     private float dodgeElapsed;
     private Vector3 dodgeDirection;
+    private float dodgeTravel;
     private int dodgeLayerIndex = -1;
     private int dodgeIndexHash;
     private int dodgeActiveHash;
@@ -278,6 +283,28 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         UpdateAttackState();
     }
 
+    /// <summary>
+    /// Направление кувырка при заданном вводе. Позволяет проверить выбор
+    /// стороны без агента: в EditMode NavMesh недоступен и TryDodge откажет.
+    /// </summary>
+    internal Vector3 DodgeDirectionForTests(Vector2 input)
+    {
+        Vector2 saved = moveInput;
+        moveInput = input;
+        Vector3 direction = ResolveDodgeDirection();
+        moveInput = saved;
+        return direction;
+    }
+
+    /// <summary>Индекс клипа кувырка по мировому направлению.</summary>
+    internal int DodgeIndexForTests(Vector3 worldDirection)
+    {
+        return DodgeIndexFor(worldDirection);
+    }
+
+    /// <summary>Игровая камера, выбранная контроллером.</summary>
+    internal Camera ViewCameraForTests => ResolveViewCamera();
+
     /// <summary>Завершение атаки для тестов: в EditMode Update не тикает.</summary>
     internal void EndAttackForTests()
     {
@@ -344,16 +371,9 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     {
         if (isDead) return;
 
-        // Во время кувырка персонаж смотрит туда, куда катится.
-        if (isDodging)
-        {
-            if (dodgeDirection.sqrMagnitude > 0.0001f)
-                transform.rotation = Quaternion.Slerp(
-                    transform.rotation,
-                    Quaternion.LookRotation(dodgeDirection),
-                    rotationSpeed * 2f * Time.deltaTime);
-            return;
-        }
+        // Разворот задан мгновенно на старте ролла: клип катится вдоль своей
+        // оси, и доворот здесь уводил бы модель вбок от траектории.
+        if (isDodging) return;
 
         if (attackAimTimer > 0f)
         {
@@ -586,16 +606,25 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         if (isAttacking) EndAttack();
 
         dodgeDirection = ResolveDodgeDirection();
-        if (dodgeDirection.sqrMagnitude < 0.0001f) dodgeDirection = transform.forward;
+        if (dodgeDirection.sqrMagnitude < 0.0001f) dodgeDirection = FlatForward();
+
+        // Сторона считается до доворота модели: индекс выбирает клип
+        // относительно текущего разворота персонажа.
+        int index = DodgeIndexFor(dodgeDirection);
 
         isDodging = true;
         dodgeElapsed = 0f;
+        dodgeTravel = 0f;
         nextDodgeTime = Time.time + dodgeDuration + dodgeCooldown;
+
+        // Разворот мгновенный: клип катится вдоль своей оси, и плавный доворот
+        // во время ролла уводил бы модель вбок от траектории.
+        FaceInstantly(dodgeDirection);
 
         ResolveDodgeLayer();
         if (animator != null && dodgeLayerIndex >= 0)
         {
-            animator.SetInteger(dodgeIndexHash, DodgeIndexFor(dodgeDirection));
+            animator.SetInteger(dodgeIndexHash, index);
             animator.SetLayerWeight(dodgeLayerIndex, 1f);
             // Bool, а не Trigger: AnyState потратил бы Trigger на первую ветку.
             animator.SetBool(dodgeActiveHash, false);
@@ -619,12 +648,39 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         float duration = Mathf.Max(0.1f, dodgeDuration);
         dodgeElapsed += Time.deltaTime;
 
-        // Кувырок едет сам: фиксированная дистанция за время ролла.
-        float speed = dodgeDistance / duration;
-        if (AgentReady) agent.Move(dodgeDirection * (speed * Time.deltaTime));
-        else transform.position += dodgeDirection * (speed * Time.deltaTime);
+        // Едем по профилю клипа: путь берётся из root motion ролла, а не из
+        // равномерной скорости — иначе персонаж скользит мимо анимации.
+        float t = Mathf.Clamp01(dodgeElapsed / duration);
+        float target = dodgeTravelProfile.Evaluate(t) * DodgeDistanceFor(dodgeDirection);
+        float step = Mathf.Max(0f, target - dodgeTravel);
+        dodgeTravel += step;
+
+        if (step > 0f)
+        {
+            if (AgentReady) agent.Move(dodgeDirection * step);
+            else transform.position += dodgeDirection * step;
+        }
 
         if (dodgeElapsed >= duration) CancelDodge();
+    }
+
+    /// <summary>Путь ролла для стороны, по которой выбран клип.</summary>
+    private float DodgeDistanceFor(Vector3 direction)
+    {
+        if (dodgeDistances == null || dodgeDistances.Length == 0) return 5.2f;
+
+        int index = Mathf.Clamp(DodgeIndexFor(direction), 0, dodgeDistances.Length - 1);
+        return Mathf.Max(0.1f, dodgeDistances[index]);
+    }
+
+    /// <summary>Мгновенный разворот по направлению с обнулённым наклоном.</summary>
+    private void FaceInstantly(Vector3 direction)
+    {
+        Vector3 flat = direction;
+        flat.y = 0f;
+        if (flat.sqrMagnitude < 0.0001f) return;
+
+        transform.rotation = Quaternion.LookRotation(flat);
     }
 
     private void CancelDodge()
@@ -653,11 +709,21 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         dodgeActiveHash = Animator.StringToHash(dodgeActiveParam);
     }
 
-    /// <summary>Направление кувырка: по вводу, при пустом вводе — назад.</summary>
+    /// <summary>
+    /// Направление кувырка: по WASD относительно камеры, а без ввода —
+    /// вперёд по развороту модели (куда развёрнут персонаж).
+    /// </summary>
     private Vector3 ResolveDodgeDirection()
     {
-        if (moveInput.sqrMagnitude < 0.0001f) return -transform.forward;
+        if (moveInput.sqrMagnitude < 0.0001f) return FlatForward();
         return CameraRelativeDirection(moveInput);
+    }
+
+    private Vector3 FlatForward()
+    {
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        return forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector3.forward;
     }
 
     /// <summary>
@@ -846,13 +912,17 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     }
 
 
-    /// <summary>Направление ввода в мировых координатах относительно камеры.</summary>
+    /// <summary>
+    /// Направление ввода в мировых координатах относительно камеры.
+    /// Камера может быть без тега MainCamera, поэтому ищется и по иерархии
+    /// CameraContainer: иначе ходьба и кувырки шли бы по осям персонажа.
+    /// </summary>
     private Vector3 CameraRelativeDirection(Vector2 input)
     {
         if (mainCamera == null)
         {
-            mainCamera = Camera.main;
-            if (mainCamera == null) return transform.forward;
+            mainCamera = ResolveViewCamera();
+            if (mainCamera == null) return FlatForward();
         }
 
         Vector3 forward = mainCamera.transform.forward;
@@ -863,6 +933,27 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         right.Normalize();
 
         Vector3 direction = (forward * input.y + right * input.x).normalized;
-        return direction.sqrMagnitude > 0.0001f ? direction : transform.forward;
+        return direction.sqrMagnitude > 0.0001f ? direction : FlatForward();
+    }
+
+    /// <summary>
+    /// Игровая камера: Camera.main, иначе любой включённый Camera в сцене.
+    /// Портретные камеры инвентаря (с targetTexture) пропускаются.
+    /// </summary>
+    internal static Camera ResolveViewCamera()
+    {
+        Camera main = Camera.main;
+        if (main != null && main.targetTexture == null && main.isActiveAndEnabled) return main;
+
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera candidate = cameras[i];
+            if (candidate == null || candidate.targetTexture != null) continue;
+            if (candidate.cullingMask == 0) continue;
+            return candidate;
+        }
+
+        return main;
     }
 }

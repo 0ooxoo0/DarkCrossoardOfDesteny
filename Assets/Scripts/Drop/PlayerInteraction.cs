@@ -27,6 +27,10 @@ public class PlayerInteraction : MonoBehaviour
     private void Awake()
     {
         playerController = GetComponent<PlayerController>();
+
+        // Камера из инспектора может быть портретной (targetTexture):
+        // для прицела и кликов нужна именно игровая.
+        if (playerCamera != null && playerCamera.targetTexture != null) playerCamera = null;
         if (playerCamera == null) playerCamera = Camera.main;
     }
 
@@ -110,7 +114,7 @@ public class PlayerInteraction : MonoBehaviour
 
     private Vector3 GetAimPoint()
     {
-        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera == null) playerCamera = PlayerController.ResolveViewCamera();
         if (playerCamera == null) return transform.position + transform.forward * attackRange;
 
         if (Mouse.current != null)
