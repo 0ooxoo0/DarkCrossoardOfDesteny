@@ -1,0 +1,180 @@
+using System.Collections;
+using UnityEngine;
+
+/// <summary>
+/// Боевой фидбек удара: хит-стоп, тряска камеры, impact-VFX и цифры урона.
+/// Подписывается на боевую шину и не знает, кто именно ударил.
+/// </summary>
+[DisallowMultipleComponent]
+public class CombatFeedback : MonoBehaviour
+{
+    [Header("Hit stop")]
+    [Tooltip("Замедление времени на попадании: короткая пауза делает удар весомым.")]
+    [SerializeField, Min(0f)] private float hitStopDuration = 0.055f;
+    [SerializeField, Range(0.01f, 1f)] private float hitStopTimeScale = 0.05f;
+    [SerializeField, Min(0f)] private float hitStopCooldown = 0.08f;
+
+    [Header("Impact VFX")]
+    [Tooltip("Префаб искр/вспышки в точке удара.")]
+    [SerializeField] private GameObject impactEffect;
+    [Tooltip("Префаб эффекта добивания.")]
+    [SerializeField] private GameObject killEffect;
+    [SerializeField, Min(0.1f)] private float effectLifetime = 2f;
+
+    [Header("Camera shake")]
+    [Tooltip("Камера трясётся на попадании. Пусто — ищется Camera.main в рантайме.")]
+    [SerializeField] private CameraFollow cameraFollow;
+    [SerializeField, Min(0f)] private float hitShake = 1f;
+    [SerializeField, Min(0f)] private float killShake = 1.8f;
+
+    [Header("Damage numbers")]
+    [SerializeField] private bool showDamageNumbers = true;
+    [SerializeField] private Color hitColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [SerializeField] private Color criticalColor = new Color(1f, 0.35f, 0.15f, 1f);
+    [SerializeField] private Color blockedColor = new Color(0.6f, 0.8f, 1f, 1f);
+
+    private float lastHitStopTime = -10f;
+    private float hitStopRemaining;
+
+    private bool subscribed;
+
+    private void OnEnable()
+    {
+        EnsureInitialized();
+    }
+
+    private void OnDisable()
+    {
+        if (subscribed)
+        {
+            CombatEvents.Impact -= HandleImpact;
+            subscribed = false;
+        }
+
+        EndHitStop();
+    }
+
+    /// <summary>
+    /// Идемпотентная подписка на боевую шину. В EditMode Unity не вызывает
+    /// <c>OnEnable</c>, поэтому тесты входят этим же путём, что и игра.
+    /// </summary>
+    internal void EnsureInitialized()
+    {
+        if (subscribed) return;
+        subscribed = true;
+
+        CombatEvents.Impact += HandleImpact;
+    }
+
+    /// <summary>
+    /// Хит-стоп тикает сам, а не корутиной: убитая при перезагрузке домена
+    /// корутина оставляла Time.timeScale в замедлении навсегда.
+    /// </summary>
+    private void Update()
+    {
+        if (hitStopRemaining <= 0f) return;
+
+        hitStopRemaining -= Time.unscaledDeltaTime;
+        if (hitStopRemaining > 0f) return;
+
+        EndHitStop();
+    }
+
+    private void EndHitStop()
+    {
+        hitStopRemaining = 0f;
+
+        // Игру могли поставить на паузу во время хит-стопа — паузу не ломаем.
+        if (Time.timeScale > 0f) Time.timeScale = 1f;
+    }
+
+    /// <summary>Сброс хит-стопа для тестов: кулдаун иначе глушит соседние проверки.</summary>
+    internal void ResetHitStopForTests()
+    {
+        hitStopRemaining = 0f;
+        lastHitStopTime = -10f;
+        Time.timeScale = 1f;
+    }
+
+    /// <summary>Прогон хит-стопа для тестов: в EditMode Update не тикает.</summary>
+    internal void TickHitStopForTests(float unscaledDeltaSeconds)
+    {
+        if (hitStopRemaining <= 0f) return;
+
+        hitStopRemaining -= unscaledDeltaSeconds;
+        if (hitStopRemaining <= 0f) EndHitStop();
+    }
+
+    /// <summary>Идёт ли замедление прямо сейчас.</summary>
+    internal bool IsHitStopActiveForTests => hitStopRemaining > 0f;
+
+    private void HandleImpact(CombatImpact impact)
+    {
+        if (impact.Kind != ImpactKind.Blocked)
+        {
+            PlayHitStop();
+            ShakeCamera(impact.Kind == ImpactKind.Killed ? killShake : hitShake);
+        }
+
+        // Вне игры визуал не спавним: в EditMode нельзя ни Destroy, ни DontDestroyOnLoad.
+        if (!Application.isPlaying) return;
+
+        SpawnEffect(impact);
+        if (showDamageNumbers) SpawnPopup(impact);
+    }
+
+    /// <summary>Короткая остановка времени. Паузу меню не снимает и не ставит.</summary>
+    private void PlayHitStop()
+    {
+        if (hitStopDuration <= 0f || hitStopTimeScale >= 1f) return;
+        if (Time.timeScale <= 0f) return;
+        if (Time.unscaledTime - lastHitStopTime < hitStopCooldown) return;
+
+        lastHitStopTime = Time.unscaledTime;
+        hitStopRemaining = hitStopDuration;
+        Time.timeScale = hitStopTimeScale;
+    }
+
+    private void ShakeCamera(float strength)
+    {
+        if (strength <= 0f) return;
+
+        // Ссылку на камеру сцены префаб держать не может: ищем один раз в рантайме.
+        if (cameraFollow == null)
+        {
+            Camera main = Camera.main;
+            if (main != null) cameraFollow = main.GetComponent<CameraFollow>();
+        }
+
+        if (cameraFollow == null) return;
+        cameraFollow.Shake(strength);
+    }
+
+    private void SpawnEffect(CombatImpact impact)
+    {
+        GameObject prefab = impact.Kind == ImpactKind.Killed && killEffect != null ? killEffect : impactEffect;
+        if (prefab == null) return;
+
+        Vector3 forward = Vector3.up;
+        if (impact.Attacker != null)
+        {
+            Vector3 direction = impact.Point - impact.Attacker.transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude > 0.0001f) forward = direction.normalized;
+        }
+
+        GameObject instance = Instantiate(prefab, impact.Point, Quaternion.LookRotation(forward));
+        Object.Destroy(instance, effectLifetime);
+    }
+
+    private void SpawnPopup(CombatImpact impact)
+    {
+        if (impact.Kind == ImpactKind.Blocked)
+        {
+            DamagePopup.Spawn(impact.Point, "БЛОК", blockedColor);
+            return;
+        }
+
+        DamagePopup.Spawn(impact.Point, impact.Damage, impact.IsCritical ? criticalColor : hitColor);
+    }
+}

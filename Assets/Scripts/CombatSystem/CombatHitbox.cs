@@ -99,10 +99,29 @@ public class CombatHitbox : MonoBehaviour
         if (blockable != null && blockable.IsBlocking && blockable.CanBlockFrom(myRoot.position))
         {
             blockable.OnBlocked(info);
+            CombatEvents.Report(new CombatImpact
+            {
+                Point = point,
+                Damage = 0f,
+                Attacker = myRoot.gameObject,
+                Victim = targetRoot,
+                Kind = ImpactKind.Blocked
+            });
             return;
         }
 
         target.TakeDamage(info);
+
+        // Шина фидбека: хит-стоп, VFX и цифры урона подписаны снаружи.
+        CombatEvents.Report(new CombatImpact
+        {
+            Point = point,
+            Damage = damage,
+            Attacker = myRoot.gameObject,
+            Victim = targetRoot,
+            Kind = target.IsDead ? ImpactKind.Killed : ImpactKind.Hit,
+            IsCritical = info.IsCritical
+        });
     }
 
     private Vector3 GetWorldHalfExtents()

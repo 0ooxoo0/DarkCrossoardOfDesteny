@@ -4864,6 +4864,7 @@ GameObject:
   - component: {fileID: 3106896249760669837}
   - component: {fileID: 856261746011144612}
   - component: {fileID: 3141240944209533031}
+  - component: {fileID: 8124775686166788488}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -4957,6 +4958,20 @@ MonoBehaviour:
   jumpPhaseParam: JumpPhase
   jumpHeight: 1.2
   jumpDuration: 0.9
+  landDuration: 0.45
+  landCancelDelay: 0.18
+  dodgeLayerName: Dodge
+  dodgeIndexParam: DodgeIndex
+  dodgeTrigger: Dodge
+  dodgeKey: 55
+  alsoGamepadDodge: 1
+  dodgeDistance: 3.2
+  dodgeDuration: 0.85
+  dodgeInvulnerability: 0.45
+  dodgeCooldown: 0.12
+  dodgeCancelPhase: 0.6
+  attackBufferWindow: 0.35
+  attackCommitTime: 0.12
   weapon: {fileID: 7312054840095821453}
   weaponManager: {fileID: 7359351532270535140}
   health: {fileID: 3106896249760669837}
@@ -5087,6 +5102,31 @@ MonoBehaviour:
   animator: {fileID: 8940506487072268590}
   weaponManager: {fileID: 7359351532270535140}
   playerHealth: {fileID: 3106896249760669837}
+--- !u!114 &8124775686166788488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64066e94d62e2c84b947e316dfc3580a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::CombatFeedback
+  hitStopDuration: 0.055
+  hitStopTimeScale: 0.05
+  hitStopCooldown: 0.08
+  impactEffect: {fileID: 7434498302926140362, guid: 66209373dd5e22140a220a74414d244b, type: 3}
+  killEffect: {fileID: 2133094190082574920, guid: 2e5def6525d468240bb3148fa1d83e83, type: 3}
+  effectLifetime: 2
+  cameraFollow: {fileID: 0}
+  hitShake: 1
+  killShake: 1.8
+  showDamageNumbers: 1
+  hitColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  criticalColor: {r: 1, g: 0.35, b: 0.15, a: 1}
+  blockedColor: {r: 0.6, g: 0.8, b: 1, a: 1}
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0

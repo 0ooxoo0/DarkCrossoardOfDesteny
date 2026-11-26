@@ -186,6 +186,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2799480516496055161}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1907209951708776969}
   m_SourcePrefab: {fileID: 100100000, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
 --- !u!1 &145459782029281236 stripped
 GameObject:
@@ -291,9 +294,32 @@ MonoBehaviour:
   blockBool: IsBlocking
   blockHitTrigger: BlockHit
   hitTrigger: Hit
+--- !u!114 &1907209951708776969
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 145459782029281236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974c2c06328978b459038f3b0022b404, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::EnemyHitReaction
+  flashColor: {r: 1, g: 0.35, b: 0.3, a: 1}
+  flashDuration: 0.09
+  flashRenderers:
+  - {fileID: 5551175280477573212}
+  knockbackDistance: 0.35
+  knockbackDuration: 0.12
 --- !u!4 &670779377495465326 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
+  m_PrefabInstance: {fileID: 1064449538925476485}
+  m_PrefabAsset: {fileID: 0}
+--- !u!137 &5551175280477573212 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 4885301371922852569, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
   m_PrefabInstance: {fileID: 1064449538925476485}
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &6894794007813785364 stripped

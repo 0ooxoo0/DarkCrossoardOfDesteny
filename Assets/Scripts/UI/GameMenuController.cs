@@ -116,6 +116,12 @@ public class GameMenuController : MonoBehaviour
     /// <summary>Esc: закрыть верхнюю панель или переключить меню паузы.</summary>
     public void ToggleMenu()
     {
+        // Пока игрок назначает клавишу, Esc — это отмена ребинда,
+        // а не закрытие паузы. Флаг EscapeConsumedThisFrame нужен потому,
+        // что менеджер может отменить ребинд раньше в этом же кадре.
+        if (InputRemapManager.IsRebinding || InputRemapManager.EscapeConsumedThisFrame)
+            return;
+
         CultivationUIRoot cultivationUi = CultivationUIRoot.Instance;
         if (cultivationUi != null && cultivationUi.MeditationScreen != null &&
             cultivationUi.MeditationScreen.IsOpen)

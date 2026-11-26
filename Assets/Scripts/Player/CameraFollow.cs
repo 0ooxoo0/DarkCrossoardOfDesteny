@@ -3,25 +3,49 @@ using UnityEngine;
 public class CameraFollow : MonoBehaviour
 {
     [Header("Target")]
-    [SerializeField] private Transform target; // объект, за которым следит камера
+    [SerializeField] private Transform target; // пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Offset")]
-    [SerializeField] private Vector3 offset = new Vector3(0, 10, -10); // смещение относительно цели
+    [SerializeField] private Vector3 offset = new Vector3(0, 10, -10); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
     [Header("Smoothness")]
-    [SerializeField] private float smoothSpeed = 5f; // скорость плавного перемещения
+    [SerializeField] private float smoothSpeed = 5f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+
+    [Header("Shake")]
+    [Tooltip("РЎРёР»Р° С‚СЂСЏСЃРєРё. CombatFeedback РґС‘СЂРіР°РµС‚ Shake() РЅР° РїРѕРїР°РґР°РЅРёРё.")]
+    [SerializeField, Min(0f)] private float shakeAmplitude = 0.22f;
+    [SerializeField, Min(0.01f)] private float shakeDuration = 0.16f;
+
+    private float shakeRemaining;
+    private float shakeStrength;
+
+    /// <summary>Р”РѕР±Р°РІР»СЏРµС‚ С‚СЂСЏСЃРєСѓ: Р±РµСЂС‘С‚СЃСЏ СЃРёР»СЊРЅРµР№С€РёР№ РёРјРїСѓР»СЊСЃ, РѕСЃС‚Р°С‚РѕРє РґРѕРіРѕСЂР°РµС‚.</summary>
+    public void Shake(float strength = 1f)
+    {
+        shakeStrength = Mathf.Max(shakeStrength, shakeAmplitude * Mathf.Max(0f, strength));
+        shakeRemaining = Mathf.Max(shakeRemaining, shakeDuration);
+    }
 
     private void LateUpdate()
     {
         if (target == null) return;
 
-        // Желаемая позиция камеры
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 desiredPosition = target.position + offset;
-        // Плавное перемещение
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
         transform.position = smoothedPosition;
 
-        // Камера смотрит на цель (если нужно, можно отключить)
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         transform.LookAt(target);
+
+        if (shakeRemaining <= 0f) return;
+
+        // Р’СЂРµРјСЏ РЅРµСЃРєР°Р»РёСЂРѕРІР°РЅРЅРѕРµ: С…РёС‚-СЃС‚РѕРї РЅРµ РіР°СЃРёС‚ С‚СЂСЏСЃРєСѓ.
+        shakeRemaining = Mathf.Max(0f, shakeRemaining - Time.unscaledDeltaTime);
+        float weight = shakeRemaining / Mathf.Max(0.01f, shakeDuration);
+        transform.position += Random.insideUnitSphere * (shakeStrength * weight);
+
+        if (shakeRemaining <= 0f) shakeStrength = 0f;
     }
 }

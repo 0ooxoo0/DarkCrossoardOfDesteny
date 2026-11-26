@@ -23,6 +23,32 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     [SerializeField] private string jumpPhaseParam = "JumpPhase";
     [SerializeField, Min(0.1f)] private float jumpHeight = 1.2f;
     [SerializeField, Min(0.2f)] private float jumpDuration = 0.9f;
+    [Tooltip("Длительность клипа приземления. Слой Jump гасится по концу клипа.")]
+    [SerializeField, Min(0.05f)] private float landDuration = 0.45f;
+    [Tooltip("Через сколько секунд приземления атака или уворот отменяют его.")]
+    [SerializeField, Min(0f)] private float landCancelDelay = 0.18f;
+
+    [Header("Dodge")]
+    [Tooltip("Слой Animator с кувырками. 0 — слой выключен.")]
+    [SerializeField] private string dodgeLayerName = "Dodge";
+    [Tooltip("Int-параметр выбора кувырка: 0 — вперёд, 1 — назад, 2 — влево, 3 — вправо.")]
+    [SerializeField] private string dodgeIndexParam = "DodgeIndex";
+    [SerializeField] private string dodgeActiveParam = "IsDodging";
+    [SerializeField] private Key dodgeKey = Key.LeftCtrl;
+    [SerializeField] private bool alsoGamepadDodge = true;
+    [SerializeField, Min(0.1f)] private float dodgeDistance = 3.2f;
+    [SerializeField, Min(0.1f)] private float dodgeDuration = 0.85f;
+    [Tooltip("Окно неуязвимости от начала кувырка, в секундах.")]
+    [SerializeField, Min(0f)] private float dodgeInvulnerability = 0.45f;
+    [SerializeField, Min(0f)] private float dodgeCooldown = 0.12f;
+    [Tooltip("Доля кувырка, после которой атака отменяет его.")]
+    [SerializeField, Range(0.1f, 1f)] private float dodgeCancelPhase = 0.6f;
+
+    [Header("Attack buffer")]
+    [Tooltip("Нажатие атаки запоминается на это время и срабатывает при открытии окна комбо.")]
+    [SerializeField, Min(0f)] private float attackBufferWindow = 0.35f;
+    [Tooltip("Сколько секунд атака неотменяема: защита от спама уворота.")]
+    [SerializeField, Min(0f)] private float attackCommitTime = 0.12f;
 
     [Header("Attack")]
     [SerializeField] private Weapon weapon;
@@ -53,9 +79,24 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public event System.Action AttackStarted;
     private float attackElapsed;
     private bool isJumping;
+    private bool isLanding;
+    private float jumpLayerWeight;
     private float jumpElapsed;
+    private float landElapsed;
     private int jumpLayerIndex = -1;
     private int jumpPhaseHash;
+    private bool isDodging;
+    private float dodgeElapsed;
+    private Vector3 dodgeDirection;
+    private int dodgeLayerIndex = -1;
+    private int dodgeIndexHash;
+    private int dodgeActiveHash;
+    private float nextDodgeTime;
+    // Момент истечения буфера, а не время нажатия: сравнение с нулём
+    // ломалось на самом старте игры, когда Time.time ещё равен нулю.
+    private float attackBufferedUntil = -1f;
+    private bool comboWindowSeen;
+    private float testTimeOffset;
     private bool initialized;
     private bool subscribed;
 
@@ -182,14 +223,19 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         if (playerInteraction != null && !playerInteraction.CanStartAttack(comboWindowOpen))
             return;
 
+        // Нажатие запоминается: пресс до окна комбо не должен пропадать.
+        BufferAttack();
+
         if (TryAttack())
             AttackStarted?.Invoke();
     }
 
     private void Update()
     {
+        PollDodgeInput();
         UpdateAttackState();
         UpdateJump();
+        UpdateDodge();
         HandleMovement();
         HandleRotation();
         UpdateAnimation();
@@ -210,9 +256,49 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         HandleMovement();
     }
 
+    /// <summary>Индекс текущего удара комбо. Тесты проверяют рост комбо.</summary>
+    internal int ComboIndexForTests => comboIndex;
+
+    /// <summary>Нажатие атаки мимо контроллера ввода: тем же путём, что и игрок.</summary>
+    internal void PressAttackForTests()
+    {
+        BufferAttack();
+        TryAttack();
+    }
+
+    /// <summary>Запоминает нажатие атаки на окно буфера.</summary>
+    private void BufferAttack()
+    {
+        attackBufferedUntil = Time.time + attackBufferWindow;
+    }
+
+    /// <summary>Прогон шага атаки. В EditMode <c>Update</c> не тикает.</summary>
+    internal void UpdateAttackStateForTests()
+    {
+        UpdateAttackState();
+    }
+
+    /// <summary>Завершение атаки для тестов: в EditMode Update не тикает.</summary>
+    internal void EndAttackForTests()
+    {
+        EndAttack();
+    }
+
+    /// <summary>
+    /// Продвигает внутренние таймеры без ожидания реальных секунд.
+    /// Сдвигается виртуальное «сейчас», а не метка буфера: иначе проверка
+    /// возраста нажатия теряла бы смысл.
+    /// </summary>
+    internal void AdvanceAttackTimersForTests(float seconds)
+    {
+        attackElapsed += seconds;
+        testTimeOffset += seconds;
+    }
+
     private void HandleMovement()
     {
-        if (isAttacking || isDead || blockController.IsBlocking)
+        // Кувырок ведёт себя сам: WASD во время него не мешает.
+        if (isAttacking || isDead || isDodging || blockController.IsBlocking)
         {
             StopVelocity();
             return;
@@ -224,20 +310,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             return;
         }
 
-        if (mainCamera == null)
-        {
-            mainCamera = Camera.main;
-            if (mainCamera == null) return;
-        }
-
-        Vector3 forward = mainCamera.transform.forward;
-        Vector3 right = mainCamera.transform.right;
-        forward.y = 0f;
-        right.y = 0f;
-        forward.Normalize();
-        right.Normalize();
-
-        Vector3 moveDirection = (forward * moveInput.y + right * moveInput.x).normalized;
+        Vector3 moveDirection = CameraRelativeDirection(moveInput);
         currentSpeed = moveSpeed * Mathf.Clamp01(moveInput.magnitude);
         lastMoveDirection = moveDirection;
 
@@ -270,6 +343,17 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private void HandleRotation()
     {
         if (isDead) return;
+
+        // Во время кувырка персонаж смотрит туда, куда катится.
+        if (isDodging)
+        {
+            if (dodgeDirection.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.Slerp(
+                    transform.rotation,
+                    Quaternion.LookRotation(dodgeDirection),
+                    rotationSpeed * 2f * Time.deltaTime);
+            return;
+        }
 
         if (attackAimTimer > 0f)
         {
@@ -335,23 +419,22 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
         attackElapsed += Time.deltaTime;
 
+        if (!isDead && HasBufferedAttack && comboIndex < maxComboIndex)
+        {
+            // Окно комбо открыто — бьём сразу. Окно уже прошло — отменяем
+            // восстановление анимации, чтобы следующий удар не ждал конца клипа.
+            // Проверка до чтения состояния Animator: иначе буфер сгорал бы впустую.
+            bool recovery = comboWindowSeen && !comboWindowOpen && attackElapsed >= attackCommitTime;
+
+            if (comboWindowOpen || recovery) AdvanceCombo();
+        }
+
         AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
         if (state.tagHash != AttackStateTag)
         {
             // Переход из атаки в Locomotion/Block/Hit.
             if (attackElapsed > 0.2f) EndAttack();
             return;
-        }
-
-        if (comboQueued && comboWindowOpen && comboIndex < maxComboIndex)
-        {
-            comboIndex++;
-            comboQueued = false;
-            comboWindowOpen = false;
-
-            animator.SetInteger(attackIndexParam, comboIndex);
-            animator.ResetTrigger(comboTrigger);
-            animator.SetTrigger(comboTrigger);
         }
 
         if (state.normalizedTime >= 0.99f)
@@ -363,7 +446,10 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         isAttacking = false;
         comboQueued = false;
         comboWindowOpen = false;
+        comboWindowSeen = false;
         attackElapsed = 0f;
+        attackBufferedUntil = -1f;
+        testTimeOffset = 0f;
 
         if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
         else if (weapon != null) weapon.SetHitboxActive(false);
@@ -379,6 +465,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
     public bool IsAttacking => isAttacking;
     public bool IsJumping => isJumping;
+    public bool IsDodging => isDodging;
 
     private void OnJumpPressed(InputAction.CallbackContext context)
     {
@@ -391,13 +478,17 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     /// </summary>
     public bool TryJump()
     {
-        if (isDead || isJumping) return false;
-        if (isAttacking) return false;
+        if (isDead || isJumping || isDodging) return false;
+        if (isAttacking && !CanCancelAttack) return false;
         if (blockController.IsBlocking) return false;
         if (!AgentReady) return false;
 
+        if (isAttacking) EndAttack();
+
         isJumping = true;
+        isLanding = false;
         jumpElapsed = 0f;
+        landElapsed = 0f;
 
         ResolveJumpLayer();
         SetJumpPhase(1);
@@ -410,40 +501,177 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     {
         if (!isJumping) return;
 
-        float duration = Mathf.Max(0.2f, jumpDuration);
-        jumpElapsed += Time.deltaTime;
+        if (!isLanding)
+        {
+            float duration = Mathf.Max(0.2f, jumpDuration);
+            jumpElapsed += Time.deltaTime;
 
-        float t = Mathf.Clamp01(jumpElapsed / duration);
-        if (agent != null) agent.baseOffset = Mathf.Sin(t * Mathf.PI) * Mathf.Max(0.1f, jumpHeight);
+            float t = Mathf.Clamp01(jumpElapsed / duration);
+            if (agent != null) agent.baseOffset = Mathf.Sin(t * Mathf.PI) * Mathf.Max(0.1f, jumpHeight);
 
-        if (t >= 0.85f) SetJumpPhase(3);
-        else if (t >= 0.45f) SetJumpPhase(2);
+            if (t >= 0.85f) SetJumpPhase(3);
+            else if (t >= 0.45f) SetJumpPhase(2);
 
-        if (t >= 1f) CancelJump();
+            if (t >= 1f)
+            {
+                isLanding = true;
+                landElapsed = 0f;
+                if (agent != null) agent.baseOffset = 0f;
+            }
+
+            return;
+        }
+
+        // Приземление живёт своей длительностью: без явного конца слой Jump
+        // остаётся с весом 1 и Animator застывает в последней позе.
+        landElapsed += Time.deltaTime;
+        if (landElapsed >= Mathf.Max(0.05f, landDuration)) CancelJump();
     }
 
     private void ResolveJumpLayer()
     {
-        if (animator == null || string.IsNullOrEmpty(jumpLayerName)) return;
-        jumpLayerIndex = animator.GetLayerIndex(jumpLayerName);
-        jumpPhaseHash = Animator.StringToHash(jumpPhaseParam);
+        if (animator == null) return;
+
+        if (!string.IsNullOrEmpty(jumpLayerName))
+        {
+            jumpLayerIndex = animator.GetLayerIndex(jumpLayerName);
+            jumpPhaseHash = Animator.StringToHash(jumpPhaseParam);
+        }
+
+        ResolveDodgeLayer();
     }
 
     private void SetJumpPhase(int phase)
     {
+        // Нулевая фаза обязана гасить вес слоя: забытый вес держал бы позу приземления вечно.
+        jumpLayerWeight = phase > 0 ? 1f : 0f;
+
         if (animator == null || jumpLayerIndex < 0) return;
-        animator.SetLayerWeight(jumpLayerIndex, phase > 0 ? 1f : 0f);
+
+        animator.SetLayerWeight(jumpLayerIndex, jumpLayerWeight);
         animator.SetInteger(jumpPhaseHash, phase);
+    }
+
+    /// <summary>Вес слоя Jump. Тесты проверяют, что после приземления он возвращается в 0.</summary>
+    internal float JumpLayerWeightForTests => jumpLayerWeight;
+
+    /// <summary>Сброс прыжка для тестов: в EditMode Update не тикает.</summary>
+    internal void CancelJumpForTests()
+    {
+        CancelJump();
     }
 
     private void CancelJump()
     {
         isJumping = false;
+        isLanding = false;
         jumpElapsed = 0f;
+        landElapsed = 0f;
 
         if (agent != null) agent.baseOffset = 0f;
-        if (animator != null && jumpLayerIndex >= 0) animator.SetInteger(jumpPhaseHash, 0);
+        SetJumpPhase(0);
     }
+
+    /// <summary>
+    /// Кувырок: движение ведёт сам ролл, а не ввод. i-frames берутся у PlayerHealth.
+    /// </summary>
+    public bool TryDodge()
+    {
+        if (isDead || isDodging || isJumping) return false;
+        if (blockController.IsBlocking) return false;
+        if (!AgentReady) return false;
+        if (Time.time < nextDodgeTime) return false;
+        if (isAttacking && !CanCancelAttack) return false;
+
+        if (isAttacking) EndAttack();
+
+        dodgeDirection = ResolveDodgeDirection();
+        if (dodgeDirection.sqrMagnitude < 0.0001f) dodgeDirection = transform.forward;
+
+        isDodging = true;
+        dodgeElapsed = 0f;
+        nextDodgeTime = Time.time + dodgeDuration + dodgeCooldown;
+
+        ResolveDodgeLayer();
+        if (animator != null && dodgeLayerIndex >= 0)
+        {
+            animator.SetInteger(dodgeIndexHash, DodgeIndexFor(dodgeDirection));
+            animator.SetLayerWeight(dodgeLayerIndex, 1f);
+            // Bool, а не Trigger: AnyState потратил бы Trigger на первую ветку.
+            animator.SetBool(dodgeActiveHash, false);
+            animator.SetBool(dodgeActiveHash, true);
+        }
+
+        if (health != null && dodgeInvulnerability > 0f)
+            health.SetInvulnerable(dodgeInvulnerability);
+
+        // Хитбокс закрыт: кувырок не бьёт.
+        if (weaponManager != null) weaponManager.SetHitboxActive(false, true);
+        else if (weapon != null) weapon.SetHitboxActive(false);
+
+        return true;
+    }
+
+    private void UpdateDodge()
+    {
+        if (!isDodging) return;
+
+        float duration = Mathf.Max(0.1f, dodgeDuration);
+        dodgeElapsed += Time.deltaTime;
+
+        // Кувырок едет сам: фиксированная дистанция за время ролла.
+        float speed = dodgeDistance / duration;
+        if (AgentReady) agent.Move(dodgeDirection * (speed * Time.deltaTime));
+        else transform.position += dodgeDirection * (speed * Time.deltaTime);
+
+        if (dodgeElapsed >= duration) CancelDodge();
+    }
+
+    private void CancelDodge()
+    {
+        if (!isDodging) return;
+
+        isDodging = false;
+        dodgeElapsed = 0f;
+        dodgeDirection = Vector3.zero;
+
+        if (animator != null && dodgeLayerIndex >= 0)
+        {
+            // Вес в ноль обязателен: иначе слой держит последнюю позу ролла.
+            animator.SetLayerWeight(dodgeLayerIndex, 0f);
+            animator.SetBool(dodgeActiveHash, false);
+            animator.SetInteger(dodgeIndexHash, 0);
+        }
+    }
+
+    private void ResolveDodgeLayer()
+    {
+        if (animator == null || string.IsNullOrEmpty(dodgeLayerName)) return;
+
+        dodgeLayerIndex = animator.GetLayerIndex(dodgeLayerName);
+        dodgeIndexHash = Animator.StringToHash(dodgeIndexParam);
+        dodgeActiveHash = Animator.StringToHash(dodgeActiveParam);
+    }
+
+    /// <summary>Направление кувырка: по вводу, при пустом вводе — назад.</summary>
+    private Vector3 ResolveDodgeDirection()
+    {
+        if (moveInput.sqrMagnitude < 0.0001f) return -transform.forward;
+        return CameraRelativeDirection(moveInput);
+    }
+
+    /// <summary>
+    /// Индекс клипа по стороне кувырка. Направление переводится в локальные оси:
+    /// в мировых осях ролл выбирался бы по сторонам света, а не по спине персонажа.
+    /// </summary>
+    private int DodgeIndexFor(Vector3 worldDirection)
+    {
+        Vector3 local = transform.InverseTransformDirection(worldDirection);
+
+        if (Mathf.Abs(local.z) >= Mathf.Abs(local.x)) return local.z >= 0f ? 0 : 1;
+        return local.x >= 0f ? 3 : 2;
+    }
+
 
     /// <summary>Запускает новую атаку или ставит следующую атаку комбо в буфер.</summary>
     public bool PlayAttackAnimation()
@@ -454,9 +682,20 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public bool TryAttack()
     {
         if (isDead) return false;
-        if (isJumping) return false;
         if (blockController.IsBlocking) return false;
         if (animator == null) return false;
+
+        if (isDodging)
+        {
+            if (!CanCancelDodge) return false;
+            CancelDodge();
+        }
+
+        if (isJumping)
+        {
+            if (!isLanding || landElapsed < landCancelDelay) return false;
+            CancelJump();
+        }
 
         if (!isAttacking)
         {
@@ -464,14 +703,47 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             return true;
         }
 
-        // Одно нажатие ставит одно комбо только в открытом окне.
-        if (comboWindowOpen && comboIndex < maxComboIndex && !comboQueued)
-        {
-            comboQueued = true;
-            return true;
-        }
+        // Новый удар — только после обязательных кадров: спам не рвёт анимацию.
+        if (!CanCancelAttack) return false;
+        if (comboIndex >= maxComboIndex) return false;
 
-        return false;
+        comboQueued = true;
+        return true;
+    }
+
+    /// <summary>Есть ли в буфере свежее нажатие атаки.</summary>
+    private bool HasBufferedAttack
+    {
+        get
+        {
+            return Time.time + testTimeOffset < attackBufferedUntil;
+        }
+    }
+
+    /// <summary>Следующий удар комбо: индекс растёт, буфер сбрасывается.</summary>
+    private void AdvanceCombo()
+    {
+        comboIndex++;
+        comboQueued = false;
+        comboWindowOpen = false;
+        comboWindowSeen = false;
+        attackBufferedUntil = -1f;
+
+        animator.SetInteger(attackIndexParam, comboIndex);
+        animator.ResetTrigger(comboTrigger);
+        animator.SetTrigger(comboTrigger);
+    }
+
+    /// <summary>Атаку можно отменить после обязательных кадров замаха.</summary>
+    private bool CanCancelAttack
+    {
+        get { return isAttacking && attackElapsed >= attackCommitTime; }
+    }
+
+    /// <summary>Кувырок отменяется на исходе: выход из ролла без рывка.</summary>
+    private bool CanCancelDodge
+    {
+        get { return isDodging && dodgeElapsed >= dodgeDuration * dodgeCancelPhase; }
     }
 
     private void StartAttack(int index)
@@ -480,6 +752,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         comboIndex = Mathf.Clamp(index, 0, maxComboIndex);
         comboQueued = false;
         comboWindowOpen = false;
+        comboWindowSeen = false;
         attackElapsed = 0f;
 
         animator.SetInteger(attackIndexParam, comboIndex);
@@ -516,6 +789,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public void OnComboWindowOpen()
     {
         comboWindowOpen = true;
+        comboWindowSeen = true;
     }
 
     public void OnComboWindowClose()
@@ -533,8 +807,11 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         isAttacking = false;
         comboQueued = false;
         comboWindowOpen = false;
+        comboWindowSeen = false;
+        attackBufferedUntil = -1f;
 
         CancelJump();
+        CancelDodge();
         StopMovement();
         SetAnimationSpeed(0f);
     }
@@ -545,7 +822,47 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         isAttacking = false;
         comboQueued = false;
         comboWindowOpen = false;
+        comboWindowSeen = false;
+        attackBufferedUntil = -1f;
 
+        CancelJump();
+        CancelDodge();
         ResumeMovement();
+    }
+
+
+    /// <summary>
+    /// Уворот опрашивается напрямую: клавиша и кнопка геймпада не требуют
+    /// отдельного action в PlayerControls, как и блок у PlayerBlockController.
+    /// </summary>
+    private void PollDodgeInput()
+    {
+        bool pressed = Keyboard.current != null && Keyboard.current[dodgeKey].wasPressedThisFrame;
+
+        if (!pressed && alsoGamepadDodge && Gamepad.current != null)
+            pressed = Gamepad.current.buttonEast.wasPressedThisFrame;
+
+        if (pressed) TryDodge();
+    }
+
+
+    /// <summary>Направление ввода в мировых координатах относительно камеры.</summary>
+    private Vector3 CameraRelativeDirection(Vector2 input)
+    {
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+            if (mainCamera == null) return transform.forward;
+        }
+
+        Vector3 forward = mainCamera.transform.forward;
+        Vector3 right = mainCamera.transform.right;
+        forward.y = 0f;
+        right.y = 0f;
+        forward.Normalize();
+        right.Normalize();
+
+        Vector3 direction = (forward * input.y + right * input.x).normalized;
+        return direction.sqrMagnitude > 0.0001f ? direction : transform.forward;
     }
 }
