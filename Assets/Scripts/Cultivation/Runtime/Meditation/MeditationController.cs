@@ -432,7 +432,22 @@ public class MeditationController : MonoBehaviour
         Collider[] hits = Physics.OverlapSphere(transform.position, radius, ~0, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits.Length; i++)
         {
-            EnemyAI enemy = hits[i] != null ? hits[i].GetComponentInParent<EnemyAI>() : null;
+            if (hits[i] == null) continue;
+
+            // Боевой враг важнее старого: без него медитацию прерывал только legacy-EnemyAI.
+            EnemyCombatAI combat = hits[i].GetComponentInParent<EnemyCombatAI>();
+            if (combat != null)
+            {
+                if (combat.IsDead || combat.CurrentState == EnemyCombatAI.State.Idle) continue;
+                if (!HasLineOfSight(combat.transform)) continue;
+
+                Interrupt(MeditationInterruptionReason.Threat);
+                return;
+            }
+
+#pragma warning disable CS0618
+            EnemyAI enemy = hits[i].GetComponentInParent<EnemyAI>();
+#pragma warning restore CS0618
             if (enemy == null || !enemy.IsAggroed) continue;
             if (!HasLineOfSight(enemy.transform)) continue;
 
@@ -452,8 +467,10 @@ public class MeditationController : MonoBehaviour
         if (!Physics.Linecast(eye, aim, out RaycastHit hit, obstacleMask, QueryTriggerInteraction.Ignore))
             return true;
 
+#pragma warning disable CS0618
         // Линия может задеть самого врага — это не препятствие.
         return hit.collider != null && hit.collider.GetComponentInParent<EnemyAI>() != null;
+#pragma warning restore CS0618
     }
 
     private void ApplyAnimatorTrigger(bool entering)

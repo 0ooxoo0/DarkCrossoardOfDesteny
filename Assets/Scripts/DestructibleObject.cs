@@ -1,5 +1,11 @@
 using UnityEngine;
 
+/// <summary>
+/// Устаревшая ветка урона по тегу: удаляет объект при касании коллайдера с тегом
+/// DammageObject. Боевой урон идёт через <see cref="CombatHitbox"/> и <see cref="IDamageable"/>,
+/// поэтому класс оставлен только для старых пропов.
+/// </summary>
+[System.Obsolete("Legacy: урон идёт через CombatHitbox/IDamageable. Не использовать в новых сценах.")]
 public class DestructibleObject : MonoBehaviour
 {
     public GameObject Destructeffect;

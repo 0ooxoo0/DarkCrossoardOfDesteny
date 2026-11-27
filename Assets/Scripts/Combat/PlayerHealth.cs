@@ -50,6 +50,12 @@ public class PlayerHealth : MonoBehaviour, IDamageable, IHealthProvider
     /// <summary>Корень, по которому CombatHitbox отличает владельца от цели.</summary>
     public Transform DamageRoot => transform;
 
+    /// <summary>Смерть уже произошла в этом кадре: респавн идёт отдельным шагом.</summary>
+    public bool WillDie => dead;
+
+    /// <summary>Игрок — своя команда: урон врагов проходит, урон своих техник нет.</summary>
+    public CombatTeam Team => CombatTeam.Player;
+
     /// <summary>Множитель получаемого урона: дебафы и защита.</summary>
     public float IncomingDamageMultiplier { get; set; } = 1f;
 
@@ -206,6 +212,12 @@ public class PlayerHealth : MonoBehaviour, IDamageable, IHealthProvider
     {
         invulnerableRemaining = Mathf.Max(invulnerableRemaining, seconds);
     }
+
+    /// <summary>
+    /// Идёт ли неуязвимость прямо сейчас. Нужна фидбеку, чтобы мигать модель
+    /// и в i-frames кувырка, и после респавна — без отдельного события.
+    /// </summary>
+    public bool IsInvulnerable => invulnerableRemaining > 0f;
 
     /// <summary>Пересчитывает максимум после смены множителя и клампит текущее HP.</summary>
     public void RecalculateMaxHealth()

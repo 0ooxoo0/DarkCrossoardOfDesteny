@@ -17,6 +17,14 @@ public class CombatHitbox : MonoBehaviour
     [SerializeField] private bool useOverlapFallback = true;
     [SerializeField] private LayerMask targetLayers = ~0;
 
+    [Header("Проверка препятствий")]
+    [Tooltip("Не бить сквозь стены: между владельцем и целью не должно быть препятствия.")]
+    [SerializeField] private bool requireLineOfSight = true;
+    [Tooltip("Слои, которые считаются препятствием для удара.")]
+    [SerializeField] private LayerMask obstacleLayers = ~0;
+    [Tooltip("Слои владельца: его собственное тело не должно считаться препятствием.")]
+    [SerializeField] private LayerMask ownerLayers;
+
     [Header("Debug")]
     [SerializeField] private Color gizmoColor = new Color(1f, 0.15f, 0.1f, 0.75f);
     [SerializeField] private Vector3 fallbackBoxSize = new Vector3(0.5f, 0.5f, 1.4f);
@@ -25,11 +33,36 @@ public class CombatHitbox : MonoBehaviour
     private bool active;
     private readonly HashSet<int> hitTargets = new HashSet<int>();
     private static readonly Collider[] OverlapBuffer = new Collider[32];
+    private float? damageOverride;
+    private float damageMultiplier = 1f;
 
     public bool IsActive => active;
     public float Damage => damage;
     public CombatTeam Team => team;
     public Transform OwnerRoot => ownerRoot != null ? ownerRoot : transform.root;
+
+    /// <summary>Фактический урон удара: override техники, иначе урон оружия × множитель пассивов.</summary>
+    public float CurrentDamage => damageOverride ?? damage * Mathf.Max(0f, damageMultiplier);
+
+    /// <summary>Временная замена урона (сила техники). null — вернуться к урону оружия.</summary>
+    public void SetDamageOverride(float? value)
+    {
+        damageOverride = value.HasValue ? Mathf.Max(0f, value.Value) : (float?)null;
+    }
+
+    /// <summary>Множитель урона оружия от пассивов. Не влияет на override техники.</summary>
+    public float DamageMultiplier
+    {
+        get => damageMultiplier;
+        set => damageMultiplier = Mathf.Max(0f, value);
+    }
+
+    /// <summary>Слои целей. Для зон магии приходит из AbilityData.damageLayers.</summary>
+    public LayerMask TargetLayers
+    {
+        get => targetLayers;
+        set => targetLayers = value;
+    }
 
     private void Awake()
     {
@@ -88,12 +121,19 @@ public class CombatHitbox : MonoBehaviour
 
         if (targetRoot == myRoot || other.transform.root == myRoot) return;
 
+        // Своих не бьём: два врага рядом не ранят друг друга. Neutral получает урон от всех.
+        if (team != CombatTeam.Neutral && target.Team == team) return;
+
+        // Сквозь стены урона нет: между владельцем и точкой удара не должно быть геометрии.
+        if (requireLineOfSight && !HasLineOfSight(myRoot, other)) return;
+
         int id = targetRoot.GetInstanceID();
         if (hitTargets.Contains(id)) return;
         hitTargets.Add(id);
 
+        float appliedDamage = CurrentDamage;
         Vector3 point = other.ClosestPoint(transform.position);
-        DamageInfo info = new DamageInfo(damage, myRoot.gameObject, point);
+        DamageInfo info = new DamageInfo(appliedDamage, myRoot.gameObject, point);
 
         ICombatBlockable blockable = other.GetComponentInParent<ICombatBlockable>();
         if (blockable != null && blockable.IsBlocking && blockable.CanBlockFrom(myRoot.position))
@@ -112,16 +152,45 @@ public class CombatHitbox : MonoBehaviour
 
         target.TakeDamage(info);
 
+        // Смерть отложена до конца кадра, поэтому «убил ли» спрашиваем до отчёта:
+        // иначе killEffect и killShake не срабатывали бы никогда.
+        bool killed = target.IsDead || target.WillDie;
+
         // Шина фидбека: хит-стоп, VFX и цифры урона подписаны снаружи.
         CombatEvents.Report(new CombatImpact
         {
             Point = point,
-            Damage = damage,
+            Damage = appliedDamage,
             Attacker = myRoot.gameObject,
             Victim = targetRoot,
-            Kind = target.IsDead ? ImpactKind.Killed : ImpactKind.Hit,
+            Kind = killed ? ImpactKind.Killed : ImpactKind.Hit,
             IsCritical = info.IsCritical
         });
+    }
+
+    /// <summary>
+    /// Проверка препятствия: луч от владельца к цели не должен упираться в геометрию.
+    /// Попадание в саму цель или в другого получателя урона препятствием не считается.
+    /// </summary>
+    private bool HasLineOfSight(Transform myRoot, Collider target)
+    {
+        Vector3 origin = myRoot.position + Vector3.up * 1.2f;
+        Vector3 destination = target.bounds.center;
+
+        Vector3 direction = destination - origin;
+        float distance = direction.magnitude;
+        if (distance <= 0.05f) return true;
+
+        int mask = obstacleLayers.value & ~ownerLayers.value;
+        if (mask == 0) return true;
+
+        if (!Physics.Raycast(origin, direction / distance, out RaycastHit hit, distance, mask,
+                QueryTriggerInteraction.Ignore))
+        {
+            return true;
+        }
+
+        return hit.collider.GetComponentInParent<IDamageable>() != null;
     }
 
     private Vector3 GetWorldHalfExtents()

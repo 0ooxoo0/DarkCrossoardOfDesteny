@@ -13,6 +13,8 @@ public class CombatFeedback : MonoBehaviour
     [SerializeField, Min(0f)] private float hitStopDuration = 0.055f;
     [SerializeField, Range(0.01f, 1f)] private float hitStopTimeScale = 0.05f;
     [SerializeField, Min(0f)] private float hitStopCooldown = 0.08f;
+    [Tooltip("Замедлять время, когда урон получает игрок. Выключено: рывок мешает увороту.")]
+    [SerializeField] private bool hitStopOnPlayerDamage = false;
 
     [Header("Impact VFX")]
     [Tooltip("Префаб искр/вспышки в точке удара.")]
@@ -29,7 +31,10 @@ public class CombatFeedback : MonoBehaviour
 
     [Header("Damage numbers")]
     [SerializeField] private bool showDamageNumbers = true;
+    [Tooltip("Урон, нанесённый игроком: врагу, дереву или животному.")]
     [SerializeField] private Color hitColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [Tooltip("Удар по игроку: красная цифра, чтобы «меня попали» отличалось от «я попал».")]
+    [SerializeField] private Color playerHitColor = new Color(1f, 0.25f, 0.2f, 1f);
     [SerializeField] private Color criticalColor = new Color(1f, 0.35f, 0.15f, 1f);
     [SerializeField] private Color blockedColor = new Color(0.6f, 0.8f, 1f, 1f);
 
@@ -128,9 +133,13 @@ public class CombatFeedback : MonoBehaviour
 
     private void HandleImpact(CombatImpact impact)
     {
+        bool victimIsPlayer = IsPlayer(impact.Victim);
+
         if (impact.Kind != ImpactKind.Blocked)
         {
-            PlayHitStop();
+            // Удар по игроку не замедляет время по умолчанию: рывок timeScale
+            // на собственном уроне ощущается как лаг и мешает увороту. Тряска остаётся.
+            if (!victimIsPlayer || hitStopOnPlayerDamage) PlayHitStop();
             ShakeCamera(impact.Kind == ImpactKind.Killed ? killShake : hitShake);
         }
 
@@ -138,6 +147,12 @@ public class CombatFeedback : MonoBehaviour
         // Проверка режима стоит в LateUpdate: в EditMode спавнить нельзя,
         // но очередь обязана наполняться — иначе это нечем проверить.
         pending.Add(impact);
+    }
+
+    /// <summary>Игрок ли цель удара: по нему выбирается цвет цифры и хит-стоп.</summary>
+    private static bool IsPlayer(Transform victim)
+    {
+        return victim != null && victim.GetComponent<PlayerHealth>() != null;
     }
 
     /// <summary>
@@ -217,6 +232,9 @@ public class CombatFeedback : MonoBehaviour
             return;
         }
 
-        DamagePopup.Spawn(impact.Point, impact.Damage, impact.IsCritical ? criticalColor : hitColor);
+        Color color = IsPlayer(impact.Victim)
+            ? playerHitColor
+            : (impact.IsCritical ? criticalColor : hitColor);
+        DamagePopup.Spawn(impact.Point, impact.Damage, color);
     }
 }

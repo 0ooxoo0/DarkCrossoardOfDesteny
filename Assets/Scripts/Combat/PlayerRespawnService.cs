@@ -18,6 +18,8 @@ public class PlayerRespawnService : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float experienceLossPercent = 0.25f;
     [SerializeField, Range(0f, 1f)] private float hpRestorePercent = 0.5f;
     [SerializeField, Min(0f)] private float invulnerabilityAfterRespawn = 3f;
+    [Tooltip("Пауза между смертью и респавном: анимация смерти, затемнение и сообщение.")]
+    [SerializeField, Min(0f)] private float respawnDelay = 1.8f;
     [Tooltip("Неуязвимость продлевается, пока живой враг ближе его aggroRadius + этот запас.")]
     [SerializeField, Min(0f)] private float invulnerabilitySafetyMargin = 5f;
     [Tooltip("Предел продления неуязвимости после респауна, сек. Дальше она истекает даже рядом с врагом.")]
@@ -28,10 +30,24 @@ public class PlayerRespawnService : MonoBehaviour
     [SerializeField] private CultivationSystem cultivation;
     [SerializeField] private BreakthroughSequence breakthrough;
 
+    /// <summary>Игрок погиб: экран смерти и другие подписчики реагируют здесь же.</summary>
+    public event System.Action OnDied;
+
+    /// <summary>Респавн завершён: экран смерти гаснет после этого события.</summary>
+    public event System.Action OnRespawned;
+
     public float ExperienceLossPercent => experienceLossPercent;
+
+    /// <summary>Пауза между смертью и респавном, секунд.</summary>
+    public float RespawnDelay => respawnDelay;
+
+    /// <summary>Сколько опыта потеряно за последнюю смерть. Экран смерти берёт число отсюда.</summary>
+    public int LastExperienceLost { get; private set; }
 
     private EnemyCombatAI[] enemies;
     private float invulnerabilityExtension;
+    private bool deathPending;
+    private float diedAtUnscaledTime;
 
     private void OnEnable()
     {
@@ -68,9 +84,45 @@ public class PlayerRespawnService : MonoBehaviour
             health.OnDied += HandleDied;
     }
 
+    /// <summary>
+    /// Смерть игрока: сначала пауза с анимацией и экраном, только потом респавн.
+    /// Мгновенный перенос в том же кадре читался как «мигнуло и я на месте».
+    /// </summary>
     private void HandleDied()
     {
-        Respawn();
+        diedAtUnscaledTime = Time.unscaledTime;
+        deathPending = true;
+        OnDied?.Invoke();
+    }
+
+    /// <summary>Идёт ли ещё пауза перед респавном (для UI и тестов).</summary>
+    public bool IsDeathPending => deathPending;
+
+    /// <summary>Сколько секунд уже идёт пауза смерти.</summary>
+    public float DeathElapsed => deathPending ? Time.unscaledTime - diedAtUnscaledTime : 0f;
+
+    /// <summary>
+    /// Отсчёт задержки смерти и продление неуязвимости после респавна.
+    /// Пауза смерти идёт на unscaled-времени: экран не должен глохнуть на паузе меню.
+    /// </summary>
+    private void Update()
+    {
+        if (deathPending)
+        {
+            if (Time.unscaledTime - diedAtUnscaledTime >= respawnDelay)
+            {
+                deathPending = false;
+                Respawn();
+            }
+            return;
+        }
+
+        if (health == null || playerRoot == null) return;
+        if (health.IsDead || invulnerabilityExtension <= 0f) return;
+        if (!EnemyWithinAggro(playerRoot.position)) return;
+
+        invulnerabilityExtension = Mathf.Max(0f, invulnerabilityExtension - Time.deltaTime);
+        health.SetInvulnerable(0.5f);
     }
 
     /// <summary>
@@ -90,7 +142,7 @@ public class PlayerRespawnService : MonoBehaviour
             breakthrough.CancelBreakthrough();
 
         if (cultivation != null)
-            cultivation.LoseExperiencePercent(experienceLossPercent);
+            LastExperienceLost = cultivation.LoseExperiencePercent(experienceLossPercent);
 
         Transform target = playerRoot != null ? playerRoot : transform;
 
@@ -103,21 +155,9 @@ public class PlayerRespawnService : MonoBehaviour
         health.SetInvulnerable(invulnerabilityAfterRespawn);
         invulnerabilityExtension = invulnerabilityMaxExtension;
         enemies = null;
+        deathPending = false;
         health.NotifyRespawned();
-    }
-
-    /// <summary>
-    /// Продлевает неуязвимость, пока игрок стоит в зоне агро живого врага:
-    /// иначе после респауна враг убивает его сразу по истечении базовых секунд.
-    /// </summary>
-    private void Update()
-    {
-        if (health == null || playerRoot == null) return;
-        if (health.IsDead || invulnerabilityExtension <= 0f) return;
-        if (!EnemyWithinAggro(playerRoot.position)) return;
-
-        invulnerabilityExtension = Mathf.Max(0f, invulnerabilityExtension - Time.deltaTime);
-        health.SetInvulnerable(0.5f);
+        OnRespawned?.Invoke();
     }
 
     private bool EnemyWithinAggro(Vector3 position)
