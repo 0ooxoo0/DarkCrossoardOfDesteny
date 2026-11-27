@@ -25,6 +25,8 @@ public class AbilitySystem : MonoBehaviour
     [SerializeField] private QiComponent qi;
     [SerializeField] private DaoSystem dao;
     [SerializeField] private CultivationSystem cultivation;
+    [Tooltip("Боевые звуки каста. Пусто — ищется на игроке.")]
+    [SerializeField] private CombatAudio combatAudio;
 
     private float damageMultiplier = 1f;
 
@@ -381,28 +383,80 @@ public class AbilitySystem : MonoBehaviour
         activeAbility = null;
     }
 
+    /// <summary>
+    /// Power > 0 — урон техники, Power = 0 (Block) — урон оружия.
+    /// Сила учитывается только у техник Дао (слоты 4–5): способности оружия 1–3
+    /// сохраняют своё поведение, даже если в их ассете появится power.
+    /// </summary>
+    private float? ResolveTechniqueDamage(AbilityData ability)
+    {
+        if (ability == null || ability.power <= 0) return null;
+        if (!techniqueAbilities.Contains(ability)) return null;
+        return ability.power * Mathf.Max(0f, DamageMultiplier);
+    }
+
+    /// <summary>Боевой звук каста: живёт на игроке, сцена ссылку не хранит.</summary>
+    private CombatAudio ResolveCombatAudio()
+    {
+        if (combatAudio == null)
+            combatAudio = playerController != null
+                ? playerController.GetComponent<CombatAudio>()
+                : GetComponent<CombatAudio>();
+        return combatAudio;
+    }
+
     private IEnumerator ExecuteMelee(int index, AbilityData ability)
     {
         // Melee переиспользует штатный триггер Attack и хитбокс оружия.
         bool started;
-        if (ability.castAnimation != null && weaponManager != null)
-            started = weaponManager.PlayCastAnimation(ability.castAnimation);
-        else if (playerController != null)
-            started = playerController.PlayAttackAnimation();
-        else
-            started = false;
+        float? damageOverride = ResolveTechniqueDamage(ability);
+        if (weaponManager != null) weaponManager.SetDamageOverride(damageOverride);
 
-        if (!started)
+        try
         {
-            cooldownEnd[index] = 0f;
-            yield break;
+            if (ability.castAnimation != null && weaponManager != null)
+                started = weaponManager.PlayCastAnimation(ability.castAnimation);
+            else if (playerController != null)
+                started = playerController.PlayAttackAnimation();
+            else
+                started = false;
+
+            if (!started)
+            {
+                // Каст не начался: КД не ставим и возвращаем Ци.
+                cooldownEnd[index] = 0f;
+                RefundQi(ability);
+                yield break;
+            }
+
+            // Окно удара открывает Animation Event в конце клипа, поэтому ждём не саму
+            // атаку, а фактическое срабатывание хитбокса: иначе override сбросится раньше
+            // попадания и меч ударит базовым уроном оружия.
+            float waitWindow = 1.5f;
+            while (waitWindow > 0f && !(weaponManager != null && weaponManager.IsHitboxActive))
+            {
+                waitWindow -= Time.deltaTime;
+                yield return null;
+            }
+
+            float waitClose = 5f;
+            while (waitClose > 0f && weaponManager != null && weaponManager.IsHitboxActive)
+            {
+                waitClose -= Time.deltaTime;
+                yield return null;
+            }
+
+            // Хитбокса нет вовсе (техника без оружия) — ждём хотя бы конец атаки.
+            float waitAttack = 2f;
+            while (waitAttack > 0f && playerController != null && playerController.IsAttacking)
+            {
+                waitAttack -= Time.deltaTime;
+                yield return null;
+            }
         }
-
-        float timeout = 5f;
-        while (playerController != null && playerController.IsAttacking && timeout > 0f)
+        finally
         {
-            timeout -= Time.deltaTime;
-            yield return null;
+            if (weaponManager != null) weaponManager.SetDamageOverride(null);
         }
     }
 
@@ -411,8 +465,21 @@ public class AbilitySystem : MonoBehaviour
         if (weaponManager != null) weaponManager.SuppressHitbox = true;
         if (playerController != null) playerController.StopMovement();
 
+        CombatAudio audio = ResolveCombatAudio();
+        if (audio != null) audio.PlayCast();
+
+        bool started = true;
         if (ability.castAnimation != null && weaponManager != null)
-            weaponManager.PlayCastAnimation(ability.castAnimation);
+            started = weaponManager.PlayCastAnimation(ability.castAnimation);
+
+        if (!started)
+        {
+            if (weaponManager != null) weaponManager.SuppressHitbox = false;
+            if (playerController != null) playerController.ResumeMovement();
+            cooldownEnd[index] = 0f;
+            RefundQi(ability);
+            yield break;
+        }
 
         yield return new WaitForSeconds(Mathf.Max(0f, ability.vfxDelay));
 
@@ -452,31 +519,40 @@ public class AbilitySystem : MonoBehaviour
 
         GameObject zone = new GameObject("MagicHitbox_Temp");
         zone.transform.position = spawn;
+        // Тег остаётся для пропов: DestructibleObject реагирует на DammageObject.
         TrySetTag(zone, ability.PrimaryDamageTag);
 
         SphereCollider sphere = zone.AddComponent<SphereCollider>();
         sphere.isTrigger = true;
         sphere.radius = Mathf.Max(0.01f, ability.magicRadius);
 
-        // Как и у меча: trigger без Rigidbody не даёт OnTriggerEnter.
+        // Враги получают урон через IDamageable/CombatHitbox, а не через тег.
+        // Меле-техники оружия идут штатным хитбоксом, поэтому зона нужна только магии.
+        if (ability.type != AbilityType.Magic)
+        {
+            Destroy(zone, Mathf.Max(0.05f, ability.magicHitboxLifetime));
+            return;
+        }
+
+        // Триггер без Rigidbody не даёт OnTriggerEnter: добавляем kinematic-тело.
         Rigidbody body = zone.AddComponent<Rigidbody>();
         body.isKinematic = true;
         body.useGravity = false;
 
-        // OverlapSphere — диагностика зоны; реальный урон делает
-        // DestructibleObject.OnTriggerEnter по тегу.
-        Collider[] hits = Physics.OverlapSphere(
-            spawn,
-            sphere.radius,
-            ability.damageLayers,
-            QueryTriggerInteraction.Ignore);
-
-        if (hits.Length > 0)
-        {
-            Debug.Log("[AbilitySystem] Зона магии задела " + hits.Length + " коллайдер(ов).");
-        }
+        // Магию тоже можно блокировать: CombatHitbox спрашивает ICombatBlockable до урона.
+        var hitbox = zone.AddComponent<CombatHitbox>();
+        hitbox.Configure(ability.power * Mathf.Max(0f, DamageMultiplier), CombatTeam.Player, origin);
+        hitbox.TargetLayers = ability.damageLayers;
+        hitbox.SetActive(true);
 
         Destroy(zone, Mathf.Max(0.05f, ability.magicHitboxLifetime));
+    }
+
+    /// <summary>Возврат Ци, если каст не состоялся. КД при этом не ставится.</summary>
+    private void RefundQi(AbilityData ability)
+    {
+        int cost = Mathf.Max(0, ability != null ? ability.qiCost : 0);
+        if (cost > 0 && qi != null) qi.Restore(cost);
     }
 
     private bool IsWeaponCompatible(AbilityData ability)

@@ -1,5 +1,55 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4365886241461457200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5999078002973622621}
+  - component: {fileID: 5365681476904872048}
+  m_Layer: 0
+  m_Name: HealthBar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5999078002973622621
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4365886241461457200}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 670779377495465326}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5365681476904872048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4365886241461457200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb37887f8711ff14a94c9de6d3d1f8db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::EnemyHealthBar
+  worldOffset: 2.1
+  barSize: {x: 0.9, y: 0.1}
+  hideDelay: 3
+  fadeSpeed: 2
+  backgroundColor: {r: 0.05, g: 0.06, b: 0.08, a: 0.95}
+  fillColor: {r: 0.78, g: 0.25, b: 0.18, a: 1}
 --- !u!1 &8696846455872523621
 GameObject:
   m_ObjectHideFlags: 0
@@ -101,6 +151,13 @@ MonoBehaviour:
   targetLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  requireLineOfSight: 1
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  ownerLayers:
+    serializedVersion: 2
+    m_Bits: 0
   gizmoColor: {r: 1, g: 0.15, b: 0.1, a: 0.75}
   fallbackBoxSize: {x: 0.5, y: 0.5, z: 1.4}
 --- !u!1001 &1064449538925476485
@@ -173,6 +230,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 38215856048220637}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5999078002973622621}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
       insertIndex: -1
@@ -189,6 +249,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1907209951708776969}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1859528030230638988}
   m_SourcePrefab: {fileID: 100100000, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
 --- !u!1 &145459782029281236 stripped
 GameObject:
@@ -255,6 +318,8 @@ MonoBehaviour:
   maxHealth: 120
   destroyOnDeath: 1
   destroyDelay: 6
+  lootTable: {fileID: 11400000, guid: 3c021edc4bf36a54f8ac96ebd2159896, type: 2}
+  experienceReward: 25
   animator: {fileID: 6894794007813785364}
   ai: {fileID: 2799480516496055161}
   bodyCollider: {fileID: 8878601340758536882}
@@ -286,6 +351,7 @@ MonoBehaviour:
   agent: {fileID: 4844777922061085843}
   health: {fileID: 5294296919196818679}
   attackHitbox: {fileID: 4368626716039861873}
+  telegraph: {fileID: 1859528030230638988}
   target: {fileID: 0}
   speedParam: Speed
   attackTrigger: Attack
@@ -312,6 +378,23 @@ MonoBehaviour:
   - {fileID: 5551175280477573212}
   knockbackDistance: 0.35
   knockbackDuration: 0.12
+--- !u!114 &1859528030230638988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 145459782029281236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8bfd0b1444b22848b037894169acd59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::EnemyAttackTelegraph
+  flashColor: {r: 1, g: 0.72, b: 0.2, a: 1}
+  flashDuration: 0.14
+  warningClip: {fileID: 8300000, guid: 8b7ce7e753d8e444887bb46b0a69b224, type: 3}
+  volume: 0.6
+  flashRenderers: []
 --- !u!4 &670779377495465326 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 79b569a8a4a678440b5ae154f52a190d, type: 3}
