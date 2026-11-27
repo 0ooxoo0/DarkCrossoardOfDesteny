@@ -63,6 +63,8 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     [SerializeField] private PlayerHealth health;
     [Tooltip("Блок игрока. Обязателен: блок запрещает атаку и движение.")]
     [SerializeField] private PlayerBlockController blockController;
+    [Tooltip("Боевые звуки. Пусто — ищется на этом объекте.")]
+    [SerializeField] private CombatAudio combatAudio;
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -104,7 +106,8 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     private float testTimeOffset;
     private bool initialized;
     private bool subscribed;
-    private bool lootLocked;
+    private bool suppressArrowMove;
+    private Vector2 frameInput;
 
     private static readonly int AttackStateTag = Animator.StringToHash("Attack");
 
@@ -129,6 +132,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             mainCamera = Camera.main;
             controls = new PlayerControls();
             playerInteraction = GetComponent<PlayerInteraction>();
+            if (combatAudio == null) combatAudio = GetComponent<CombatAudio>();
 
             if (agent != null)
             {
@@ -325,21 +329,25 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
 
     private void HandleMovement()
     {
+        // Стрелки в карте ввода привязаны и к Move, и к выбору в меню лута.
+        // На время выбора гасим только их — WASD остаётся полностью рабочим.
+        frameInput = suppressArrowMove ? WasdOnly() : moveInput;
+
         // Кувырок ведёт себя сам: WASD во время него не мешает.
-        if (isAttacking || isDead || isDodging || lootLocked || blockController.IsBlocking)
+        if (isAttacking || isDead || isDodging || blockController.IsBlocking)
         {
             StopVelocity();
             return;
         }
 
-        if (moveInput == Vector2.zero)
+        if (frameInput == Vector2.zero)
         {
             StopVelocity();
             return;
         }
 
-        Vector3 moveDirection = CameraRelativeDirection(moveInput);
-        currentSpeed = moveSpeed * Mathf.Clamp01(moveInput.magnitude);
+        Vector3 moveDirection = CameraRelativeDirection(frameInput);
+        currentSpeed = moveSpeed * Mathf.Clamp01(frameInput.magnitude);
         lastMoveDirection = moveDirection;
 
         if (AgentReady)
@@ -376,8 +384,6 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         // оси, и доворот здесь уводил бы модель вбок от траектории.
         if (isDodging) return;
 
-        // В клавиатурном меню подбора стрелки листают список: разворот не трогаем.
-        if (lootLocked) return;
 
         if (attackAimTimer > 0f)
         {
@@ -404,7 +410,7 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
             return;
         }
 
-        if (moveInput != Vector2.zero && currentSpeed > 0.1f)
+        if (frameInput != Vector2.zero && currentSpeed > 0.1f)
         {
             Vector3 moveDir = lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward;
             Quaternion targetRotation = Quaternion.LookRotation(moveDir);
@@ -492,19 +498,25 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
     public bool IsDodging => isDodging;
 
     /// <summary>
-    /// Клавиатурный подбор лута забирает WASD и стрелки: на это время
-    /// персонаж стоит, иначе выбор в меню двигал бы его же.
+    /// Пока открыт выбор в меню лута, стрелки не двигают персонажа: они листают
+    /// список. WASD продолжает работать — движения не блокируются.
     /// </summary>
-    public bool LootLocked
+    public bool SuppressArrowMove
     {
-        get { return lootLocked; }
-        set
-        {
-            lootLocked = value;
-            if (value) StopVelocity();
-        }
+        get { return suppressArrowMove; }
+        set { suppressArrowMove = value; }
     }
 
+    /// <summary>Ввод только с WASD: стрелки отбрасываются.</summary>
+    private static Vector2 WasdOnly()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null) return Vector2.zero;
+
+        float x = (keyboard.dKey.isPressed ? 1f : 0f) - (keyboard.aKey.isPressed ? 1f : 0f);
+        float y = (keyboard.wKey.isPressed ? 1f : 0f) - (keyboard.sKey.isPressed ? 1f : 0f);
+        return new Vector2(x, y);
+    }
     private void OnJumpPressed(InputAction.CallbackContext context)
     {
         TryJump();
@@ -838,6 +850,8 @@ public class PlayerController : MonoBehaviour, ICombatAnimationReceiver
         comboWindowOpen = false;
         comboWindowSeen = false;
         attackElapsed = 0f;
+
+        if (combatAudio != null) combatAudio.PlaySwing();
 
         animator.SetInteger(attackIndexParam, comboIndex);
         animator.ResetTrigger(attackTrigger);

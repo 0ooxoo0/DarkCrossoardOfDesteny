@@ -6,6 +6,11 @@ using UnityEngine.AI;
 /// Урон наносит через <see cref="PlayerHealth"/>, смерть определяет по
 /// <see cref="HarvestableObject"/>. <c>PlayerController</c> не трогает.
 /// </summary>
+/// <remarks>
+/// Устаревшая ветка: боевой враг в игре — <see cref="EnemyCombatAI"/>. Класс оставлен
+/// для выключенного объекта <c>Enemy</c> в старой части сцены.
+/// </remarks>
+[System.Obsolete("Legacy: боевой враг — EnemyCombatAI. Не использовать в новых сценах.")]
 [DisallowMultipleComponent]
 public class EnemyAI : MonoBehaviour
 {

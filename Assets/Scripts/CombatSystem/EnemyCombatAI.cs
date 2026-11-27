@@ -36,6 +36,8 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private EnemyHealth health;
     [SerializeField] private CombatHitbox attackHitbox;
+    [Tooltip("Телеграф замаха: вспышка и звук до открытия хитбокса.")]
+    [SerializeField] private EnemyAttackTelegraph telegraph;
     [SerializeField] private Transform target;
 
     [Header("Animator Parameters")]
@@ -158,6 +160,7 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
         if (agent == null) agent = GetComponent<NavMeshAgent>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (health == null) health = GetComponent<EnemyHealth>();
+        if (telegraph == null) telegraph = GetComponent<EnemyAttackTelegraph>();
 
         blockChance = GetBlockChance();
 
@@ -353,6 +356,9 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
 
         if (attackHitbox != null)
             attackHitbox.Configure(EffectiveDamage, CombatTeam.Enemy, transform);
+
+        // Телеграф идёт до открытия окна удара: у игрока есть ~0.2 с на блок или уворот.
+        if (telegraph != null) telegraph.Play();
 
         if (animator != null)
         {

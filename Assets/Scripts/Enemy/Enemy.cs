@@ -1,5 +1,10 @@
 using UnityEngine;
 
+/// <summary>
+/// Устаревший враг на <see cref="HarvestableObject"/> и отдельном префабе полосы HP.
+/// Боевой враг — <see cref="EnemyCombatAI"/> с <see cref="EnemyHealth"/> и <see cref="EnemyHealthBar"/>.
+/// </summary>
+[System.Obsolete("Legacy: используйте EnemyCombatAI + EnemyHealth + EnemyHealthBar.")]
 public class Enemy1 : MonoBehaviour
 {
     [Header("Ссылки")]
