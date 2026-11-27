@@ -29,8 +29,17 @@ MonoBehaviour:
   cooldown: 6
   power: 45
   castAnimationClip: {fileID: 0}
-  vfxPrefab: {fileID: 0}
+  vfxPrefab: {fileID: 2452431822119802724, guid: a690d6937eba1704d8c38ecb6da3537d, type: 3}
   range: 18
   radius: 2.35
+  delivery: 2
+  speed: 18
+  lifetime: 1
+  impactPrefab: {fileID: 0}
+  muzzlePrefab: {fileID: 0}
+  homing: 0
+  unlockCost: 1
+  prerequisiteIds: []
+  starter: 0
   passiveEffect: 0
   passiveValue: 0

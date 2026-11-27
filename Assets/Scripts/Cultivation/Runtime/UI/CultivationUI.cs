@@ -20,6 +20,7 @@ public class CultivationUI : MonoBehaviour
     private CultivationConfig config;
     private TechniqueListUI techniqueList;
     private SkillListUI skills;
+    private DaoTreeUI tree;
     private UiManager uiManager;
     private bool pausedByUs;
 
@@ -266,6 +267,11 @@ public class CultivationUI : MonoBehaviour
             OpenTechniques, CultivationUIFactory.Gold, 24f);
         CultivationUIFactory.Place((RectTransform)techniquesButton.transform, new Vector2(0f, 0f), new Vector2(0f, 0f),
             new Vector2(1162f, 56f), new Vector2(296f, 64f));
+
+        var treeButton = CultivationUIFactory.CreateButton("DaoTree", window, "Древо Дао", new Vector2(296f, 64f),
+            OpenTree, CultivationUIFactory.Success, 24f);
+        CultivationUIFactory.Place((RectTransform)treeButton.transform, new Vector2(0f, 0f), new Vector2(0f, 0f),
+            new Vector2(1162f, 128f), new Vector2(296f, 64f));
     }
 
     private void Subscribe()
@@ -550,10 +556,23 @@ public class CultivationUI : MonoBehaviour
         techniqueList.Open();
     }
 
+    /// <summary>Кнопка «Древо Дао» в панели культивации.</summary>
+    private void OpenTree()
+    {
+        if (tree == null) return;
+        tree.OpenFromPanel();
+    }
+
     /// <summary>Ссылка на единый экран скиллов (задаётся после сборки UI).</summary>
     public void SetSkillList(SkillListUI skillList)
     {
         skills = skillList;
+    }
+
+    /// <summary>Ссылка на древо Дао: кнопка рядом с «Техники».</summary>
+    public void SetTree(DaoTreeUI treeUi)
+    {
+        tree = treeUi;
     }
 
     private void TryActivateDao(DaoType type)

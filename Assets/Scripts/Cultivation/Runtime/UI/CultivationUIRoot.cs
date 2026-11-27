@@ -17,6 +17,7 @@ public class CultivationUIRoot : MonoBehaviour
     public DebuffPanelUI Debuffs { get; private set; }
     public AlchemyPanelUI Alchemy { get; private set; }
     public SkillListUI Skills { get; private set; }
+    public DaoTreeUI DaoTree { get; private set; }
     public DaoHudBarUI DaoBar { get; private set; }
     public MeditationScreenUI MeditationScreen { get; private set; }
     public QiBarUI QiBar { get; private set; }
@@ -35,6 +36,7 @@ public class CultivationUIRoot : MonoBehaviour
         (Techniques != null && Techniques.IsOpen) ||
         (Alchemy != null && Alchemy.IsOpen) ||
         (Skills != null && Skills.IsOpen) ||
+        (DaoTree != null && DaoTree.IsOpen) ||
         (BreakthroughPanel != null && BreakthroughPanel.gameObject.activeSelf);
 
     public static CultivationUIRoot Create(QiComponent qi, CultivationSystem cultivation, DaoSystem dao,
@@ -105,6 +107,11 @@ public class CultivationUIRoot : MonoBehaviour
         Skills = skillsRect.gameObject.AddComponent<SkillListUI>();
         Skills.Build(dao, cultivation, passiveService, abilityBridge, canvas.transform);
 
+        var treeRect = CultivationUIFactory.CreateRect("Dao Tree", canvas.transform);
+        DaoTree = treeRect.gameObject.AddComponent<DaoTreeUI>();
+        DaoTree.Build(dao, cultivation, canvas.transform);
+        Skills.SetTree(DaoTree);
+
         var techniqueRect = CultivationUIFactory.CreateRect("Technique List", transform);
         Techniques = techniqueRect.gameObject.AddComponent<TechniqueListUI>();
         Techniques.Build(dao, cultivation, config);
@@ -117,6 +124,7 @@ public class CultivationUIRoot : MonoBehaviour
         CultivationPanel.Build(cultivation, dao, meditation, breakthrough, config, Techniques, uiManager);
         // Кнопка «Техники» в панели ведёт в единый экран скиллов.
         CultivationPanel.SetSkillList(Skills);
+        CultivationPanel.SetTree(DaoTree);
 
         var meditationRect = CultivationUIFactory.CreateRect("Meditation Overlay", transform);
         MeditationOverlay = meditationRect.gameObject.AddComponent<MeditationUI>();

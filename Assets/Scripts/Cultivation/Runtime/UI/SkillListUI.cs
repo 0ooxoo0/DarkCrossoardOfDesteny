@@ -18,6 +18,8 @@ public class SkillListUI : MonoBehaviour
     private CultivationSystem cultivation;
     private PassiveSkillService passives;
     private CultivationAbilityBridge bridge;
+    private DaoTreeUI tree;
+    private Button treeButton;
 
     private RectTransform window;
     private RectTransform content;
@@ -114,6 +116,33 @@ public class SkillListUI : MonoBehaviour
             tabButtons[i] = button;
             tabBackgrounds[i] = button.GetComponent<Image>();
         }
+
+        // Третья кнопка ведёт в древо Дао: список остаётся плоским, дерево — отдельный экран.
+        var tree = CultivationUIFactory.CreateButton("Open Tree", parent, "Древо Дао",
+            new Vector2(180f, 40f), OpenTree, CultivationUIFactory.Success, 17f);
+        CultivationUIFactory.Place((RectTransform)tree.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(24f + labels.Length * 190f, -58f), new Vector2(180f, 40f));
+        treeButton = tree;
+    }
+
+    /// <summary>Древо Дао: тот же экран скиллов, но другой режим просмотра.</summary>
+    private void OpenTree()
+    {
+        if (tree == null)
+        {
+            ShowHint("Древо Дао недоступно: экран не собран.");
+            return;
+        }
+
+        Close();
+        tree.Open();
+    }
+
+    /// <summary>Ссылка на экран дерева (задаёт CultivationUIRoot).</summary>
+    public void SetTree(DaoTreeUI treeUi)
+    {
+        tree = treeUi;
+        if (treeButton != null) treeButton.interactable = tree != null;
     }
 
     private void BuildScroll(RectTransform parent)

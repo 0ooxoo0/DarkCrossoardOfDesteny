@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b9e785a4a5ea9249af394e950172a94, type: 3}
+  m_Name: Technique_Tree_Shield_SciFi_Shield_2.prefab
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::TechniqueData
+  techniqueId: Tree_Shield_SciFi_Shield_2.prefab
+  displayName: SciFi Shield 2
+  displayNameChinese: 
+  icon: {fileID: 0}
+  description: "SciFi Shield 2 \u2014 \u0449\u0438\u0442 \u0448\u043A\u043E\u043B\u044B
+    \xAB\u041F\u0443\u0442\u044C \u0422\u0435\u043B\u0430\xBB: \u044D\u0444\u0444\u0435\u043A\u0442
+    \u043D\u0430 \u0438\u0433\u0440\u043E\u043A\u0435, \u0441\u0438\u043B\u0430 \u2014,
+    \u0426\u0438 35, \u041A\u0414 25 \u0441."
+  daoType: 2
+  kind: 0
+  rank: 8
+  requiredDaoLevel: 4
+  requiredRealmIndex: 0
+  qiCost: 35
+  cooldown: 25
+  power: 0
+  castAnimationClip: {fileID: 0}
+  vfxPrefab: {fileID: 6875871598205834589, guid: 9550b0e9bb6a31e418251bc80db726af, type: 3}
+  range: 4
+  radius: 1.5
+  delivery: 4
+  speed: 0
+  lifetime: 10
+  impactPrefab: {fileID: 0}
+  muzzlePrefab: {fileID: 0}
+  homing: 0
+  unlockCost: 12
+  prerequisiteIds:
+  - Tree_Shield_SciFi_Shield.prefab
+  starter: 0
+  passiveEffect: 0
+  passiveValue: 0

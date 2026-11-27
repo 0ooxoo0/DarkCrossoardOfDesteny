@@ -77,6 +77,14 @@ public class TechniqueData : ScriptableObject
     [Tooltip("Снаряд доворачивает на ближайшую цель по слоям урона.")]
     [SerializeField] private bool homing;
 
+    [Header("Древо (очки Дао)")]
+    [Tooltip("Стоимость изучения в очках Дао. 0 — узел стартовый и бесплатный.")]
+    [SerializeField, Min(0)] private int unlockCost = 1;
+    [Tooltip("ID техник-предпосылок в этом же Дао: без них узел не открыть.")]
+    [SerializeField] private string[] prerequisiteIds = new string[0];
+    [Tooltip("Стартовый узел ветки: доступен без предпосылок.")]
+    [SerializeField] private bool starter;
+
     [Header("Пассивный скилл (Kind = Passive)")]
     [SerializeField] private PassiveEffectKind passiveEffect = PassiveEffectKind.MaxHealthPercent;
     [Tooltip("Прибавка в долях: 0.1 = +10%. 0 — пассив без эффекта.")]
@@ -107,6 +115,17 @@ public class TechniqueData : ScriptableObject
     public bool Homing => homing;
     public PassiveEffectKind PassiveEffect => passiveEffect;
     public float PassiveValue => Mathf.Max(0f, passiveValue);
+    public int UnlockCost => Mathf.Max(0, unlockCost);
+    public string[] PrerequisiteIds => prerequisiteIds ?? new string[0];
+    public bool Starter => starter || unlockCost <= 0;
+
+    /// <summary>Стоимость и предпосылки узла дерева — задаёт импортёр или сетап.</summary>
+    public void SetTree(int cost, string[] prerequisites, bool isStarter)
+    {
+        unlockCost = Mathf.Max(0, cost);
+        prerequisiteIds = prerequisites ?? new string[0];
+        starter = isStarter;
+    }
 
     public void Setup(string id, string name, string nameChinese, string desc, DaoType type, TechniqueKind techniqueKind,
         int techniqueRank, int daoLevel, int realmIndex, int cost, float cd, int techniquePower,

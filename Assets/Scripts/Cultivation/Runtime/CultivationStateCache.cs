@@ -33,12 +33,16 @@ public class CultivationSnapshot
 
     // v3: назначенные техники слотов 4–5 (индекс 0 = слот 4, индекс 1 = слот 5).
     public string[] techniqueSlotIds = new string[2];
+
+    // v4: очки Дао, потраченные на узлы дерева (уровень считается от остатка).
+    public int[] daoSpentPoints = new int[5];
 }
 
 /// <summary>
 /// Кэш прогресса: сцена меняется — прогресс сохраняется. Дополнительно пишется в PlayerPrefs.
-/// Формат v3 добавляет назначенные техники слотов 4–5; старые v1/v2 читаются как v3
-/// с пустыми слотами. Ключ PrefsKey остаётся v2 — иначе старые сейвы потерялись бы.
+/// Формат v3 добавляет назначенные техники слотов 4–5, v4 — потраченные на дерево очки Дао;
+/// старые v1/v2 читаются как v4 с пустыми слотами и нулевыми тратами.
+/// Ключ PrefsKey остаётся v2 — иначе старые сейвы потерялись бы.
 /// </summary>
 public static class CultivationStateCache
 {
@@ -80,6 +84,7 @@ public static class CultivationStateCache
             }
 
             snapshot.learnedTechniqueIds = dao.GetLearnedTechniqueIds();
+            snapshot.daoSpentPoints = dao.GetSpentPointsSnapshot();
         }
 
         if (qi != null)
@@ -124,7 +129,7 @@ public static class CultivationStateCache
 
         if (dao != null)
             dao.RestoreState(snapshot.daoLevels, snapshot.daoPoints, snapshot.unlockedMask,
-                snapshot.activeDaoIndex, snapshot.learnedTechniqueIds);
+                snapshot.activeDaoIndex, snapshot.learnedTechniqueIds, snapshot.daoSpentPoints);
 
         // Слоты восстанавливаются после Dao.RestoreState: техники ищутся в путях Дао.
         if (bridge != null) bridge.RestoreAssignments(snapshot.techniqueSlotIds);
@@ -165,13 +170,15 @@ public static class CultivationStateCache
 
         try
         {
-            // v1/v2/v3 — один класс: старый JSON просто оставляет новые поля нулями.
+            // v1–v4 — один класс: старый JSON просто оставляет новые поля нулями.
             var loaded = JsonUtility.FromJson<CultivationSnapshot>(json);
             if (loaded != null && loaded.hasState)
             {
-                // Миграция: в старом сейве поля слотов нет — читаем как пустые слоты.
+                // Миграция: в старых сейвах полей слотов и трат дерева нет.
                 if (loaded.techniqueSlotIds == null)
                     loaded.techniqueSlotIds = new string[2];
+                if (loaded.daoSpentPoints == null || loaded.daoSpentPoints.Length != DaoTypeInfo.All.Length)
+                    loaded.daoSpentPoints = new int[DaoTypeInfo.All.Length];
                 snapshot = loaded;
             }
         }

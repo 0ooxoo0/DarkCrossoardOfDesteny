@@ -29,6 +29,8 @@ public class DaoSystem : MonoBehaviour
 
     private readonly Dictionary<DaoType, int> levels = new Dictionary<DaoType, int>();
     private readonly Dictionary<DaoType, int> points = new Dictionary<DaoType, int>();
+    /// <summary>Очки, потраченные на узлы дерева: уровень считается от остатка.</summary>
+    private readonly Dictionary<DaoType, int> spentPoints = new Dictionary<DaoType, int>();
     private readonly HashSet<DaoType> unlocked = new HashSet<DaoType>();
     private readonly Dictionary<string, TechniqueData> learnedTechniques = new Dictionary<string, TechniqueData>();
     private bool nearAltar;
@@ -59,6 +61,7 @@ public class DaoSystem : MonoBehaviour
         {
             if (!levels.ContainsKey(type)) levels[type] = 0;
             if (!points.ContainsKey(type)) points[type] = 0;
+            if (!spentPoints.ContainsKey(type)) spentPoints[type] = 0;
         }
     }
 
@@ -73,6 +76,7 @@ public class DaoSystem : MonoBehaviour
 
         levels.Clear();
         points.Clear();
+        spentPoints.Clear();
         unlocked.Clear();
         learnedTechniques.Clear();
         EnsureDictionaries();
@@ -127,6 +131,18 @@ public class DaoSystem : MonoBehaviour
         return points.TryGetValue(type, out int value) ? value : 0;
     }
 
+    /// <summary>Очки, потраченные на узлы дерева этого Дао.</summary>
+    public int GetSpentPoints(DaoType type)
+    {
+        return spentPoints.TryGetValue(type, out int value) ? value : 0;
+    }
+
+    /// <summary>Свободные очки: начисленные минус потраченные на узлы дерева.</summary>
+    public int GetFreePoints(DaoType type)
+    {
+        return Mathf.Max(0, GetPoints(type) - GetSpentPoints(type));
+    }
+
     public int GetPointsForNextLevel()
     {
         return PointsPerLevel;
@@ -134,7 +150,7 @@ public class DaoSystem : MonoBehaviour
 
     public int GetPointsIntoLevel(DaoType type)
     {
-        return GetPoints(type) % PointsPerLevel;
+        return GetFreePoints(type) % PointsPerLevel;
     }
 
     public bool IsDaoUnlocked(DaoType type) => unlocked.Contains(type);
@@ -245,14 +261,100 @@ public class DaoSystem : MonoBehaviour
         int newPoints = Mathf.Min(cap, GetPoints(type) + amount);
         points[type] = newPoints;
 
-        int newLevel = Mathf.Clamp(startingLevel + newPoints / PointsPerLevel, 0, maxLevel);
-        if (newLevel != GetLevel(type))
-        {
-            levels[type] = newLevel;
-            OnDaoLevelChanged?.Invoke(type, newLevel);
-        }
+        ApplyLevelFromPoints(type, newLevel: Mathf.Clamp(
+            startingLevel + GetFreePoints(type) / PointsPerLevel, 0, maxLevel));
 
         OnDaoPointsChanged?.Invoke(type, newPoints, PointsPerLevel);
+    }
+
+    /// <summary>
+    /// Изучение узла дерева за очки Дао. Списывает цену и открывает технику
+    /// через существующий AddLearnedTechnique: он даёт обход требований и сохраняется.
+    /// </summary>
+    public bool TryUnlockTechnique(TechniqueData technique)
+    {
+        if (technique == null) return false;
+
+        EnsureDictionaries();
+
+        if (!IsDaoUnlocked(technique.DaoType)) return false;
+        if (HasLearnedTechnique(technique)) return false;
+        if (!ArePrerequisitesMet(technique)) return false;
+
+        int cost = technique.UnlockCost;
+        if (cost > GetFreePoints(technique.DaoType)) return false;
+
+        if (cost > 0)
+        {
+            spentPoints[technique.DaoType] = GetSpentPoints(technique.DaoType) + cost;
+            ApplyLevelFromPoints(technique.DaoType, Mathf.Clamp(
+                startingLevel + GetFreePoints(technique.DaoType) / PointsPerLevel, 0, GetMaxLevel(technique.DaoType)));
+            OnDaoPointsChanged?.Invoke(technique.DaoType, GetPoints(technique.DaoType), PointsPerLevel);
+        }
+
+        return AddLearnedTechnique(technique);
+    }
+
+    /// <summary>Все предпосылки узла уже изучены. Нет предпосылок — узел доступен.</summary>
+    public bool ArePrerequisitesMet(TechniqueData technique)
+    {
+        if (technique == null) return false;
+
+        string[] prerequisites = technique.PrerequisiteIds;
+        for (int i = 0; i < prerequisites.Length; i++)
+        {
+            if (!string.IsNullOrEmpty(prerequisites[i]) && !HasLearnedTechnique(prerequisites[i]))
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>Свободных очков хватает на узел.</summary>
+    public bool CanAfford(TechniqueData technique)
+    {
+        return technique != null && GetFreePoints(technique.DaoType) >= technique.UnlockCost;
+    }
+
+    /// <summary>Потраченные на узлы очки по всем Дао — для сохранения (порядок DaoTypeInfo.All).</summary>
+    public int[] GetSpentPointsSnapshot()
+    {
+        EnsureDictionaries();
+        var result = new int[DaoTypeInfo.All.Length];
+        for (int i = 0; i < DaoTypeInfo.All.Length; i++)
+            result[i] = GetSpentPoints(DaoTypeInfo.All[i]);
+        return result;
+    }
+
+    /// <summary>Причина, по которой узел нельзя изучить. Пусто — можно.</summary>
+    public string GetUnlockBlockReason(TechniqueData technique)
+    {
+        if (technique == null) return "Нет техники";
+        if (!IsDaoUnlocked(technique.DaoType)) return "Дао " + DaoTypeInfo.GetDisplayName(technique.DaoType) + " не открыт";
+        if (HasLearnedTechnique(technique)) return "Изучено";
+
+        string[] prerequisites = technique.PrerequisiteIds;
+        for (int i = 0; i < prerequisites.Length; i++)
+        {
+            string id = prerequisites[i];
+            if (string.IsNullOrEmpty(id) || HasLearnedTechnique(id)) continue;
+
+            TechniqueData required = GetTechniqueById(id);
+            return "Нужно: " + (required != null ? required.DisplayName : id);
+        }
+
+        if (!CanAfford(technique))
+            return "Нужно очков: " + technique.UnlockCost + " (есть " + GetFreePoints(technique.DaoType) + ")";
+
+        return string.Empty;
+    }
+
+    /// <summary>Пересчёт уровня и события при изменении свободных очков.</summary>
+    private void ApplyLevelFromPoints(DaoType type, int newLevel)
+    {
+        if (newLevel == GetLevel(type)) return;
+
+        levels[type] = newLevel;
+        OnDaoLevelChanged?.Invoke(type, newLevel);
     }
 
     /// <summary>Смена активного Дао. Возвращает false, если путь закрыт или игрок не у алтаря.</summary>
@@ -307,10 +409,16 @@ public class DaoSystem : MonoBehaviour
     /// <summary>Восстановление уровней/очков/разблокировки из сохранения.</summary>
     public void RestoreState(int[] levelsIn, int[] pointsIn, int unlockedMask, int activeIndex)
     {
-        RestoreState(levelsIn, pointsIn, unlockedMask, activeIndex, null);
+        RestoreState(levelsIn, pointsIn, unlockedMask, activeIndex, null, null);
     }
 
     public void RestoreState(int[] levelsIn, int[] pointsIn, int unlockedMask, int activeIndex, string[] learnedIds)
+    {
+        RestoreState(levelsIn, pointsIn, unlockedMask, activeIndex, learnedIds, null);
+    }
+
+    public void RestoreState(int[] levelsIn, int[] pointsIn, int unlockedMask, int activeIndex,
+        string[] learnedIds, int[] spentIn)
     {
         EnsureDictionaries();
 
@@ -324,14 +432,18 @@ public class DaoSystem : MonoBehaviour
                 unlocked.Add(type);
                 int level = levelsIn != null && i < levelsIn.Length ? levelsIn[i] : startingLevel;
                 int value = pointsIn != null && i < pointsIn.Length ? pointsIn[i] : 0;
+                int spent = spentIn != null && i < spentIn.Length ? spentIn[i] : 0;
                 levels[type] = Mathf.Clamp(level, 0, GetMaxLevel(type));
                 points[type] = Mathf.Max(0, value);
+                // Старый сейв без spentPoints: считаем, что очков на узлы не тратили.
+                spentPoints[type] = Mathf.Clamp(spent, 0, points[type]);
             }
             else
             {
                 unlocked.Remove(type);
                 levels[type] = 0;
                 points[type] = 0;
+                spentPoints[type] = 0;
             }
         }
 

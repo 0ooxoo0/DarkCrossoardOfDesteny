@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-
 /// <summary>
 /// Создаёт ассеты культивации из эталонного контента CultivationDefaults:
 /// 4 реалма × 3 подстадии, 5 DaoPath, по 3 TechniqueData на путь, CultivationConfig в Resources.
@@ -72,6 +71,25 @@ public static class CultivationSetup
 
         int totalTechniques = 0;
         int totalPassives = 0;
+        var allIds = new HashSet<string>();
+
+        if (config.DaoPaths != null)
+        {
+            foreach (var path in config.DaoPaths)
+            {
+                if (path == null) continue;
+
+                var techniques = path.Techniques;
+                if (techniques != null)
+                {
+                    for (int i = 0; i < techniques.Count; i++)
+                    {
+                        if (techniques[i] != null && !string.IsNullOrEmpty(techniques[i].TechniqueId))
+                            allIds.Add(techniques[i].TechniqueId);
+                    }
+                }
+            }
+        }
 
         if (config.DaoPaths != null)
         {
@@ -111,6 +129,40 @@ public static class CultivationSetup
                 {
                     Debug.LogError("[Cultivation] У пути " + path.DisplayName + " нет ни одного пассива.");
                     errors++;
+                }
+            }
+        }
+
+        // Узлы не мгновенного типа обязаны иметь визуал, иначе игрок жмёт кнопку в пустоту.
+        if (config.DaoPaths != null)
+        {
+            foreach (var path in config.DaoPaths)
+            {
+                if (path == null || path.Techniques == null) continue;
+
+                for (int i = 0; i < path.Techniques.Count; i++)
+                {
+                    var technique = path.Techniques[i];
+                    if (technique == null) continue;
+                    if (technique.Kind == TechniqueKind.Passive) continue;
+
+                    if (technique.Delivery != DeliveryType.Impact && technique.VfxPrefab == null)
+                    {
+                        Debug.LogError("[Cultivation] Узел " + technique.DisplayName + " (" + technique.Delivery +
+                                       ") без vfxPrefab — эффекта не будет видно.");
+                        errors++;
+                    }
+
+                    string[] prerequisites = technique.PrerequisiteIds;
+                    for (int p = 0; p < prerequisites.Length; p++)
+                    {
+                        if (string.IsNullOrEmpty(prerequisites[p])) continue;
+                        if (allIds.Contains(prerequisites[p])) continue;
+
+                        Debug.LogError("[Cultivation] Узел " + technique.DisplayName +
+                                       " ссылается на несуществующую предпосылку " + prerequisites[p] + ".");
+                        errors++;
+                    }
                 }
             }
         }
