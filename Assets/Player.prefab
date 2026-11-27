@@ -4867,6 +4867,9 @@ GameObject:
   - component: {fileID: 8124775686166788488}
   - component: {fileID: -8517592409972041374}
   - component: {fileID: 2662949645083648763}
+  - component: {fileID: 7027676080907526091}
+  - component: {fileID: 774380482292026906}
+  - component: {fileID: 8921074687991816284}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -4925,7 +4928,7 @@ Animator:
   m_GameObject: {fileID: 4621653112199636550}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: d49c65de9fce66146b5d0e164b1f9d2d, type: 3}
-  m_Controller: {fileID: 9100000, guid: d72ac30c17265054499cbbf60f69b7ee, type: 2}
+  m_Controller: {fileID: 9100000, guid: 6349a863c9527ee418d75aae317dc90c, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -5069,6 +5072,7 @@ MonoBehaviour:
   weaponManager: {fileID: 7359351532270535140}
   health: {fileID: 3106896249760669837}
   blockController: {fileID: 856261746011144612}
+  combatAudio: {fileID: 7027676080907526091}
 --- !u!114 &3473364565530580050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5081,10 +5085,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2dee6b602a999b74d90508c0673acb6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
-  attackDamage: 25
   attackRange: 2.5
-  attackAngle: 150
-  hitDelay: 0.3
   attackCooldown: 0.7
   playerCamera: {fileID: 0}
   attackOrigin: {fileID: 5896964559091555316}
@@ -5107,8 +5108,8 @@ MonoBehaviour:
   playerController: {fileID: 2797467021992692300}
   abilitySystem: {fileID: 4103899246082561591}
   fistWeapon: {fileID: 7312054840095821453}
-  baseController: {fileID: 9100000, guid: d72ac30c17265054499cbbf60f69b7ee, type: 2}
-  baseAttackClip: {fileID: 190365492218098281, guid: b4ed12fcea5716a4b88a664cf716cfc6, type: 3}
+  baseController: {fileID: 9100000, guid: 6349a863c9527ee418d75aae317dc90c, type: 2}
+  baseAttackClip: {fileID: 5912232393484466142, guid: af229a5c716a10e41bbc784400ab74b6, type: 3}
   weaponModeParam: WeaponMode
   rightHand: {fileID: 2186707679935301323}
   startingWeapon: {fileID: 11400000, guid: d65852f5b49641d47aa67796aaf57fa3, type: 2}
@@ -5131,6 +5132,7 @@ MonoBehaviour:
   qi: {fileID: 0}
   dao: {fileID: 0}
   cultivation: {fileID: 0}
+  combatAudio: {fileID: 7027676080907526091}
 --- !u!114 &2246605590019494017
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5210,6 +5212,7 @@ MonoBehaviour:
   hitStopDuration: 0.055
   hitStopTimeScale: 0.05
   hitStopCooldown: 0.08
+  hitStopOnPlayerDamage: 0
   impactEffect: {fileID: 7434498302926140362, guid: 66209373dd5e22140a220a74414d244b, type: 3}
   killEffect: {fileID: 2133094190082574920, guid: 2e5def6525d468240bb3148fa1d83e83, type: 3}
   effectLifetime: 2
@@ -5218,6 +5221,7 @@ MonoBehaviour:
   killShake: 1.8
   showDamageNumbers: 1
   hitColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  playerHitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   criticalColor: {r: 1, g: 0.35, b: 0.15, a: 1}
   blockedColor: {r: 0.6, g: 0.8, b: 1, a: 1}
 --- !u!114 &-8517592409972041374
@@ -5255,14 +5259,70 @@ MonoBehaviour:
   viewArea: {fileID: -8517592409972041374}
   panel: {fileID: 0}
   pickupController: {fileID: 0}
-  playerController: {fileID: 2797467021992692300}
   inventoryPanel: {fileID: 0}
+  playerController: {fileID: 2797467021992692300}
   takeAllKey: 32
   takeOneKey: 19
   nextKey: 64
   previousKey: 63
   mouseIdleSeconds: 1.5
   selectionGrace: 0.4
+--- !u!114 &7027676080907526091
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dca5e0eecfddba4a9136e6b20ae19c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::CombatAudio
+  swingClip: {fileID: 8300000, guid: 6eb87e024ceafd348a5cb7583b80c280, type: 3}
+  hitClip: {fileID: 8300000, guid: 27691fc69e6f8d74193376c406fd150e, type: 3}
+  blockClip: {fileID: 8300000, guid: cd4c0ee95306ef047bd8c7f11b46817c, type: 3}
+  deathClip: {fileID: 8300000, guid: a688527203c8bfb4cbac851065770fdc, type: 3}
+  castClip: {fileID: 8300000, guid: 7f47600b1c51c804f8ee070101b94fdb, type: 3}
+  volume: 0.7
+  impactCooldown: 0.04
+  audioSource: {fileID: 0}
+--- !u!114 &774380482292026906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e5a56ab935d008479d85b0790656d03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerDamageFeedback
+  flashColor: {r: 1, g: 0.15, b: 0.12, a: 1}
+  flashDuration: 0.35
+  flashAlpha: 0.28
+  blinkInterval: 0.09
+  invulnerabilityBlinkDuration: 0
+  playerHealth: {fileID: 0}
+  animator: {fileID: 0}
+  flashImage: {fileID: 0}
+--- !u!114 &8921074687991816284
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ecf0cd718cbd8b47903d5f232f2e171, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DarkCrossroad.Runtime::PlayerDeathScreen
+  fadeInDelay: 0.35
+  fadeSpeed: 2.5
+  holdAfterRespawn: 0.6
+  respawnService: {fileID: 0}
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0

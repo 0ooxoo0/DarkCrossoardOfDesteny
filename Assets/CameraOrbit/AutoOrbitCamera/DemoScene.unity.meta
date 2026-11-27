@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e22ee665979201c1db55e2a7c2923303
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 366742
+  packageName: Auto-Orbit Camera for Game Creator 2
+  packageVersion: 1.0.2
+  assetPath: Assets/Arawn/AutoOrbitCamera/DemoScene.unity
+  uploadId: 880958

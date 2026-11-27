@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1035ef2236c54b98900a1ccfa66f8145
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 366742
+  packageName: Auto-Orbit Camera for Game Creator 2
+  packageVersion: 1.0.2
+  assetPath: Assets/Arawn/AutoOrbitCamera/Editor/Arawn.Editor.AutoOrbitCamera.asmdef
+  uploadId: 880958

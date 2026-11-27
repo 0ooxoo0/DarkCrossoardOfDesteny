@@ -1,0 +1,237 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a98034c92b975a46821bf6ec15e4881, type: 3}
+  m_Name: AutoOrbitPreset-Demo
+  m_EditorClassIdentifier: Arawn.Runtime.AutoOrbitCamera::Arawn.Runtime.AutoOrbitCamera.AutoOrbitCameraPreset
+  distance:
+    m_Property:
+      rid: 7814546094269923993
+  lift:
+    m_Property:
+      rid: 7814546094269923994
+  shoulder:
+    m_Property:
+      rid: 7814546094269923995
+  pitch:
+    m_Property:
+      rid: 7814546094269923996
+  speedFramingEnabled: 1
+  speedFramingTriggerSpeed:
+    m_Property:
+      rid: 7814546094269923997
+  speedFramingFullSpeed:
+    m_Property:
+      rid: 7814546094269923998
+  speedFramingMaxDistance:
+    m_Property:
+      rid: 7814546094269923999
+  speedFramingNullifyShoulder: 1
+  speedFramingAffectFov: 1
+  speedFramingMaxFovBoost:
+    m_Property:
+      rid: 7814546094269924000
+  speedFramingSmoothInTime:
+    m_Property:
+      rid: 7814546094269924001
+  speedFramingSmoothOutTime:
+    m_Property:
+      rid: 7814546094269924002
+  orbitSmoothTime:
+    m_Property:
+      rid: 7814546094269924003
+  autoOrbitEngageDelay:
+    m_Property:
+      rid: 7814546094269924004
+  autoOrbitEngageSmoothTime:
+    m_Property:
+      rid: 7814546094269924005
+  deadZone:
+    m_Property:
+      rid: 7814546094269924006
+  deadZoneHysteresis:
+    m_Property:
+      rid: 7814546094269924007
+  yawOffset:
+    m_Property:
+      rid: 7814546094269924008
+  invertOrbit: 0
+  resetDelaysOnDirectionChange: 1
+  directionChangeResetAngle: 10
+  directionChangeResetLockTime:
+    m_Property:
+      rid: 7814546094269924009
+  returnDelay:
+    m_Property:
+      rid: 7814546094269924010
+  returnSmoothTime:
+    m_Property:
+      rid: 7814546094269924011
+  returnToTargetForward: 1
+  manualSensitivity:
+    m_Property:
+      rid: 7814546094269924012
+  manualPitchEnabled: 1
+  manualPitchInvert: 1
+  manualPitchMin:
+    m_Property:
+      rid: 7814546094269924013
+  manualPitchMax:
+    m_Property:
+      rid: 7814546094269924014
+  manualRecoverDelay:
+    m_Property:
+      rid: 7814546094269924015
+  positionSmoothTime:
+    m_Property:
+      rid: 7814546094269924016
+  rotationSmoothTime:
+    m_Property:
+      rid: 7814546094269924017
+  targetSmoothTime:
+    m_Property:
+      rid: 7814546094269924018
+  lookaheadTime:
+    m_Property:
+      rid: 7814546094269924019
+  lookaheadSmoothTime:
+    m_Property:
+      rid: 7814546094269924020
+  maxLookaheadDistance:
+    m_Property:
+      rid: 7814546094269924021
+  combatFocusWeight: 0
+  combatFocusSmoothTime:
+    m_Property:
+      rid: 7814546094269924022
+  references:
+    version: 2
+    RefIds:
+    - rid: 7814546094269923993
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 3
+    - rid: 7814546094269923994
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.2
+    - rid: 7814546094269923995
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.3
+    - rid: 7814546094269923996
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 10
+    - rid: 7814546094269923997
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 3
+    - rid: 7814546094269923998
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 5
+    - rid: 7814546094269923999
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 10
+    - rid: 7814546094269924000
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 8
+    - rid: 7814546094269924001
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 1
+    - rid: 7814546094269924002
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.5
+    - rid: 7814546094269924003
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.25
+    - rid: 7814546094269924004
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.3
+    - rid: 7814546094269924005
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 1
+    - rid: 7814546094269924006
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.15000000596046448
+    - rid: 7814546094269924007
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.05000000074505806
+    - rid: 7814546094269924008
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0
+    - rid: 7814546094269924009
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.44999998807907104
+    - rid: 7814546094269924010
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 1.5
+    - rid: 7814546094269924011
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 3
+    - rid: 7814546094269924012
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 1
+    - rid: 7814546094269924013
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 5
+    - rid: 7814546094269924014
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 60
+    - rid: 7814546094269924015
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 2
+    - rid: 7814546094269924016
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.10000000149011612
+    - rid: 7814546094269924017
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.07999999821186066
+    - rid: 7814546094269924018
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0
+    - rid: 7814546094269924019
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.3
+    - rid: 7814546094269924020
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.30000001192092896
+    - rid: 7814546094269924021
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 3
+    - rid: 7814546094269924022
+      type: {class: GetDecimalDecimal, ns: GameCreator.Runtime.Common, asm: GameCreator.Runtime.Core}
+      data:
+        m_Value: 0.20000000298023224
