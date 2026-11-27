@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Skeleton Flesh
   characterPrefab: {fileID: 213336293066786039, guid: 191ab4327a71e6e46aaea0d91fcc2102, type: 3}
   weaponPrefab: {fileID: 3031769140023792962, guid: 5b15c1f249fe1e14090cba428b1b95e8, type: 3}
-  animatorController: {fileID: 0}
+  animatorController: {fileID: 9100000, guid: 5c4e66875be35b540b60bcf4e79a74d9, type: 2}
   weaponBoneName: Hand_R
   weaponLocalPosition: {x: 0, y: 0, z: 0}
   weaponLocalEuler: {x: 0, y: 0, z: 0}

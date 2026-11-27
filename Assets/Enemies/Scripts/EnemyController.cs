@@ -86,8 +86,25 @@ public class EnemyController : MonoBehaviour
         currentVisual.transform.localRotation = Quaternion.identity;
 
         currentAnimator = currentVisual.GetComponentInChildren<Animator>();
-        if (currentAnimator != null && data.animatorController != null)
-            currentAnimator.runtimeAnimatorController = data.animatorController;
+        if (currentAnimator != null)
+        {
+            // Движение делает NavMeshAgent. Root motion от Humanoid-клипов тянет модель
+            // обратно и дерётся с агентом за позицию — рывки и застревания.
+            currentAnimator.applyRootMotion = false;
+
+            if (data.animatorController != null)
+            {
+                currentAnimator.runtimeAnimatorController = data.animatorController;
+            }
+            else if (currentAnimator.runtimeAnimatorController == null)
+            {
+                // Молчаливый враг без анимаций неотличим от сломанного боя: падаем громко.
+                Debug.LogError(
+                    "[EnemyController] У визуала '" + data.name + "' (id " + data.id +
+                    ", " + data.displayName + ") не задан animatorController, и у модели его тоже нет — " +
+                    "враг останется без анимаций. Заполни поле в Assets/Enemies/Data/" + data.name + ".asset.", this);
+            }
+        }
 
         AttachWeapon(data, root);
         DisableVisualColliders();
@@ -107,15 +124,19 @@ public class EnemyController : MonoBehaviour
         CurrentDifficulty = config;
         CacheComponents();
 
+        // Здоровье масштабируем сами: EnemyCombatAI его не трогает.
         float healthValue = baseHealth * config.healthMultiplier;
         SetField(health, "maxHealth", healthValue);
         SetField(health, "currentHealth", healthValue);
-        SetField(ai, "attackDamage", baseDamage * config.damageMultiplier);
-        SetField(ai, "moveSpeed", baseMoveSpeed * config.speedMultiplier);
-        SetField(ai, "attackCooldown", baseAttackCooldown * config.attackCooldownMultiplier);
-        SetField(ai, "intelligence", config.intelligence);
 
-        if (agent != null) agent.speed = baseMoveSpeed * config.speedMultiplier;
+        // Боевые поля пишем БАЗОВЫМИ: множители ступени применяет EnemyCombatAI.ApplyDifficulty.
+        // Иначе урон и скорость умножались бы дважды — здесь и в пресете.
+        SetField(ai, "attackDamage", baseDamage);
+        SetField(ai, "moveSpeed", baseMoveSpeed);
+        SetField(ai, "attackCooldown", baseAttackCooldown);
+
+        if (ai != null) ai.ApplyDifficulty(config);
+        else if (agent != null) agent.speed = baseMoveSpeed * config.speedMultiplier;
     }
 
     [ContextMenu("Apply Visual + Difficulty")]

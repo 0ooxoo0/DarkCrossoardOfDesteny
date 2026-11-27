@@ -14,7 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DifficultyConfig
   difficultyName: Nightmare
   healthMultiplier: 2.5
-  damageMultiplier: 1.8
-  speedMultiplier: 1.2
-  attackCooldownMultiplier: 0.75
+  damageMultiplier: 1.45
+  speedMultiplier: 1.3
+  attackCooldownMultiplier: 0.55
+  blockChance: 0.8
+  comboChance: 0.8
+  parryChance: 0.5
+  reactionDelay: 0.12
+  maxCombo: 3
+  blockDuration: 1.3
   intelligence: 4

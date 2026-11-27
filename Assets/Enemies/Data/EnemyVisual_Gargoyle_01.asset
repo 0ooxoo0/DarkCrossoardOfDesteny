@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Gargoyle
   characterPrefab: {fileID: 9020730524547166879, guid: 2e019375636fea1468f45103b4ad73b4, type: 3}
   weaponPrefab: {fileID: 0}
-  animatorController: {fileID: 0}
+  animatorController: {fileID: 9100000, guid: 5c4e66875be35b540b60bcf4e79a74d9, type: 2}
   weaponBoneName: Hand_R
   weaponLocalPosition: {x: 0, y: 0, z: 0}
   weaponLocalEuler: {x: 0, y: 0, z: 0}

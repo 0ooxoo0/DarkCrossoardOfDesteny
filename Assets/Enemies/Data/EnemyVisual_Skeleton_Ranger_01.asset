@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Skeleton Ranger
   characterPrefab: {fileID: 8712517466539974263, guid: 05a0515d31796fe49b7e662dc6ad6acb, type: 3}
   weaponPrefab: {fileID: 6736456401748270811, guid: 3346f50d780be4142818235f55645340, type: 3}
-  animatorController: {fileID: 0}
+  animatorController: {fileID: 9100000, guid: 5c4e66875be35b540b60bcf4e79a74d9, type: 2}
   weaponBoneName: Hand_R
   weaponLocalPosition: {x: 0, y: 0, z: 0}
   weaponLocalEuler: {x: 0, y: 0, z: 0}

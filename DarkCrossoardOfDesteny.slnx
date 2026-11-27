@@ -13,7 +13,7 @@
   <Project Path="Arawn.Runtime.AutoOrbitCamera.csproj" />
   <Project Path="DarkCrossroad.InventoryEditor.csproj" />
   <Project Path="DarkCrossroad.TutorialEditor.csproj" />
+  <Project Path="DarkCrossroad.CultivationEditor.csproj" />
   <Project Path="Unity.AI.Navigation.Samples.Initialization.Editor.csproj" />
   <Project Path="Arawn.Editor.AutoOrbitCamera.csproj" />
-  <Project Path="DarkCrossroad.CultivationEditor.csproj" />
 </Solution>

@@ -14,7 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DifficultyConfig
   difficultyName: Easy
   healthMultiplier: 0.8
-  damageMultiplier: 0.8
-  speedMultiplier: 0.9
-  attackCooldownMultiplier: 1.15
+  damageMultiplier: 0.7
+  speedMultiplier: 0.8
+  attackCooldownMultiplier: 1.4
+  blockChance: 0
+  comboChance: 0
+  parryChance: 0
+  reactionDelay: 0.8
+  maxCombo: 2
+  blockDuration: 0.6
   intelligence: 1

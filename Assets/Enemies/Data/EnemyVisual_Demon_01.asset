@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Demon
   characterPrefab: {fileID: 8441074245178239377, guid: 052a4d6f692dfd04cafe4b85b10af89a, type: 3}
   weaponPrefab: {fileID: 1704641815585625379, guid: e7f370ba4ed1de8459271d4f8d69ee7b, type: 3}
-  animatorController: {fileID: 0}
+  animatorController: {fileID: 9100000, guid: 5c4e66875be35b540b60bcf4e79a74d9, type: 2}
   weaponBoneName: Hand_R
   weaponLocalPosition: {x: 0, y: 0, z: 0}
   weaponLocalEuler: {x: 0, y: 0, z: 0}

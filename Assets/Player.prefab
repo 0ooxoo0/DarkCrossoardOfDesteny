@@ -4870,7 +4870,8 @@ GameObject:
   - component: {fileID: 7027676080907526091}
   - component: {fileID: 774380482292026906}
   - component: {fileID: 8921074687991816284}
-  m_Layer: 0
+  - component: {fileID: 7125316281377169775}
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -5132,6 +5133,10 @@ MonoBehaviour:
   qi: {fileID: 0}
   dao: {fileID: 0}
   cultivation: {fileID: 0}
+  aimMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  aimHeight: 1.2
   combatAudio: {fileID: 7027676080907526091}
 --- !u!114 &2246605590019494017
 MonoBehaviour:
@@ -5323,6 +5328,29 @@ MonoBehaviour:
   fadeSpeed: 2.5
   holdAfterRespawn: 0.6
   respawnService: {fileID: 0}
+--- !u!136 &7125316281377169775
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4621653112199636550}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.4
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &5854201483630845358
 GameObject:
   m_ObjectHideFlags: 0

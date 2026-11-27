@@ -36,6 +36,11 @@ public class CombatHitbox : MonoBehaviour
     private float? damageOverride;
     private float damageMultiplier = 1f;
 
+    // Диагностика немого промаха: коллайдер есть, а IDamageable на нём нет.
+    // Общий таймстемп, чтобы поток warning'ов не залил консоль.
+    private const float MissWarningInterval = 2f;
+    private static float nextMissWarningTime;
+
     public bool IsActive => active;
     public float Damage => damage;
     public CombatTeam Team => team;
@@ -69,6 +74,7 @@ public class CombatHitbox : MonoBehaviour
         hitboxCollider = GetComponent<Collider>();
         if (hitboxCollider != null) hitboxCollider.isTrigger = true;
         if (ownerRoot == null) ownerRoot = transform.root;
+        if (ownerRoot != null) ownerLayers = 1 << ownerRoot.gameObject.layer;
     }
 
     public void Configure(float newDamage, CombatTeam newTeam, Transform newOwner)
@@ -76,6 +82,14 @@ public class CombatHitbox : MonoBehaviour
         damage = Mathf.Max(0f, newDamage);
         team = newTeam;
         ownerRoot = newOwner != null ? newOwner : transform.root;
+
+        // Свой слой запоминаем сразу: собственное тело не должно занимать буфер оверлапа
+        // и не может считаться препятствием для луча.
+        if (ownerRoot != null)
+        {
+            int layer = ownerRoot.gameObject.layer;
+            ownerLayers = 1 << layer;
+        }
     }
 
     public void SetActive(bool value)
@@ -100,20 +114,48 @@ public class CombatHitbox : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            if (OverlapBuffer[i] != null)
-                TryDamage(OverlapBuffer[i]);
+            Collider col = OverlapBuffer[i];
+            if (col == null) continue;
+            // Своё тело не занимает буфер: иначе 32 слота съедаются собственными коллайдерами.
+            if (IsOwnCollider(col)) continue;
+            TryDamage(col);
         }
     }
 
     private void OnTriggerEnter(Collider other) => TryDamage(other);
     private void OnTriggerStay(Collider other) => TryDamage(other);
 
+    /// <summary>Коллайдер принадлежит владельцу хитбокса (сам корень или его потомок).</summary>
+    private bool IsOwnCollider(Collider other)
+    {
+        Transform owner = OwnerRoot;
+        if (owner == null || other == null) return false;
+
+        Transform t = other.transform;
+        return t == owner || t.IsChildOf(owner);
+    }
+
     private void TryDamage(Collider other)
     {
         if (!active || other == null) return;
+        if (IsOwnCollider(other)) return;
 
         IDamageable target = other.GetComponentInParent<IDamageable>();
-        if (target == null || target.IsDead) return;
+        if (target == null)
+        {
+            // Молчаливый промах — самая дорогая в отладке поломка: коллайдер есть, а получателя нет.
+            if (Time.time >= nextMissWarningTime)
+            {
+                nextMissWarningTime = Time.time + MissWarningInterval;
+                Debug.LogWarning(
+                    "[CombatHitbox] '" + name + "' попал в '" + other.name +
+                    "' (слой " + LayerMask.LayerToName(other.gameObject.layer) +
+                    "), но на нём нет IDamageable — урона не будет.", this);
+            }
+            return;
+        }
+
+        if (target.IsDead) return;
 
         Transform targetRoot = target.DamageRoot != null ? target.DamageRoot : other.transform.root;
         Transform myRoot = OwnerRoot;

@@ -17,4 +17,10 @@ MonoBehaviour:
   damageMultiplier: 1
   speedMultiplier: 1
   attackCooldownMultiplier: 1
+  blockChance: 0.4
+  comboChance: 0.15
+  parryChance: 0
+  reactionDelay: 0.5
+  maxCombo: 2
+  blockDuration: 0.9
   intelligence: 2

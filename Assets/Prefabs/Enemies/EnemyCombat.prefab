@@ -157,7 +157,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   ownerLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 256
   gizmoColor: {r: 1, g: 0.15, b: 0.1, a: 0.75}
   fallbackBoxSize: {x: 0.5, y: 0.5, z: 1.4}
 --- !u!1001 &1064449538925476485
@@ -336,6 +336,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCombatAI
   intelligence: 2
+  difficulty: {fileID: 11400000, guid: 3a3ecfa96361791469b1a7353e5917b9, type: 2}
   aggroRadius: 12
   attackRange: 1.8
   blockRange: 3

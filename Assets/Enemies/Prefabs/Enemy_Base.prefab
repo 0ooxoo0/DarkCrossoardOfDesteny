@@ -73,6 +73,13 @@ MonoBehaviour:
   targetLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  requireLineOfSight: 1
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  ownerLayers:
+    serializedVersion: 2
+    m_Bits: 0
   gizmoColor: {r: 1, g: 0.15, b: 0.1, a: 0.75}
   fallbackBoxSize: {x: 0.5, y: 0.5, z: 1.4}
 --- !u!1 &3555861263626364613
@@ -201,6 +208,8 @@ MonoBehaviour:
   maxHealth: 120
   destroyOnDeath: 1
   destroyDelay: 6
+  lootTable: {fileID: 0}
+  experienceReward: 25
   animator: {fileID: 0}
   ai: {fileID: 0}
   bodyCollider: {fileID: 8866473440405973108}
@@ -217,6 +226,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: DarkCrossroad.Runtime::EnemyCombatAI
   intelligence: 2
+  difficulty: {fileID: 11400000, guid: 3a3ecfa96361791469b1a7353e5917b9, type: 2}
   aggroRadius: 12
   attackRange: 2.2
   blockRange: 3
@@ -231,7 +241,8 @@ MonoBehaviour:
   animator: {fileID: 0}
   agent: {fileID: 6983214783667703417}
   health: {fileID: 6596705972037886880}
-  attackHitbox: {fileID: 0}
+  attackHitbox: {fileID: 4095968491610359621}
+  telegraph: {fileID: 0}
   target: {fileID: 0}
   speedParam: Speed
   attackTrigger: Attack

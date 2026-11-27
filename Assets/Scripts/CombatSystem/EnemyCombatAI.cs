@@ -13,8 +13,15 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
 {
     public enum State { Idle, Chase, Attack, Block, Return, Hit, Dead }
 
-    [Header("Intelligence (1 = weak, 4 = strong, 5 = no chance)")]
-    [Range(1, 5)] [SerializeField] private int intelligence = 2;
+    [Header("Difficulty")]
+    [Tooltip("Уровень сложности 1..4.\n" +
+             "1 Слабый — бьёт редко, не блокирует и не парирует.\n" +
+             "2 Обычный — блокирует, серии редки.\n" +
+             "3 Опытный — частые удары, серии до 3 ударов.\n" +
+             "4 Мастер — блокирует и парирует с контратакой.")]
+    [Range(1, 4)] [SerializeField] private int intelligence = 2;
+    [Tooltip("Пресет сложности. Задан — числа ступени берутся из ассета; пусто — из таблицы уровней.")]
+    [SerializeField] private DifficultyConfig difficulty;
 
     [Header("Ranges")]
     [SerializeField, Min(0f)] private float aggroRadius = 12f;
@@ -71,87 +78,19 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
     public float AttackRange => attackRange;
     public float BlockRange => blockRange;
     public float LeashRadius => leashRadius;
-    public float EffectiveDamage => attackDamage * DamageMultiplier;
-    public float EffectiveMoveSpeed => moveSpeed * SpeedMultiplier;
-    public float EffectiveCooldown => attackCooldown * CooldownMultiplier;
-    public float BlockChance => blockChance;
+    public float EffectiveDamage => attackDamage * damageMultiplier;
+    public float EffectiveMoveSpeed => moveSpeed * speedMultiplier;
+    public float EffectiveCooldown => attackCooldown * cooldownMultiplier;
 
+    /// <summary>Боевые числа текущей ступени. Заполняются в ApplyDifficulty / SetIntelligence.</summary>
     private float blockChance;
-
-    private float DamageMultiplier
-    {
-        get
-        {
-            switch (intelligence)
-            {
-                case 1: return 0.7f;
-                case 2: return 1f;
-                case 3: return 1.2f;
-                case 4: return 1.45f;
-                default: return 1.9f;
-            }
-        }
-    }
-
-    private float SpeedMultiplier
-    {
-        get
-        {
-            switch (intelligence)
-            {
-                case 1: return 0.8f;
-                case 2: return 1f;
-                case 3: return 1.15f;
-                case 4: return 1.3f;
-                default: return 1.55f;
-            }
-        }
-    }
-
-    private float CooldownMultiplier
-    {
-        get
-        {
-            switch (intelligence)
-            {
-                case 1: return 1.35f;
-                case 2: return 1f;
-                case 3: return 0.8f;
-                case 4: return 0.6f;
-                default: return 0.35f;
-            }
-        }
-    }
-
-    private float ReactionDelay
-    {
-        get
-        {
-            switch (intelligence)
-            {
-                case 1: return 0.8f;
-                case 2: return 0.5f;
-                case 3: return 0.3f;
-                case 4: return 0.15f;
-                default: return 0.02f;
-            }
-        }
-    }
-
-    private float ComboChance
-    {
-        get
-        {
-            switch (intelligence)
-            {
-                case 1: return 0f;
-                case 2: return 0.25f;
-                case 3: return 0.55f;
-                case 4: return 0.8f;
-                default: return 1f;
-            }
-        }
-    }
+    private float comboChance;
+    private float parryChance;
+    private float reactionDelay;
+    private float damageMultiplier = 1f;
+    private float speedMultiplier = 1f;
+    private float cooldownMultiplier = 1f;
+    private float nextParryTime;
 
     private void Awake()
     {
@@ -162,11 +101,13 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
         if (health == null) health = GetComponent<EnemyHealth>();
         if (telegraph == null) telegraph = GetComponent<EnemyAttackTelegraph>();
 
-        blockChance = GetBlockChance();
+        // Ассет сложности задаёт числа ступени, но явный оверрайд уровня в префабе/сцене
+        // сильнее: если они расходятся, побеждает выставленное на экземпляре значение.
+        if (difficulty != null && difficulty.intelligence == intelligence) ApplyDifficulty(difficulty);
+        else SetIntelligence(intelligence);
 
         if (agent != null)
         {
-            agent.speed = EffectiveMoveSpeed;
             agent.acceleration = 30f;
             agent.angularSpeed = 720f;
             agent.stoppingDistance = Mathf.Max(1f, attackRange * 0.65f);
@@ -181,16 +122,57 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
             attackHitbox.Configure(EffectiveDamage, CombatTeam.Enemy, transform);
     }
 
-    private float GetBlockChance()
+    /// <summary>Уровень 1..4. Читается боем напрямую, поэтому смена видна в тот же кадр.</summary>
+    public int IntelligenceLevel => intelligence;
+
+    public float BlockChance => blockChance;
+    public float ComboChance => comboChance;
+    public float ParryChance => parryChance;
+    public float ReactionDelay => reactionDelay;
+    public int MaxCombo => maxCombo;
+    public float AttackCooldown => attackCooldown;
+
+    /// <summary>Применить готовый ассет сложности: числа ступени приходят из него целиком.</summary>
+    public void ApplyDifficulty(DifficultyConfig config)
     {
-        switch (intelligence)
-        {
-            case 1: return 0f;
-            case 2: return 0.25f;
-            case 3: return 0.55f;
-            case 4: return 0.8f;
-            default: return 1f;
-        }
+        if (config == null) return;
+
+        difficulty = config;
+        intelligence = Mathf.Clamp(config.intelligence, 1, 4);
+        ApplyPreset(config.ToPreset());
+    }
+
+    /// <summary>
+    /// Уровень 1..4 из встроенной лестницы. Работает в рантайме: шансы, кулдаун,
+    /// длина серии и скорость агента пересчитываются немедленно.
+    /// </summary>
+    public void SetIntelligence(int level)
+    {
+        intelligence = Mathf.Clamp(level, 1, 4);
+        difficulty = null;
+        ApplyPreset(DifficultyConfig.GetPreset(intelligence));
+    }
+
+    private void ApplyPreset(DifficultyConfig.Preset preset)
+    {
+        blockChance = Mathf.Clamp01(preset.blockChance);
+        comboChance = Mathf.Clamp01(preset.comboChance);
+        parryChance = Mathf.Clamp01(preset.parryChance);
+        reactionDelay = Mathf.Max(0f, preset.reactionDelay);
+        blockDuration = Mathf.Max(0.1f, preset.blockDuration);
+        maxCombo = Mathf.Clamp(preset.maxCombo, 1, 3);
+
+        damageMultiplier = Mathf.Max(0f, preset.damageMultiplier);
+        speedMultiplier = Mathf.Max(0.1f, preset.speedMultiplier);
+        cooldownMultiplier = Mathf.Max(0.1f, preset.cooldownMultiplier);
+
+        // Обрыв текущего блока: иначе смена уровня не видна до конца старого окна.
+        nextBlockDecision = 0f;
+        if (blocking) blockUntil = Mathf.Min(blockUntil, Time.time + blockDuration);
+
+        // Ленивое разрешение: ApplyDifficulty зовут и до Awake (редактор, тесты, спавнер).
+        if (agent == null) agent = GetComponent<NavMeshAgent>();
+        if (agent != null) agent.speed = EffectiveMoveSpeed;
     }
 
     private void Update()
@@ -247,11 +229,12 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
 
         // Smart defence: read the player's current attack and sometimes block it.
         // Only from a neutral state: an enemy that is already swinging must finish the swing.
-        bool canReact = state == State.Idle || state == State.Chase;
-        if (intelligence >= 2 && canReact && targetController != null && targetController.IsAttacking &&
+        // blockChance == 0 у уровня 1 отключает блок целиком, без ветвлений по номеру уровня.
+        bool canReact = (state == State.Idle || state == State.Chase) && blockChance > 0f;
+        if (canReact && targetController != null && targetController.IsAttacking &&
             distance <= blockRange && Time.time >= nextBlockDecision)
         {
-            nextBlockDecision = Time.time + ReactionDelay;
+            nextBlockDecision = Time.time + reactionDelay;
             if (Random.value < blockChance)
             {
                 EnterBlock();
@@ -286,7 +269,7 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
                     break;
                 }
 
-                if (comboWindowOpen && comboIndex < maxCombo - 1 && Random.value < ComboChance)
+                if (comboWindowOpen && comboIndex < maxCombo - 1 && Random.value < comboChance)
                     AdvanceCombo();
 
                 if (Time.time >= nextAttackTime && !comboWindowOpen)
@@ -479,16 +462,21 @@ public class EnemyCombatAI : MonoBehaviour, ICombatAnimationReceiver, ICombatBlo
         return Vector3.Angle(transform.forward, direction) <= 110f * 0.5f;
     }
 
+    /// <summary>
+    /// Успешный блок. Парирование — отдельное поведение с шансом и кулдауном:
+    /// без них уровень 4 контратаковал бы каждый блок и зацикливал бой.
+    /// </summary>
     public void OnBlocked(DamageInfo info)
     {
         if (animator != null) animator.SetTrigger(blockHitTrigger);
         blockUntil = Time.time + 0.4f;
 
-        if (intelligence >= 4)
-        {
-            nextAttackTime = 0f;
-            StartAttack();
-        }
+        if (parryChance <= 0f || Time.time < nextParryTime) return;
+        if (Random.value >= parryChance) return;
+
+        nextParryTime = Time.time + Mathf.Max(0.2f, EffectiveCooldown);
+        nextAttackTime = 0f;
+        StartAttack();
     }
 
     public void NotifyDamaged(DamageInfo info)

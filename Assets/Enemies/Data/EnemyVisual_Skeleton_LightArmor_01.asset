@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Skeleton Light Armor
   characterPrefab: {fileID: 4151270308924995188, guid: 607007fb0ae97c840881977fdf820cd5, type: 3}
   weaponPrefab: {fileID: 2797347839979338593, guid: 2ab782ce5a2101749a03ed59a147efe8, type: 3}
-  animatorController: {fileID: 0}
+  animatorController: {fileID: 9100000, guid: 5c4e66875be35b540b60bcf4e79a74d9, type: 2}
   weaponBoneName: Hand_R
   weaponLocalPosition: {x: 0, y: 0, z: 0}
   weaponLocalEuler: {x: 0, y: 0, z: 0}
