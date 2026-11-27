@@ -25,6 +25,12 @@ public class AbilitySystem : MonoBehaviour
     [SerializeField] private QiComponent qi;
     [SerializeField] private DaoSystem dao;
     [SerializeField] private CultivationSystem cultivation;
+
+    [Header("Прицел")]
+    [Tooltip("Слои, по которым ищется точка прицела. Trigger-коллайдеры игнорируются всегда.")]
+    [SerializeField] private LayerMask aimMask = ~0;
+    [Tooltip("Высота точки вылета над корнем персонажа.")]
+    [SerializeField, Min(0f)] private float aimHeight = 1.2f;
     [Tooltip("Боевые звуки каста. Пусто — ищется на игроке.")]
     [SerializeField] private CombatAudio combatAudio;
 
@@ -483,8 +489,15 @@ public class AbilitySystem : MonoBehaviour
 
         yield return new WaitForSeconds(Mathf.Max(0f, ability.vfxDelay));
 
-        SpawnVfx(ability);
-        CreateMagicHitbox(ability);
+        // Точка считается после задержки: за 0.2 с игрок успевает довернуть камеру,
+        // и снаряд должен уйти уже по новой цели. Не кэшируем между кастами.
+        Transform caster = ResolveCaster();
+        float range = Mathf.Max(1f, ability.magicRange);
+        Vector3 aimPoint = AimResolver.Resolve(caster, range, aimMask, aimHeight, caster.forward);
+        if (playerController != null) playerController.FaceTowards(aimPoint, 0.35f);
+
+        SpawnVfx(ability, aimPoint);
+        CreateMagicHitbox(ability, aimPoint);
 
         // Ждём окончания каста, чтобы Animator не остался в Attack.
         float timeout = ability.castAnimation != null
@@ -501,24 +514,39 @@ public class AbilitySystem : MonoBehaviour
         if (playerController != null) playerController.ResumeMovement();
     }
 
-    private void SpawnVfx(AbilityData ability)
+    /// <summary>Корень кастующего: игрок, иначе сам объект способностей.</summary>
+    private Transform ResolveCaster()
+    {
+        return playerController != null ? playerController.transform : transform;
+    }
+
+    /// <summary>Точка вылета эффекта: на высоте прицела, чуть впереди персонажа.</summary>
+    private Vector3 ResolveMuzzle(Transform caster, AbilityData ability)
+    {
+        return caster.position + Vector3.up * aimHeight + caster.forward * Mathf.Max(0f, ability.magicSpawnDistance);
+    }
+
+    private void SpawnVfx(AbilityData ability, Vector3 aimPoint)
     {
         if (ability.vfxPrefab == null) return;
 
-        Transform origin = playerController != null ? playerController.transform : transform;
-        Vector3 spawn = origin.position + origin.forward * ability.magicSpawnDistance;
-        GameObject vfx = Instantiate(ability.vfxPrefab, spawn, origin.rotation);
+        Transform caster = ResolveCaster();
+        Vector3 spawn = ResolveMuzzle(caster, ability);
+        Vector3 direction = aimPoint - spawn;
+        Quaternion rotation = direction.sqrMagnitude > 0.0001f
+            ? Quaternion.LookRotation(direction)
+            : caster.rotation;
 
+        GameObject vfx = Instantiate(ability.vfxPrefab, spawn, rotation);
         if (ability.vfxLifetime > 0f) Destroy(vfx, ability.vfxLifetime);
     }
 
-    private void CreateMagicHitbox(AbilityData ability)
+    private void CreateMagicHitbox(AbilityData ability, Vector3 aimPoint)
     {
-        Transform origin = playerController != null ? playerController.transform : transform;
-        Vector3 spawn = origin.position + origin.forward * ability.magicSpawnDistance;
+        Transform caster = ResolveCaster();
 
         GameObject zone = new GameObject("MagicHitbox_Temp");
-        zone.transform.position = spawn;
+        zone.transform.position = aimPoint;
         // Тег остаётся для пропов: DestructibleObject реагирует на DammageObject.
         TrySetTag(zone, ability.PrimaryDamageTag);
 
@@ -541,7 +569,7 @@ public class AbilitySystem : MonoBehaviour
 
         // Магию тоже можно блокировать: CombatHitbox спрашивает ICombatBlockable до урона.
         var hitbox = zone.AddComponent<CombatHitbox>();
-        hitbox.Configure(ability.power * Mathf.Max(0f, DamageMultiplier), CombatTeam.Player, origin);
+        hitbox.Configure(ability.power * Mathf.Max(0f, DamageMultiplier), CombatTeam.Player, caster);
         hitbox.TargetLayers = ability.damageLayers;
         hitbox.SetActive(true);
 

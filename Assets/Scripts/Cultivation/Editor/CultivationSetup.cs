@@ -169,6 +169,7 @@ public static class CultivationSetup
                     type, blueprint.Kind, blueprint.Rank, blueprint.RequiredDaoLevel, blueprint.RequiredRealmIndex,
                     blueprint.QiCost, blueprint.Cooldown, blueprint.Power, null, null, null);
                 technique.SetPassive(blueprint.PassiveEffect, blueprint.PassiveValue);
+                technique.SetAim(RangeFor(blueprint), RadiusFor(blueprint));
 
                 EditorUtility.SetDirty(technique);
                 techniques.Add(technique);
@@ -197,6 +198,23 @@ public static class CultivationSetup
             if (techniques[i] != null) highest = Mathf.Max(highest, techniques[i].RequiredDaoLevel);
         }
         return highest;
+    }
+
+    /// <summary>Дальность каста: ближние школы бьют в упор, огонь и гром — на дистанцию.</summary>
+    private static float RangeFor(CultivationDefaults.TechniqueBlueprint blueprint)
+    {
+        switch (blueprint.Dao)
+        {
+            case DaoType.Fire: return 18f;
+            case DaoType.Thunder: return 20f;
+            default: return 4f;
+        }
+    }
+
+    private static float RadiusFor(CultivationDefaults.TechniqueBlueprint blueprint)
+    {
+        // Чем сильнее техника, тем шире зона: 30 урона → 1.5 м, 110 → 4.7 м.
+        return Mathf.Clamp(1f + blueprint.Power * 0.03f, 1.5f, 5f);
     }
 
     /// <summary>Механическое описание вместо заглушки: урон, радиус, цена, КД или эффект пассива.</summary>

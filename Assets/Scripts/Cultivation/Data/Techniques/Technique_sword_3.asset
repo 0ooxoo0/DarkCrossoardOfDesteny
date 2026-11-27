@@ -31,5 +31,7 @@ MonoBehaviour:
   power: 90
   castAnimationClip: {fileID: 0}
   vfxPrefab: {fileID: 0}
+  range: 4
+  radius: 3.7
   passiveEffect: 0
   passiveValue: 0

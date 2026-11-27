@@ -42,6 +42,12 @@ public class TechniqueData : ScriptableObject
     [Tooltip("Префаб VFX (плейсхолдер: All In 1 Vfx Toolkit назначается в инспекторе).")]
     [SerializeField] private GameObject vfxPrefab;
 
+    [Header("Прицел")]
+    [Tooltip("Максимальная дальность каста, м. Точка прицела не дальше этого расстояния.")]
+    [SerializeField, Min(1f)] private float range = 16f;
+    [Tooltip("Радиус зоны урона в точке прицела, м.")]
+    [SerializeField, Min(0.1f)] private float radius = 2f;
+
     [Header("Пассивный скилл (Kind = Passive)")]
     [SerializeField] private PassiveEffectKind passiveEffect = PassiveEffectKind.MaxHealthPercent;
     [Tooltip("Прибавка в долях: 0.1 = +10%. 0 — пассив без эффекта.")]
@@ -62,6 +68,8 @@ public class TechniqueData : ScriptableObject
     public int Power => Mathf.Max(0, power);
     public AnimationClip CastAnimationClip => castAnimationClip;
     public GameObject VfxPrefab => vfxPrefab;
+    public float Range => Mathf.Max(1f, range);
+    public float Radius => Mathf.Max(0.1f, radius);
     public PassiveEffectKind PassiveEffect => passiveEffect;
     public float PassiveValue => Mathf.Max(0f, passiveValue);
 
@@ -90,6 +98,13 @@ public class TechniqueData : ScriptableObject
     {
         passiveEffect = effect;
         passiveValue = Mathf.Max(0f, value);
+    }
+
+    /// <summary>Дальность и радиус зоны каста — задаёт сетап ассетов или импортёр дерева.</summary>
+    public void SetAim(float aimRange, float aimRadius)
+    {
+        range = Mathf.Max(1f, aimRange);
+        radius = Mathf.Max(0.1f, aimRadius);
     }
 
     public string GetKindName()

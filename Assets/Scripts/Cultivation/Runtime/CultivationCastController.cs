@@ -135,7 +135,6 @@ public class CultivationCastController : MonoBehaviour
 
         SpawnVfx(technique);
         ApplyDamage(technique);
-
         OnCast?.Invoke(index, technique);
         Message(technique.DisplayName + (technique.Power > 0 ? " · сила " + technique.Power : string.Empty));
         return true;
@@ -200,16 +199,30 @@ public class CultivationCastController : MonoBehaviour
 
     private void SpawnVfx(TechniqueData technique)
     {
-        Vector3 point = transform.position + Vector3.up * 1f + transform.forward * casterReach;
+        Vector3 point = ResolveAimPoint(technique);
 
         if (technique.VfxPrefab != null)
         {
-            var instance = Instantiate(technique.VfxPrefab, point, Quaternion.identity);
+            // Эффект смотрит в сторону цели, а не «как повёрнут персонаж».
+            Vector3 spawn = transform.position + Vector3.up * 1f + transform.forward * casterReach;
+            Vector3 direction = point - spawn;
+            Quaternion rotation = direction.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(direction)
+                : Quaternion.identity;
+
+            var instance = Instantiate(technique.VfxPrefab, spawn, rotation);
             Destroy(instance, 5f);
             return;
         }
 
         CultivationVfxFactory.CreateCastBurst(point, ResolveColor(technique.DaoType));
+    }
+
+    /// <summary>Точка прицела из центра экрана; без камеры — вперёд по персонажу.</summary>
+    private Vector3 ResolveAimPoint(TechniqueData technique)
+    {
+        float range = technique.Kind == TechniqueKind.Passive ? casterReach : technique.Range;
+        return AimResolver.Resolve(transform, Mathf.Max(casterReach, range), ~0, 1f, transform.forward);
     }
 
     private void ApplyDamage(TechniqueData technique)

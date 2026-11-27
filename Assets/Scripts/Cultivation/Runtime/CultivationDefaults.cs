@@ -187,6 +187,18 @@ public static class CultivationDefaults
             blueprint.Kind, blueprint.Rank, blueprint.RequiredDaoLevel, blueprint.RequiredRealmIndex,
             blueprint.QiCost, blueprint.Cooldown, blueprint.Power, null, null, null);
         technique.SetPassive(blueprint.PassiveEffect, blueprint.PassiveValue);
+        technique.SetAim(RangeFor(blueprint.Dao), Mathf.Clamp(1f + blueprint.Power * 0.03f, 1.5f, 5f));
         return technique;
+    }
+
+    /// <summary>Дальность каста: ближние школы бьют в упор, огонь и гром — на дистанцию.</summary>
+    private static float RangeFor(DaoType dao)
+    {
+        switch (dao)
+        {
+            case DaoType.Fire: return 18f;
+            case DaoType.Thunder: return 20f;
+            default: return 4f;
+        }
     }
 }

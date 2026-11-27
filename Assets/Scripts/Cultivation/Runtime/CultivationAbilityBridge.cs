@@ -314,6 +314,8 @@ public class CultivationAbilityBridge : MonoBehaviour
         data.requiredRealmIndex = technique.RequiredRealmIndex;
         data.qiCost = technique.QiCost;
         data.power = technique.Power;
+        data.magicRange = technique.Range;
+        data.magicRadius = technique.Radius;
         data.requiredWeapon = ResolveRequiredWeapon(technique);
 
         return data;
