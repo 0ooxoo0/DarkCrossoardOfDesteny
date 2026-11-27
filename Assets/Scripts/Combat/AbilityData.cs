@@ -7,6 +7,16 @@ public enum AbilityType
     Magic
 }
 
+/// <summary>Как способность доставляет эффект. Дублирует DeliveryType из TechniqueData для способностей оружия.</summary>
+public enum AbilityDelivery
+{
+    Impact,
+    Projectile,
+    Beam,
+    Aura,
+    Self
+}
+
 [CreateAssetMenu(menuName = "Combat/Ability Data", fileName = "NewAbility")]
 public class AbilityData : ScriptableObject
 {
@@ -59,6 +69,20 @@ public class AbilityData : ScriptableObject
     public float vfxDelay = 0.2f;
     public float vfxLifetime = 2f;
     public float magicHitboxLifetime = 0.2f;
+
+    [Header("Доставка")]
+    [Tooltip("Impact — зона в точке прицела, Projectile — снаряд, Beam — луч, Aura/Self — эффект на игроке.")]
+    public AbilityDelivery delivery = AbilityDelivery.Impact;
+    [Tooltip("Скорость снаряда, м/с. 0 — мгновенно.")]
+    [Min(0f)] public float speed = 18f;
+    [Tooltip("Время жизни снаряда/эффекта, с. 0 — до попадания.")]
+    [Min(0f)] public float lifetime = 3f;
+    [Tooltip("Префаб вспышки попадания.")]
+    public GameObject impactPrefab;
+    [Tooltip("Префаб вспышки каста у руки.")]
+    public GameObject muzzlePrefab;
+    [Tooltip("Снаряд доворачивает на ближайшую цель по слоям урона.")]
+    public bool homing;
 
     // Первый непустой тег списка. Поведение сейчас прежнее: только DammageObject.
     public string PrimaryDamageTag

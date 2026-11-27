@@ -9,6 +9,21 @@ public enum TechniqueKind
     Block
 }
 
+/// <summary>Как техника доставляет эффект. Выбирается в ассете, не в коде.</summary>
+public enum DeliveryType
+{
+    /// <summary>Мгновенная зона урона в точке прицела.</summary>
+    Impact,
+    /// <summary>Видимый снаряд летит в точку прицела и взрывается там.</summary>
+    Projectile,
+    /// <summary>Луч от кастера к точке прицела с тиками урона.</summary>
+    Beam,
+    /// <summary>Эффект едет на игроке и бьёт вокруг него.</summary>
+    Aura,
+    /// <summary>Эффект на игроке без урона (щит, бафф).</summary>
+    Self
+}
+
 /// <summary>
 /// Данные техники: требования, стоимость, КД, VFX и клип замаха.
 /// Никакой логики применения — это не зона культивации.
@@ -48,6 +63,20 @@ public class TechniqueData : ScriptableObject
     [Tooltip("Радиус зоны урона в точке прицела, м.")]
     [SerializeField, Min(0.1f)] private float radius = 2f;
 
+    [Header("Доставка")]
+    [Tooltip("Impact — зона в точке прицела, Projectile — снаряд, Beam — луч, Aura/Self — эффект на игроке.")]
+    [SerializeField] private DeliveryType delivery = DeliveryType.Impact;
+    [Tooltip("Скорость снаряда, м/с. 0 — мгновенно.")]
+    [SerializeField, Min(0f)] private float speed = 18f;
+    [Tooltip("Время жизни снаряда/эффекта, с. 0 — до попадания.")]
+    [SerializeField, Min(0f)] private float lifetime = 3f;
+    [Tooltip("Префаб вспышки попадания. Пусто — только vfxPrefab.")]
+    [SerializeField] private GameObject impactPrefab;
+    [Tooltip("Префаб вспышки каста у руки. Пусто — без вспышки.")]
+    [SerializeField] private GameObject muzzlePrefab;
+    [Tooltip("Снаряд доворачивает на ближайшую цель по слоям урона.")]
+    [SerializeField] private bool homing;
+
     [Header("Пассивный скилл (Kind = Passive)")]
     [SerializeField] private PassiveEffectKind passiveEffect = PassiveEffectKind.MaxHealthPercent;
     [Tooltip("Прибавка в долях: 0.1 = +10%. 0 — пассив без эффекта.")]
@@ -70,6 +99,12 @@ public class TechniqueData : ScriptableObject
     public GameObject VfxPrefab => vfxPrefab;
     public float Range => Mathf.Max(1f, range);
     public float Radius => Mathf.Max(0.1f, radius);
+    public DeliveryType Delivery => delivery;
+    public float Speed => Mathf.Max(0f, speed);
+    public float Lifetime => Mathf.Max(0f, lifetime);
+    public GameObject ImpactPrefab => impactPrefab;
+    public GameObject MuzzlePrefab => muzzlePrefab;
+    public bool Homing => homing;
     public PassiveEffectKind PassiveEffect => passiveEffect;
     public float PassiveValue => Mathf.Max(0f, passiveValue);
 
@@ -107,6 +142,15 @@ public class TechniqueData : ScriptableObject
         radius = Mathf.Max(0.1f, aimRadius);
     }
 
+    /// <summary>Тип доставки и полёт — задаёт сетап ассетов или импортёр дерева.</summary>
+    public void SetDelivery(DeliveryType type, float travelSpeed, float life, GameObject impact, GameObject muzzle)
+    {
+        delivery = type;
+        speed = Mathf.Max(0f, travelSpeed);
+        lifetime = Mathf.Max(0f, life);
+        impactPrefab = impact;
+        muzzlePrefab = muzzle;
+    }
     public string GetKindName()
     {
         switch (kind)

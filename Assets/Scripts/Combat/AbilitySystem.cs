@@ -526,10 +526,12 @@ public class AbilitySystem : MonoBehaviour
         return caster.position + Vector3.up * aimHeight + caster.forward * Mathf.Max(0f, ability.magicSpawnDistance);
     }
 
+    /// <summary>
+    /// Единственное место выбора поведения по типу доставки. Префабы остаются визуальными:
+    /// коллайдеры и полёт добавляются в рантайме.
+    /// </summary>
     private void SpawnVfx(AbilityData ability, Vector3 aimPoint)
     {
-        if (ability.vfxPrefab == null) return;
-
         Transform caster = ResolveCaster();
         Vector3 spawn = ResolveMuzzle(caster, ability);
         Vector3 direction = aimPoint - spawn;
@@ -537,43 +539,80 @@ public class AbilitySystem : MonoBehaviour
             ? Quaternion.LookRotation(direction)
             : caster.rotation;
 
-        GameObject vfx = Instantiate(ability.vfxPrefab, spawn, rotation);
-        if (ability.vfxLifetime > 0f) Destroy(vfx, ability.vfxLifetime);
+        if (ability.muzzlePrefab != null)
+            Destroy(Instantiate(ability.muzzlePrefab, spawn, rotation), 5f);
+
+        if (ability.vfxPrefab == null)
+        {
+            // Без префаба остаётся только зона урона — визуала нет, но механика работает.
+            if (ability.delivery == AbilityDelivery.Impact) CreateMagicHitbox(ability, aimPoint);
+            return;
+        }
+
+        switch (ability.delivery)
+        {
+            case AbilityDelivery.Projectile:
+                SpawnProjectile(ability, spawn, rotation, aimPoint, caster);
+                break;
+
+            case AbilityDelivery.Beam:
+                SpawnBeam(ability, spawn, rotation, aimPoint);
+                break;
+
+            case AbilityDelivery.Aura:
+                SpawnAura(ability, caster);
+                break;
+
+            case AbilityDelivery.Self:
+                Destroy(Instantiate(ability.vfxPrefab, caster.position, caster.rotation), Mathf.Max(0.1f, ability.lifetime));
+                break;
+
+            default:
+                GameObject vfx = Instantiate(ability.vfxPrefab, spawn, rotation);
+                if (ability.vfxLifetime > 0f) Destroy(vfx, ability.vfxLifetime);
+                CreateMagicHitbox(ability, aimPoint);
+                break;
+        }
+    }
+
+    private void SpawnProjectile(AbilityData ability, Vector3 spawn, Quaternion rotation, Vector3 aimPoint, Transform caster)
+    {
+        GameObject instance = Instantiate(ability.vfxPrefab, spawn, rotation);
+        var projectile = instance.GetComponent<MagicProjectile>();
+        if (projectile == null) projectile = instance.AddComponent<MagicProjectile>();
+
+        // Урон считает снаряд: зона появляется по прибытии, а не в момент каста.
+        projectile.Configure(aimPoint, ability.speed, ability.lifetime, ability.magicRadius,
+            ability.power * Mathf.Max(0f, DamageMultiplier), ability.magicHitboxLifetime,
+            caster, ability.damageLayers, ability.impactPrefab, ability.homing);
+    }
+
+    private void SpawnBeam(AbilityData ability, Vector3 spawn, Quaternion rotation, Vector3 aimPoint)
+    {
+        GameObject beam = Instantiate(ability.vfxPrefab, spawn, rotation);
+        var line = beam.AddComponent<MagicBeam>();
+        line.Configure(aimPoint, ability.power * Mathf.Max(0f, DamageMultiplier), ability.magicRadius,
+            ability.lifetime, ability.magicHitboxLifetime, ResolveCaster(), ability.damageLayers);
+    }
+
+    private void SpawnAura(AbilityData ability, Transform caster)
+    {
+        // Аура едет на игроке, а не остаётся в мировой точке.
+        GameObject aura = Instantiate(ability.vfxPrefab, caster.position, caster.rotation);
+        aura.transform.SetParent(caster, true);
+
+        var zone = aura.AddComponent<MagicAura>();
+        zone.Configure(ability.power * Mathf.Max(0f, DamageMultiplier), ability.magicRadius,
+            ability.lifetime, ability.magicHitboxLifetime, caster, ability.damageLayers);
     }
 
     private void CreateMagicHitbox(AbilityData ability, Vector3 aimPoint)
     {
-        Transform caster = ResolveCaster();
+        // Меле-техники оружия бьют штатным хитбоксом: зона им не нужна.
+        if (ability.type != AbilityType.Magic) return;
 
-        GameObject zone = new GameObject("MagicHitbox_Temp");
-        zone.transform.position = aimPoint;
-        // Тег остаётся для пропов: DestructibleObject реагирует на DammageObject.
-        TrySetTag(zone, ability.PrimaryDamageTag);
-
-        SphereCollider sphere = zone.AddComponent<SphereCollider>();
-        sphere.isTrigger = true;
-        sphere.radius = Mathf.Max(0.01f, ability.magicRadius);
-
-        // Враги получают урон через IDamageable/CombatHitbox, а не через тег.
-        // Меле-техники оружия идут штатным хитбоксом, поэтому зона нужна только магии.
-        if (ability.type != AbilityType.Magic)
-        {
-            Destroy(zone, Mathf.Max(0.05f, ability.magicHitboxLifetime));
-            return;
-        }
-
-        // Триггер без Rigidbody не даёт OnTriggerEnter: добавляем kinematic-тело.
-        Rigidbody body = zone.AddComponent<Rigidbody>();
-        body.isKinematic = true;
-        body.useGravity = false;
-
-        // Магию тоже можно блокировать: CombatHitbox спрашивает ICombatBlockable до урона.
-        var hitbox = zone.AddComponent<CombatHitbox>();
-        hitbox.Configure(ability.power * Mathf.Max(0f, DamageMultiplier), CombatTeam.Player, caster);
-        hitbox.TargetLayers = ability.damageLayers;
-        hitbox.SetActive(true);
-
-        Destroy(zone, Mathf.Max(0.05f, ability.magicHitboxLifetime));
+        MagicZone.Spawn(aimPoint, ability.magicRadius, ability.power * Mathf.Max(0f, DamageMultiplier),
+            ability.magicHitboxLifetime, ResolveCaster(), ability.damageLayers, ability.PrimaryDamageTag);
     }
 
     /// <summary>Возврат Ци, если каст не состоялся. КД при этом не ставится.</summary>

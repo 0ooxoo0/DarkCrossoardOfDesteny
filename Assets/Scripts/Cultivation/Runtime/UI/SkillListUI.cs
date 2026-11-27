@@ -307,12 +307,12 @@ public class SkillListUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Слоты 4 и 5 явными кнопками с пометкой «занято: X» и снятие. Пассив/Block/Aura
+    /// Слоты 4 и 5 явными кнопками с пометкой «занято: X» и снятие. Пассив и Block
     /// в слот не кладутся — вместо кнопок причина.
     /// </summary>
     private void BuildAssignControls(TechniqueData technique, RectTransform rowRect)
     {
-        if (technique.Kind != TechniqueKind.Active)
+        if (technique.Kind == TechniqueKind.Passive || technique.Kind == TechniqueKind.Block)
         {
             var note = CultivationUIFactory.CreateText("AssignNote", rowRect, "Механика в разработке",
                 14f, CultivationUIFactory.Danger, TextAlignmentOptions.MidlineRight);
@@ -385,7 +385,8 @@ public class SkillListUI : MonoBehaviour
             return "Неактивна";
         }
 
-        if (technique.Kind == TechniqueKind.Block || technique.Kind == TechniqueKind.Aura)
+        // Block ещё не реализован; Aura назначается (MagicAura в AbilitySystem).
+        if (technique.Kind == TechniqueKind.Block)
             return "Механика в разработке";
 
         if (learned) return "Открыто";

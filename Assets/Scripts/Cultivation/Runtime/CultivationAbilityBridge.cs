@@ -73,8 +73,9 @@ public class CultivationAbilityBridge : MonoBehaviour
             return false;
         }
 
-        // MVP: Block и Aura ещё не реализованы в AbilitySystem — не обманываем игрока.
-        if (technique.Kind == TechniqueKind.Block || technique.Kind == TechniqueKind.Aura)
+        // Аура — периодический урон вокруг игрока; механика готова (MagicAura).
+        // Block остаётся в разработке: кнопки без действия игроку не даём.
+        if (technique.Kind == TechniqueKind.Block)
         {
             LastAssignMessage = technique.DisplayName + " — механика в разработке, в слот не назначается.";
             Debug.Log("[Cultivation] " + LastAssignMessage);
@@ -316,9 +317,31 @@ public class CultivationAbilityBridge : MonoBehaviour
         data.power = technique.Power;
         data.magicRange = technique.Range;
         data.magicRadius = technique.Radius;
+        data.delivery = ResolveDelivery(technique);
+        data.speed = technique.Speed;
+        data.lifetime = technique.Lifetime;
+        data.impactPrefab = technique.ImpactPrefab;
+        data.muzzlePrefab = technique.MuzzlePrefab;
+        data.homing = technique.Homing;
         data.requiredWeapon = ResolveRequiredWeapon(technique);
 
         return data;
+    }
+
+    /// <summary>Kind — дизайн скилла, Delivery — способ доставки. Аура живёт на игроке, Block — на месте.</summary>
+    private static AbilityDelivery ResolveDelivery(TechniqueData technique)
+    {
+        if (technique.Kind == TechniqueKind.Aura) return AbilityDelivery.Aura;
+        if (technique.Kind == TechniqueKind.Block) return AbilityDelivery.Self;
+
+        switch (technique.Delivery)
+        {
+            case DeliveryType.Projectile: return AbilityDelivery.Projectile;
+            case DeliveryType.Beam: return AbilityDelivery.Beam;
+            case DeliveryType.Aura: return AbilityDelivery.Aura;
+            case DeliveryType.Self: return AbilityDelivery.Self;
+            default: return AbilityDelivery.Impact;
+        }
     }
 
     private static bool IsMeleeTechnique(TechniqueData technique)
