@@ -348,6 +348,11 @@ public class CultivationAbilityBridge : MonoBehaviour
     {
         if (technique.Kind == TechniqueKind.Passive) return false;
         if (technique.Kind == TechniqueKind.Aura) return false;
+
+        // Школа решает только для удара в упор: снаряд, луч и аура — магия,
+        // даже если техника принадлежит Мечу или Кулаку.
+        if (technique.Delivery != DeliveryType.Impact) return false;
+
         return technique.DaoType == DaoType.Sword ||
                technique.DaoType == DaoType.Fist ||
                technique.DaoType == DaoType.Body;
@@ -355,6 +360,9 @@ public class CultivationAbilityBridge : MonoBehaviour
 
     private static WeaponType ResolveRequiredWeapon(TechniqueData technique)
     {
+        // Дальние техники не требуют оружия школы: луч Меча бьёт и с кулаками.
+        if (!IsMeleeTechnique(technique)) return WeaponType.Any;
+
         switch (technique.DaoType)
         {
             case DaoType.Sword: return WeaponType.Sword;
