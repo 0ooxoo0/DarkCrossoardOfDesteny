@@ -70,14 +70,60 @@ public static class CultivationSetup
             errors++;
         }
 
-        foreach (var path in config.DaoPaths)
+        int totalTechniques = 0;
+        int totalPassives = 0;
+
+        if (config.DaoPaths != null)
         {
-            if (path == null) continue;
-            if (path.Techniques == null || path.Techniques.Count < 3)
-                Debug.LogWarning("[Cultivation] У пути " + path.DisplayName + " меньше 3 техник.");
+            foreach (var path in config.DaoPaths)
+            {
+                if (path == null) continue;
+
+                int pathPassives = 0;
+                var techniques = path.Techniques;
+                if (techniques != null)
+                {
+                    for (int i = 0; i < techniques.Count; i++)
+                    {
+                        var technique = techniques[i];
+                        if (technique == null) continue;
+                        totalTechniques++;
+
+                        if (technique.Kind != TechniqueKind.Passive) continue;
+
+                        pathPassives++;
+                        totalPassives++;
+                        if (technique.PassiveValue <= 0f)
+                        {
+                            Debug.LogError("[Cultivation] Пассив " + technique.DisplayName + " без эффекта (passiveValue = 0).");
+                            errors++;
+                        }
+                    }
+                }
+
+                if (techniques == null || techniques.Count < 3)
+                {
+                    Debug.LogError("[Cultivation] У пути " + path.DisplayName + " меньше 3 техник.");
+                    errors++;
+                }
+
+                if (pathPassives < 1)
+                {
+                    Debug.LogError("[Cultivation] У пути " + path.DisplayName + " нет ни одного пассива.");
+                    errors++;
+                }
+            }
         }
 
-        Debug.Log(errors == 0 ? "[Cultivation] Проверка пройдена." : "[Cultivation] Проверка нашла проблемы: " + errors);
+        if (totalTechniques < 20)
+        {
+            Debug.LogError("[Cultivation] Всего техник " + totalTechniques + ", нужно ≥ 20. Запустите Setup Test Assets.");
+            errors++;
+        }
+
+        Debug.Log(errors == 0
+            ? "[Cultivation] Проверка пройдена: " + totalTechniques + " техник, из них пассивов " + totalPassives + "."
+            : "[Cultivation] Проверка нашла проблемы: " + errors);
     }
 
     private static List<CultivationRealm> CreateRealms()
@@ -119,7 +165,7 @@ public static class CultivationSetup
                 var technique = CreateOrLoad<TechniqueData>(techniquePath);
 
                 technique.Setup(blueprint.Id, blueprint.Name, blueprint.Chinese,
-                    blueprint.Name + " — " + blueprint.Kind + " техника пути " + DaoTypeInfo.GetDisplayName(type) + ".",
+                    BuildDescription(blueprint),
                     type, blueprint.Kind, blueprint.Rank, blueprint.RequiredDaoLevel, blueprint.RequiredRealmIndex,
                     blueprint.QiCost, blueprint.Cooldown, blueprint.Power, null, null, null);
                 technique.SetPassive(blueprint.PassiveEffect, blueprint.PassiveValue);
@@ -130,13 +176,73 @@ public static class CultivationSetup
 
             daoPath.Setup(type, DaoTypeInfo.GetDisplayName(type), DaoTypeInfo.GetChineseName(type),
                 "Путь " + type + ": техники открываются по уровню Дао и реалму.",
-                DaoTypeInfo.GetColor(type), 10, null, techniques);
+                DaoTypeInfo.GetColor(type), HighestDaoRequirement(techniques), null, techniques);
 
             EditorUtility.SetDirty(daoPath);
             paths.Add(daoPath);
         }
 
         return paths;
+    }
+
+    /// <summary>
+    /// Уровни Дао 5–10 не имеют техник ранга 4+, поэтому школа «осваивается» на последней
+    /// требующейся ступени — иначе игрок видел бы 6 уровней без награды.
+    /// </summary>
+    private static int HighestDaoRequirement(List<TechniqueData> techniques)
+    {
+        int highest = 1;
+        for (int i = 0; i < techniques.Count; i++)
+        {
+            if (techniques[i] != null) highest = Mathf.Max(highest, techniques[i].RequiredDaoLevel);
+        }
+        return highest;
+    }
+
+    /// <summary>Механическое описание вместо заглушки: урон, радиус, цена, КД или эффект пассива.</summary>
+    private static string BuildDescription(CultivationDefaults.TechniqueBlueprint blueprint)
+    {
+        string school = DaoTypeInfo.GetDisplayName(blueprint.Dao);
+
+        if (blueprint.Kind == TechniqueKind.Passive)
+        {
+            int percent = Mathf.RoundToInt(Mathf.Abs(blueprint.PassiveValue) * 100f);
+            string sign = blueprint.PassiveValue >= 0f ? "+" : "−";
+            return "Пассив школы «" + school + "»: " + sign + percent + "% (" +
+                   DescribePassiveEffect(blueprint.PassiveEffect) + "). Активируется при Дао " +
+                   blueprint.RequiredDaoLevel + " ур. и реалме " + (blueprint.RequiredRealmIndex + 1) + ".";
+        }
+
+        switch (blueprint.Kind)
+        {
+            case TechniqueKind.Block:
+                return "Стойка школы «" + school + "» (механика в разработке). Ци " + blueprint.QiCost +
+                       ", КД " + blueprint.Cooldown.ToString("0.#") + " с.";
+            case TechniqueKind.Aura:
+                return "Аура школы «" + school + "» (механика в разработке). Ци " + blueprint.QiCost +
+                       ", КД " + blueprint.Cooldown.ToString("0.#") + " с.";
+        }
+
+        bool melee = blueprint.Dao == DaoType.Sword || blueprint.Dao == DaoType.Fist || blueprint.Dao == DaoType.Body;
+        return (melee ? "Ближний бой" : "Дальний бой") + " школы «" + school + "»: " + blueprint.Power +
+               " урона" + (melee ? " по цели в зоне оружия" : " по области 2 м") + ", Ци " + blueprint.QiCost +
+               ", КД " + blueprint.Cooldown.ToString("0.#") + " с.";
+    }
+
+    private static string DescribePassiveEffect(PassiveEffectKind kind)
+    {
+        switch (kind)
+        {
+            case PassiveEffectKind.MaxHealthPercent: return "максимум HP";
+            case PassiveEffectKind.QiRegenPercent: return "реген Ци";
+            case PassiveEffectKind.MaxQiPercent: return "максимум Ци";
+            case PassiveEffectKind.SpellPowerPercent: return "сила техник";
+            case PassiveEffectKind.MeleeDamagePercent: return "урон оружием";
+            case PassiveEffectKind.DamageReductionPercent: return "получаемый урон";
+            case PassiveEffectKind.ComprehensionGainPercent: return "Прозрение";
+            case PassiveEffectKind.AlchemySuccessPercent: return "успех алхимии";
+            default: return kind.ToString();
+        }
     }
 
     private static CultivationConfig CreateConfig(List<CultivationRealm> realms, List<DaoPath> daoPaths)

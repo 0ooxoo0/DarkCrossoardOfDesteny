@@ -30,11 +30,15 @@ public class CultivationSnapshot
     public int alchemyGrade;
     public int alchemySubRank;
     public int alchemyMastery;
+
+    // v3: назначенные техники слотов 4–5 (индекс 0 = слот 4, индекс 1 = слот 5).
+    public string[] techniqueSlotIds = new string[2];
 }
 
 /// <summary>
 /// Кэш прогресса: сцена меняется — прогресс сохраняется. Дополнительно пишется в PlayerPrefs.
-/// Формат v2 добавляет дебафы и здоровье; старый v1 читается как v2 с нулями в новых полях.
+/// Формат v3 добавляет назначенные техники слотов 4–5; старые v1/v2 читаются как v3
+/// с пустыми слотами. Ключ PrefsKey остаётся v2 — иначе старые сейвы потерялись бы.
 /// </summary>
 public static class CultivationStateCache
 {
@@ -47,7 +51,8 @@ public static class CultivationStateCache
     public static bool HasState => snapshot != null && snapshot.hasState;
 
     public static void Capture(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
-        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null)
+        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null,
+        CultivationAbilityBridge bridge = null)
     {
         if (cultivation == null) return;
 
@@ -101,10 +106,17 @@ public static class CultivationStateCache
             snapshot.alchemySubRank = (int)alchemy.Grade.SubRank;
             snapshot.alchemyMastery = alchemy.Mastery;
         }
+
+        if (bridge != null)
+        {
+            string[] ids = bridge.GetAssignedTechniqueIds();
+            if (ids != null && ids.Length > 0) snapshot.techniqueSlotIds = ids;
+        }
     }
 
     public static bool TryRestore(CultivationSystem cultivation, DaoSystem dao, QiComponent qi,
-        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null)
+        CultivationDebuffController debuffs = null, PlayerHealth health = null, AlchemySkill alchemy = null,
+        CultivationAbilityBridge bridge = null)
     {
         if (!HasState || cultivation == null) return false;
 
@@ -113,6 +125,9 @@ public static class CultivationStateCache
         if (dao != null)
             dao.RestoreState(snapshot.daoLevels, snapshot.daoPoints, snapshot.unlockedMask,
                 snapshot.activeDaoIndex, snapshot.learnedTechniqueIds);
+
+        // Слоты восстанавливаются после Dao.RestoreState: техники ищутся в путях Дао.
+        if (bridge != null) bridge.RestoreAssignments(snapshot.techniqueSlotIds);
 
         if (qi != null)
             qi.SetCurrent(snapshot.qi);
@@ -150,10 +165,15 @@ public static class CultivationStateCache
 
         try
         {
-            // v1 и v2 — один класс: старый JSON просто оставляет новые поля нулями.
+            // v1/v2/v3 — один класс: старый JSON просто оставляет новые поля нулями.
             var loaded = JsonUtility.FromJson<CultivationSnapshot>(json);
             if (loaded != null && loaded.hasState)
+            {
+                // Миграция: в старом сейве поля слотов нет — читаем как пустые слоты.
+                if (loaded.techniqueSlotIds == null)
+                    loaded.techniqueSlotIds = new string[2];
                 snapshot = loaded;
+            }
         }
         catch (Exception exception)
         {

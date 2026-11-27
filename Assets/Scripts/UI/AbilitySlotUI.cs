@@ -1,9 +1,10 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
+public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField] private Image icon;
     [SerializeField] private Image cooldownOverlay;
@@ -15,8 +16,20 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
     private Color iconBaseColor = Color.white;
     private int slotIndex;
     private string blockedReason = string.Empty;
+    private string tooltip = string.Empty;
+    private TMP_Text runeLabel;
+    private TMP_Text nameLabel;
+    private AbilityData currentAbility;
+    private DaoSystem daoSystem;
 
     public string BlockedReason => blockedReason;
+    public string Tooltip => tooltip;
+
+    /// <summary>Наведение на слот: AbilityBarUI показывает подсказку.</summary>
+    public event Action<AbilitySlotUI, bool> HoverChanged;
+
+    public void OnPointerEnter(PointerEventData eventData) => HoverChanged?.Invoke(this, true);
+    public void OnPointerExit(PointerEventData eventData) => HoverChanged?.Invoke(this, false);
 
     // Используется и setup-скриптом (prefab), и рантайм-fallback в AbilityBarUI.
     public void SetVisualReferences(Image iconImage, Image overlayImage, TMP_Text keyText, TMP_Text cooldownText)
@@ -30,6 +43,7 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
     public void SetAbility(AbilityData ability, int slotIndex, KeyCode hotkey)
     {
         this.slotIndex = slotIndex;
+        currentAbility = ability;
 
         if (icon != null)
         {
@@ -54,6 +68,9 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
             icon.enabled = ability != null;
         }
 
+        SetRune(ability);
+        SetShortName(ability);
+
         if (keyLabel != null)
             keyLabel.text = GetKeyLabel(hotkey, slotIndex);
 
@@ -63,7 +80,102 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
         if (cooldownLabel != null)
             cooldownLabel.text = string.Empty;
 
-        SetCultivationBadges(ability, null);
+        SetCultivationBadges(ability, daoSystem);
+        BuildTooltip(ability);
+    }
+
+    /// <summary>Процедурная руна: первая буква названия на фоне цвета Дао. Иконок в проекте нет.</summary>
+    private void SetRune(AbilityData ability)
+    {
+        if (runeLabel == null)
+        {
+            var go = new GameObject("Rune", typeof(RectTransform), typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI));
+            go.transform.SetParent(transform, false);
+
+            RectTransform rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(4f, 4f);
+            rect.offsetMax = new Vector2(-4f, -4f);
+
+            runeLabel = go.GetComponent<TextMeshProUGUI>();
+            runeLabel.alignment = TextAlignmentOptions.Center;
+            runeLabel.fontSize = 34f;
+            runeLabel.raycastTarget = false;
+            if (TMP_Settings.defaultFontAsset != null) runeLabel.font = TMP_Settings.defaultFontAsset;
+        }
+
+        bool show = ability != null && ability.icon == null && !string.IsNullOrEmpty(ability.displayName);
+        runeLabel.gameObject.SetActive(show);
+        if (!show) return;
+
+        runeLabel.text = ability.displayName.Substring(0, 1).ToUpperInvariant();
+        runeLabel.color = ability.requiredDao.HasValue
+            ? DaoTypeInfo.GetColor(ability.requiredDao.Value)
+            : Color.white;
+    }
+
+    /// <summary>Короткое имя под слотом: иконок нет, иначе слоты неразличимы.</summary>
+    private void SetShortName(AbilityData ability)
+    {
+        if (nameLabel == null)
+        {
+            var go = new GameObject("Name", typeof(RectTransform), typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI));
+            go.transform.SetParent(transform, false);
+
+            RectTransform rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(0f, 18f);
+            rect.anchoredPosition = new Vector2(0f, -2f);
+
+            nameLabel = go.GetComponent<TextMeshProUGUI>();
+            nameLabel.alignment = TextAlignmentOptions.Center;
+            nameLabel.fontSize = 12f;
+            nameLabel.overflowMode = TextOverflowModes.Ellipsis;
+            nameLabel.raycastTarget = false;
+            if (TMP_Settings.defaultFontAsset != null) nameLabel.font = TMP_Settings.defaultFontAsset;
+        }
+
+        nameLabel.text = ability != null ? ability.displayName : string.Empty;
+        nameLabel.color = new Color(0.85f, 0.85f, 0.9f, 1f);
+    }
+
+    /// <summary>Текст подсказки: имя, Дао, тип, Ци, КД, сила, требования и причина блокировки.</summary>
+    private void BuildTooltip(AbilityData ability)
+    {
+        if (ability == null)
+        {
+            tooltip = "Пустой слот. Назначьте технику в экране скиллов (Esc → Навыки).";
+            return;
+        }
+
+        var builder = new System.Text.StringBuilder();
+        builder.Append(ability.displayName);
+
+        if (ability.requiredDao.HasValue)
+        {
+            DaoType type = ability.requiredDao.Value;
+            builder.Append("\nШкола: ").Append(DaoTypeInfo.GetDisplayName(type));
+            builder.Append("\nАктивный Дао: ").Append(daoSystem != null && daoSystem.ActiveDao.HasValue
+                ? DaoTypeInfo.GetDisplayName(daoSystem.ActiveDao.Value)
+                : "нет");
+        }
+
+        builder.Append("\nТип: ").Append(ability.type == AbilityType.Melee ? "ближний бой" : "магия");
+        builder.Append("\nРеалм: ").Append(Mathf.Max(0, ability.requiredRealmIndex) + 1);
+        if (ability.requiredDaoLevel > 0) builder.Append("   ·   Дао ").Append(ability.requiredDaoLevel).Append(" ур.");
+        builder.Append("\nЦи: ").Append(Mathf.Max(0, ability.qiCost));
+        builder.Append("   ·   КД: ").Append(ability.cooldown.ToString("0.#")).Append(" с");
+        if (ability.power > 0) builder.Append("   ·   сила: ").Append(ability.power);
+
+        if (!string.IsNullOrEmpty(blockedReason))
+            builder.Append("\nНе сработает: ").Append(blockedReason);
+
+        tooltip = builder.ToString();
     }
 
     public void SetCooldown(float remaining, float total)
@@ -85,6 +197,7 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
     public void SetAvailable(bool available, string reason)
     {
         blockedReason = available ? string.Empty : (reason ?? string.Empty);
+        BuildTooltip(currentAbility);
 
         if (icon != null)
         {
@@ -111,6 +224,7 @@ public class AbilitySlotUI : MonoBehaviour, IPointerClickHandler
 
     public void SetCultivationBadges(AbilityData ability, DaoSystem daoSystem)
     {
+        this.daoSystem = daoSystem;
         EnsureBadges();
 
         if (daoBadge != null)

@@ -269,6 +269,54 @@ public class PlayerResponsivenessTests
             "При развороте на 90 мир-назад становится правым боком модели.");
     }
 
+    [Test]
+    public void LootSelection_DoesNotBlockMovement()
+    {
+        // Регрессия: панель подбора глушила HandleMovement, и персонаж замирал.
+        var keyboard = player.GetComponent<LootKeyboardController>();
+        Assert.That(keyboard, Is.Not.Null, "На Player нет LootKeyboardController.");
+
+        var viewArea = player.GetComponent<LootViewArea>();
+        Assert.That(viewArea, Is.Not.Null, "На Player нет LootViewArea.");
+
+        controller.SetMoveInputForTests(new Vector2(0f, 1f));
+        controller.HandleMovementForTests();
+        float withPanel = controller.CurrentSpeedForTests;
+
+        // Даже с активным выбором в меню WASD обязан давать скорость.
+        var suppress = typeof(LootKeyboardController).GetMethod("SetSelected",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        suppress.Invoke(keyboard, new object[] { viewArea.Visible.Count > 0 ? viewArea.Visible[0] : null });
+
+        controller.SetMoveInputForTests(new Vector2(0f, 1f));
+        controller.HandleMovementForTests();
+
+        Assert.That(controller.CurrentSpeedForTests, Is.GreaterThan(0f),
+            "При открытой панели подбора персонаж обязан двигаться: " + withPanel);
+    }
+
+    [Test]
+    public void ArrowMove_IsSuppressedOnlyWhileLootIsSelected()
+    {
+        controller.SuppressArrowMove = false;
+        controller.SetMoveInputForTests(new Vector2(0f, 1f));
+        controller.HandleMovementForTests();
+        Assert.That(controller.CurrentSpeedForTests, Is.GreaterThan(0f),
+            "Без выбора обычный ввод обязан работать.");
+
+        // С включённым подавлением стрелки не двигают, а WASD продолжает.
+        typeof(PlayerController).GetField("suppressArrowMove",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .SetValue(controller, true);
+
+        controller.SetMoveInputForTests(new Vector2(0f, 1f));
+        controller.HandleMovementForTests();
+        Assert.That(controller.CurrentSpeedForTests, Is.EqualTo(0f).Within(0.001f),
+            "Стрелки во время выбора не должны двигать персонажа.");
+
+        controller.SuppressArrowMove = false;
+    }
+
     private static GameObject FindPlayerRoot()
     {
         GameObject[] roots = SceneManager.GetActiveScene().GetRootGameObjects();

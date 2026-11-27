@@ -21,6 +21,7 @@ MonoBehaviour:
   vfxPrefab: {fileID: 0}
   castAnimation: {fileID: 0}
   requiredWeapon: 2
+  power: 20
   damageTags:
   - DammageObject
   damageLayers:

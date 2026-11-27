@@ -20,12 +20,13 @@ AbilitySystem, хотбаром, оружием, хитбоксами, маги�
 | Клик по пустому слоту | Открыть список техник |
 | «Прорыв» в панели | 3 с прогресса + шанс (база + Прозрение) |
 
-Первый запуск: слот 1 уже занят «Ударом клинка» — жми **1**, чтобы увидеть каст, трату Ци, КД и VFX.
-Медитация даёт опыт Ци и очки Дао; через ~7 секунд доступен прорыв.
+Первый запуск: техника «Удар клинка» сама встаёт в **слот 4** — жми **4**, чтобы увидеть каст,
+трату Ци, КД и урон. Медитация даёт опыт Ци и очки Дао; через ~7 секунд доступен прорыв.
 
 Без ассетов работает **демо-конфиг**: открыты все 5 путей и разрешена смена Дао из панели.
-После `Tools → Cultivation → Setup Test Assets` включается канонический контент: 2 стартовых пути,
-смена — только у алтаря через `DaoSystem.SetNearAltar(true)` (подключит Промт B).
+После `Tools → Cultivation → Setup Test Assets` включается канонический контент: 2 стартовых пути
+(Меч и Кулак), смена — только у алтаря через `DaoSystem.SetNearAltar(true)` (подключит Промт B).
+Тот же сетап создаёт 25 техник, включая 10 пассивов; проверить контент — `Tools → Cultivation → Validate Setup`.
 
 `Tools → Cultivation → 4. Setup World Content (Game)` дополняет сцену миром: ставит `EnemyAI` на врагов,
 создаёт трёх животных (лошадь, свинья, овца) с добычей, печь `AlchemyStation` рядом с кузницей и
@@ -42,8 +43,10 @@ AbilitySystem, хотбаром, оружием, хитбоксами, маги�
   пассивов) и `PlayerRespawnService`: смерть = возврат к алтарю и потеря 25 % опыта ступени.
 - **Культивация** — `CultivationSystem` + `CultivationRealm`: реалмы/ступени, опыт Ци, Прозрение,
   `TryBreakthrough()` → `BreakthroughResult { Success, Failed, NotReady }`, бонусы реалма событием
-  `OnRealmBonusesChanged(int qiBonus, int hpBonus, float regenBonus)`, скорость изучения техник —
-  `OnTechniqueLearningChanged(float multiplier)`, потеря опыта — `LoseExperiencePercent(float)`.
+  `OnRealmBonusesChanged(int qiBonus, int hpBonus, float regenBonus)`, потеря опыта —
+  `LoseExperiencePercent(float)`.
+  Скорость изучения техник (`TechniqueLearningSpeedMultiplier`) остаётся публичным свойством,
+  но события и потребителя у неё нет: свитки изучаются мгновенно.
 - **Дао** — `DaoSystem` + `DaoPath`: уровни по очкам, `ActiveDao`, `IsDaoUnlocked/UnlockDao`,
   `GetAvailableTechniques()` (фильтр по активному Дао + уровню + реалму).
 - **Техники** — `TechniqueData`: только данные (тип, ранг, требования, Ци, КД, сила, клип, VFX).
@@ -54,6 +57,11 @@ AbilitySystem, хотбаром, оружием, хитбоксами, маги�
   (шанс успеха, провал, качество), `AlchemyStation` + `AlchemyPanelUI` у печи, походный крафт из Esc-меню.
 - **Пассивы** — `PassiveSkillService`: `PassiveEffectKind`, `PassiveModifier`, десять пассивов школ
   (меч, кулак, тело, огонь, гром) пишут в отдельные множители, не затирая дебафы.
+  **Правило активации:** пассив работает, если его Дао открыт, `passiveValue > 0` и выполнены
+  `requiredDaoLevel` + `requiredRealmIndex`. Свиток («выучено») — не обязательное условие,
+  а обход требований. Пересчёт идёт по событиям (`OnTechniqueLearned`, `OnDaoLevelChanged`,
+  `OnDaoUnlocked`, `OnRealmChanged`, `OnStageChanged`), не в `Update`.
+  Статус каждого пассива видно во вкладке «Пассивные»: «Активна» / «Нужен Дао X» / «Нужен реалм Y».
 - **Добыча** — `HarvestableObject.lootTable` → `LootTable`/`LootRoll`/`LootDrop`; враги (`EnemyAI`)
   и животные (`AnimalAI`) падают контейнерами `WorldLootContainer`.
 - **Быстрый каст** — `CultivationCastController` + `CultivationQuickBarUI` (демо-исполнитель).
@@ -63,7 +71,7 @@ AbilitySystem, хотбаром, оружием, хитбоксами, маги�
   кнопки «Навыки», «Карта» и «Журнал» (заглушки).
 - **VFX** — `DaoAuraController`, `CultivationVfxBridge` и `CultivationVfxConfig` (префабы из `Assets/Magic`),
   процедурные плейсхолдеры `CultivationVfxFactory` на случай пустых ссылок.
-- **Контент** — `CultivationDefaults` (4 реалма × 3 ступени, 5 путей, 15 техник, 10 пассивов), ассеты создаёт
+- **Контент** — `CultivationDefaults` (4 реалма × 3 ступени, 5 путей, 15 активных техник, 10 пассивов), ассеты создаёт
   `Tools → Cultivation → Setup Test Assets`, предметы и алхимию — `4. Setup World Content (Game)`.
 
 ## Полный круг прогрессии
@@ -72,7 +80,9 @@ AbilitySystem, хотбаром, оружием, хитбоксами, маги�
 2. Забрать лут, открыть печь — сварить пилюлю (грейд алхимика влияет на шанс и качество).
 3. Принять пилюлю, помедитировать у алтаря — опыт Ци и очки Дао.
 4. Прорваться на следующую ступень — открываются новые техники.
-5. Назначить технику в `SkillListUI` (вкладка «Техники», Esc → «Навыки»).
+5. Назначить технику в `SkillListUI` (вкладка «Техники», Esc → «Навыки»); вкладка «Пассивные» —
+   статус десяти пассивов школ. Экран техник из панели культивации пассивы не показывает:
+   их нельзя положить в слот.
 
 ## Медитация: риск и последствия
 

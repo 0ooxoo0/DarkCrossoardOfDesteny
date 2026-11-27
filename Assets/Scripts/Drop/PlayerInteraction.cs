@@ -1,16 +1,18 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// Проверки клика перед атакой: UI, панель лута и взаимодействие.
+/// Урон здесь больше не наносится — единственный источник удара это
+/// <see cref="CombatHitbox"/> оружия, включённый окном анимации.
+/// </summary>
 public class PlayerInteraction : MonoBehaviour
 {
     [Header("Параметры атаки")]
-    [SerializeField] private float attackDamage = 25f;
+    [Tooltip("Дистанция прицеливания: дальше неё игрок не поворачивается к цели.")]
     [SerializeField] private float attackRange = 2.5f;
-    [SerializeField] private float attackAngle = 150f;
-    [SerializeField] private float hitDelay = 0.3f;
     [SerializeField] private float attackCooldown = 0.7f;
 
     [Header("Ссылки")]
@@ -64,7 +66,6 @@ public class PlayerInteraction : MonoBehaviour
         Vector3 aimPoint = GetAimPoint();
         playerController.FaceTowards(aimPoint, 0.45f);
         nextAttackTime = Time.time + attackCooldown;
-        StartCoroutine(AttackRoutine());
     }
 
     private bool IsAttackBlocked()
@@ -136,44 +137,10 @@ public class PlayerInteraction : MonoBehaviour
         return transform.position + transform.forward * attackRange;
     }
 
-    private IEnumerator AttackRoutine()
-    {
-        yield return new WaitForSeconds(hitDelay);
-
-        Vector3 forward = transform.forward;
-        forward.y = 0f;
-        forward.Normalize();
-
-        Vector3 origin = attackOrigin != null
-            ? attackOrigin.position
-            : transform.position + forward * 0.5f;
-        float halfAngleCos = Mathf.Cos(attackAngle * 0.5f * Mathf.Deg2Rad);
-        Collider[] hits = Physics.OverlapSphere(origin, attackRange, ~0, QueryTriggerInteraction.Ignore);
-        HashSet<IInteractable> damaged = new HashSet<IInteractable>();
-
-        foreach (Collider hit in hits)
-        {
-            IInteractable interactable = hit.GetComponentInParent<IInteractable>();
-            if (interactable == null || damaged.Contains(interactable)) continue;
-
-            Vector3 toTarget = hit.transform.position - origin;
-            toTarget.y = 0f;
-            if (toTarget.sqrMagnitude > 0.0001f &&
-                Vector3.Dot(forward, toTarget.normalized) < halfAngleCos)
-            {
-                continue;
-            }
-
-            damaged.Add(interactable);
-            interactable.TakeDamage(attackDamage, hit.bounds.ClosestPoint(origin));
-        }
-
-    }
-
     private void OnDrawGizmosSelected()
     {
         Vector3 origin = attackOrigin != null ? attackOrigin.position : transform.position;
-        Gizmos.color = Color.red;
+        Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(origin, attackRange);
     }
 }

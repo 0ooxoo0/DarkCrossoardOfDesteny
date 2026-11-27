@@ -147,16 +147,18 @@ public class GameMenuController : MonoBehaviour
         else uiManager.OpenUI();
     }
 
-    /// <summary>Открывает панель культивации из меню.</summary>
+    /// <summary>Открывает панель культивации из меню. Пауза снимается: панель сама блокирует ввод.</summary>
     public void OpenCultivation()
     {
+        ClosePauseForPanel();
         CultivationUIRoot ui = CultivationUIRoot.Instance;
         if (ui != null && ui.CultivationPanel != null) ui.CultivationPanel.Open();
     }
 
-    /// <summary>Открывает экран скиллов.</summary>
+    /// <summary>Открывает экран скиллов (единый экран техник и пассивов).</summary>
     public void OpenSkills()
     {
+        ClosePauseForPanel();
         CultivationUIRoot ui = CultivationUIRoot.Instance;
         if (ui != null && ui.Skills != null) ui.Skills.Open();
     }
@@ -164,8 +166,19 @@ public class GameMenuController : MonoBehaviour
     /// <summary>Открывает походный крафт.</summary>
     public void OpenCrafting()
     {
+        ClosePauseForPanel();
         CultivationUIRoot ui = CultivationUIRoot.Instance;
         if (ui != null && ui.Alchemy != null) ui.Alchemy.OpenPortable();
+    }
+
+    /// <summary>
+    /// Кнопки паузы открывают панели культивации: UiManager закрывается,
+    /// иначе <c>CultivationUI.Open</c> откажется открываться при активной паузе.
+    /// </summary>
+    private void ClosePauseForPanel()
+    {
+        ResolveUiManager();
+        if (uiManager != null && uiManager.IsOpen) uiManager.CloseUI();
     }
 
     /// <summary>Журнал пока не реализован; его кнопка отключена.</summary>

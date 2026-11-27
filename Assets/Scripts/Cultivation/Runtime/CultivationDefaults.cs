@@ -78,11 +78,11 @@ public static class CultivationDefaults
 
         // Fist
         new TechniqueBlueprint { Id = "fist_1", Name = "Кулак горы", Chinese = "山拳", Dao = DaoType.Fist, Kind = TechniqueKind.Active, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 12, Cooldown = 4f, Power = 30 },
-        new TechniqueBlueprint { Id = "fist_2", Name = "Железная кожа", Chinese = "铁肤", Dao = DaoType.Fist, Kind = TechniqueKind.Passive, Rank = 2, RequiredDaoLevel = 2, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0 },
+        new TechniqueBlueprint { Id = "fist_2", Name = "Железная кожа", Chinese = "铁肤", Dao = DaoType.Fist, Kind = TechniqueKind.Block, Rank = 2, RequiredDaoLevel = 2, RequiredRealmIndex = 0, QiCost = 20, Cooldown = 10f, Power = 0 },
         new TechniqueBlueprint { Id = "fist_3", Name = "Ярость дракона", Chinese = "龙怒", Dao = DaoType.Fist, Kind = TechniqueKind.Aura, Rank = 3, RequiredDaoLevel = 4, RequiredRealmIndex = 1, QiCost = 50, Cooldown = 36f, Power = 80 },
 
         // Body
-        new TechniqueBlueprint { Id = "body_1", Name = "Дыхание костей", Chinese = "骨息", Dao = DaoType.Body, Kind = TechniqueKind.Passive, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 0, Cooldown = 0f, Power = 0 },
+        new TechniqueBlueprint { Id = "body_1", Name = "Дыхание костей", Chinese = "骨息", Dao = DaoType.Body, Kind = TechniqueKind.Active, Rank = 1, RequiredDaoLevel = 1, RequiredRealmIndex = 0, QiCost = 12, Cooldown = 4f, Power = 30 },
         new TechniqueBlueprint { Id = "body_2", Name = "Каменное тело", Chinese = "石身", Dao = DaoType.Body, Kind = TechniqueKind.Block, Rank = 2, RequiredDaoLevel = 2, RequiredRealmIndex = 0, QiCost = 25, Cooldown = 12f, Power = 0 },
         new TechniqueBlueprint { Id = "body_3", Name = "Небесное тело", Chinese = "天身", Dao = DaoType.Body, Kind = TechniqueKind.Aura, Rank = 3, RequiredDaoLevel = 4, RequiredRealmIndex = 1, QiCost = 55, Cooldown = 45f, Power = 0 },
 
@@ -159,8 +159,19 @@ public static class CultivationDefaults
 
         path.Setup(type, DaoTypeInfo.GetDisplayName(type), DaoTypeInfo.GetChineseName(type),
             "Путь " + type + ": техники открываются по уровню Дао и реалму.",
-            DaoTypeInfo.GetColor(type), 10, null, techniques);
+            DaoTypeInfo.GetColor(type), HighestDaoRequirement(techniques), null, techniques);
         return path;
+    }
+
+    /// <summary>Максимальный требуемый уровень Дао среди техник пути (5–10 пусты без техник ранга 4+).</summary>
+    private static int HighestDaoRequirement(List<TechniqueData> techniques)
+    {
+        int highest = 1;
+        for (int i = 0; i < techniques.Count; i++)
+        {
+            if (techniques[i] != null) highest = Mathf.Max(highest, techniques[i].RequiredDaoLevel);
+        }
+        return highest;
     }
 
     public static TechniqueData CreateTechnique(TechniqueBlueprint blueprint)

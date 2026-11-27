@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc95664ff3435dc43a9ab13fa52097c7, type: 3}
+  m_Name: EnemyVisual_DarkLord_Male_01
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyVisualData
+  id: 4
+  displayName: Dark Lord
+  characterPrefab: {fileID: 5669538231628601157, guid: c40f7c9d822c08b43a34200e6ec68ec3, type: 3}
+  weaponPrefab: {fileID: 8011566013882336049, guid: 2d1b288c4815e28498d754a794475903, type: 3}
+  animatorController: {fileID: 0}
+  weaponBoneName: Hand_R
+  weaponLocalPosition: {x: 0, y: 0, z: 0}
+  weaponLocalEuler: {x: 0, y: 0, z: 0}
+  weaponLocalScale: {x: 1, y: 1, z: 1}

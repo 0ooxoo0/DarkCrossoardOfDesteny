@@ -57,8 +57,6 @@ public class CultivationSystem : MonoBehaviour
     /// <summary>(реалм, в котором был совершён успешный прорыв) — для списания материалов.</summary>
     public event Action<CultivationRealm> OnBreakthroughSucceeded;
     public event Action<int> OnComprehensionChanged;
-    /// <summary>Множитель скорости изучения техник — для AbilitySystem (Промт B).</summary>
-    public event Action<float> OnTechniqueLearningChanged;
     /// <summary>(qiBonus, hpBonus, regenBonus) — суммарные бонусы реалма для владельца HP.</summary>
     public event Action<int, int, float> OnRealmBonusesChanged;
 
@@ -349,7 +347,6 @@ public class CultivationSystem : MonoBehaviour
     private void RaiseComprehension()
     {
         OnComprehensionChanged?.Invoke(comprehension);
-        OnTechniqueLearningChanged?.Invoke(TechniqueLearningSpeedMultiplier);
     }
 
     private void RaiseBonuses()

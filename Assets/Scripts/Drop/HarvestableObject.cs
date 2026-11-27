@@ -7,7 +7,7 @@ using UnityEngine;
 /// Если задана <see cref="LootTable"/>, предметы падают в контейнер через
 /// <see cref="WorldLootService"/>; иначе работает прежний <see cref="DropManager"/>.
 /// </summary>
-public class HarvestableObject : MonoBehaviour, IInteractable
+public class HarvestableObject : MonoBehaviour, IInteractable, IDamageable
 {
     [Header("Параметры объекта")]
     [SerializeField] private ResourceType resourceType;
@@ -56,11 +56,30 @@ public class HarvestableObject : MonoBehaviour, IInteractable
 
         currentHealth -= damage;
         Damaged?.Invoke(damage);
-        Debug.Log($"{gameObject.name} получил {damage}, осталось {currentHealth} HP");
 
         if (currentHealth <= 0f)
             deathPending = true;
     }
+
+    /// <summary>
+    /// Единый контур боя: тот же хитбокс, что бьёт врагов, бьёт дерево и кабана.
+    /// </summary>
+    public void TakeDamage(DamageInfo info)
+    {
+        TakeDamage(Mathf.Max(0f, info.Amount), info.HitPoint);
+    }
+
+    /// <summary>Мёртв ли объект.</summary>
+    public bool IsDead => isDead;
+
+    /// <summary>Смерть уже запланирована, но доводится в конце кадра.</summary>
+    public bool WillDie => deathPending;
+
+    /// <summary>Ресурсы и животные нейтральны: урон проходит и от игрока, и от врага.</summary>
+    public CombatTeam Team => CombatTeam.Neutral;
+
+    /// <summary>Корень, по которому CombatHitbox отличает владельца от цели.</summary>
+    public Transform DamageRoot => transform;
 
     private void Die()
     {

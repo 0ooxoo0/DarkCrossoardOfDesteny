@@ -19,6 +19,7 @@ public class CultivationUI : MonoBehaviour
     private BreakthroughSequence breakthrough;
     private CultivationConfig config;
     private TechniqueListUI techniqueList;
+    private SkillListUI skills;
     private UiManager uiManager;
     private bool pausedByUs;
 
@@ -537,8 +538,22 @@ public class CultivationUI : MonoBehaviour
 
     private void OpenTechniques()
     {
+        // Единый экран скиллов: техники и пассивы с одинаковыми правилами назначения.
+        if (skills != null)
+        {
+            // Панель культивации держит паузу: скиллы работают поверх неё.
+            skills.OpenFromPanel();
+            return;
+        }
+
         if (techniqueList == null) return;
         techniqueList.Open();
+    }
+
+    /// <summary>Ссылка на единый экран скиллов (задаётся после сборки UI).</summary>
+    public void SetSkillList(SkillListUI skillList)
+    {
+        skills = skillList;
     }
 
     private void TryActivateDao(DaoType type)

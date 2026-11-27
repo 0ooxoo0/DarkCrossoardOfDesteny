@@ -15,6 +15,7 @@ public class PassiveSkillService : MonoBehaviour
     [SerializeField] private PlayerHealth health;
     [SerializeField] private QiComponent qi;
     [SerializeField] private AbilitySystem abilitySystem;
+    [SerializeField] private WeaponManager weaponManager;
     [SerializeField] private AlchemyService alchemy;
 
     private readonly List<PassiveModifier> active = new List<PassiveModifier>();
@@ -43,6 +44,9 @@ public class PassiveSkillService : MonoBehaviour
         health = playerHealth;
         qi = qiComponent;
         abilitySystem = abilitySystemComponent;
+        weaponManager = abilitySystemComponent != null
+            ? abilitySystemComponent.GetComponent<WeaponManager>()
+            : null;
         alchemy = alchemyService;
 
         Subscribe();
@@ -66,8 +70,10 @@ public class PassiveSkillService : MonoBehaviour
         {
             dao.OnTechniqueLearned -= HandleTechniqueLearned;
             dao.OnDaoLevelChanged -= HandleDaoLevelChanged;
+            dao.OnDaoUnlocked -= HandleDaoUnlocked;
             dao.OnTechniqueLearned += HandleTechniqueLearned;
             dao.OnDaoLevelChanged += HandleDaoLevelChanged;
+            dao.OnDaoUnlocked += HandleDaoUnlocked;
         }
 
         if (cultivation != null)
@@ -85,6 +91,7 @@ public class PassiveSkillService : MonoBehaviour
         {
             dao.OnTechniqueLearned -= HandleTechniqueLearned;
             dao.OnDaoLevelChanged -= HandleDaoLevelChanged;
+            dao.OnDaoUnlocked -= HandleDaoUnlocked;
         }
 
         if (cultivation != null)
@@ -96,6 +103,7 @@ public class PassiveSkillService : MonoBehaviour
 
     private void HandleTechniqueLearned(TechniqueData technique) => Recalculate();
     private void HandleDaoLevelChanged(DaoType type, int level) => Recalculate();
+    private void HandleDaoUnlocked(DaoType type) => Recalculate();
     private void HandleRealmChanged(CultivationRealm realm) => Recalculate();
     private void HandleStageChanged(CultivationRealm realm, int stage) => Recalculate();
 
@@ -107,13 +115,19 @@ public class PassiveSkillService : MonoBehaviour
 
         if (dao != null && cultivation != null)
         {
-            List<TechniqueData> learned = dao.GetLearnedTechniques();
-            if (learned != null)
+            // Пассив активен по прогрессу: требования выполнены, Дао открыт, эффект задан.
+            // «Выучен» (свиток) — только обход требований, а не обязательное условие.
+            List<TechniqueData> all = dao.GetAllTechniques();
+            for (int i = 0; i < all.Count; i++)
             {
-                for (int i = 0; i < learned.Count; i++)
-                {
-                    TryAdd(learned[i]);
-                }
+                TryAdd(all[i], false);
+            }
+
+            // Выученные пассивы обходят требования уровня/реалма.
+            List<TechniqueData> learned = dao.GetLearnedTechniques();
+            for (int i = 0; i < learned.Count; i++)
+            {
+                TryAdd(learned[i], true);
             }
         }
 
@@ -121,16 +135,58 @@ public class PassiveSkillService : MonoBehaviour
         OnModifiersChanged?.Invoke();
     }
 
-    private void TryAdd(TechniqueData technique)
+    /// <summary>Активен ли пассив сейчас: открытый Дао, эффект и выполненные требования.</summary>
+    public bool IsPassiveActive(TechniqueData technique)
+    {
+        if (technique == null || technique.Kind != TechniqueKind.Passive) return false;
+        if (technique.PassiveValue <= 0f) return false;
+        if (dao == null || !dao.IsDaoUnlocked(technique.DaoType)) return false;
+
+        if (dao.HasLearnedTechnique(technique)) return true;
+        return MeetsRequirements(technique);
+    }
+
+    /// <summary>Причина неактивности пассива для UI. Пусто — пассив активен.</summary>
+    public string GetInactiveReason(TechniqueData technique)
+    {
+        if (technique == null || technique.Kind != TechniqueKind.Passive) return string.Empty;
+        if (technique.PassiveValue <= 0f) return "Нет эффекта";
+        if (dao == null) return "Нет DaoSystem";
+        if (!dao.IsDaoUnlocked(technique.DaoType))
+            return "Нужен Дао " + DaoTypeInfo.GetDisplayName(technique.DaoType);
+        if (dao.HasLearnedTechnique(technique) || MeetsRequirements(technique)) return string.Empty;
+
+        int daoLevel = dao.GetLevel(technique.DaoType);
+        if (daoLevel < technique.RequiredDaoLevel)
+            return "Нужен Дао " + technique.RequiredDaoLevel + " ур. (сейчас " + daoLevel + ")";
+
+        int realmIndex = cultivation != null ? cultivation.CurrentRealmIndex : 0;
+        if (realmIndex < technique.RequiredRealmIndex)
+            return "Нужен реалм " + (technique.RequiredRealmIndex + 1);
+
+        return "Недоступно";
+    }
+
+    private bool MeetsRequirements(TechniqueData technique)
+    {
+        int realmIndex = cultivation != null ? cultivation.CurrentRealmIndex : 0;
+        if (realmIndex < technique.RequiredRealmIndex) return false;
+
+        int daoLevel = dao != null ? dao.GetLevel(technique.DaoType) : 0;
+        return daoLevel >= technique.RequiredDaoLevel;
+    }
+
+    private void TryAdd(TechniqueData technique, bool learnedOverride)
     {
         if (technique == null || technique.Kind != TechniqueKind.Passive) return;
         if (technique.PassiveValue <= 0f) return;
+        if (dao == null || !dao.IsDaoUnlocked(technique.DaoType)) return;
+        if (!learnedOverride && !MeetsRequirements(technique)) return;
 
-        int realmIndex = cultivation != null ? cultivation.CurrentRealmIndex : 0;
-        if (realmIndex < technique.RequiredRealmIndex) return;
-
-        int daoLevel = dao != null ? dao.GetLevel(technique.DaoType) : 0;
-        if (daoLevel < technique.RequiredDaoLevel) return;
+        for (int i = 0; i < active.Count; i++)
+        {
+            if (active[i].Source == technique) return;
+        }
 
         active.Add(new PassiveModifier(technique.PassiveEffect, technique.PassiveValue, technique));
 
@@ -160,6 +216,9 @@ public class PassiveSkillService : MonoBehaviour
 
         if (abilitySystem != null)
             abilitySystem.DamageMultiplier = GetMultiplier(PassiveEffectKind.SpellPowerPercent);
+
+        if (weaponManager != null)
+            weaponManager.PlayerDamageMultiplier = GetMultiplier(PassiveEffectKind.MeleeDamagePercent);
 
         if (alchemy != null)
             alchemy.SetPassiveSuccessBonus(GetMultiplier(PassiveEffectKind.AlchemySuccessPercent) - 1f);

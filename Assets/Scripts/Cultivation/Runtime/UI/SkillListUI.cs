@@ -22,10 +22,13 @@ public class SkillListUI : MonoBehaviour
     private RectTransform window;
     private RectTransform content;
     private TextMeshProUGUI countLabel;
+    private TextMeshProUGUI hintLabel;
+    private float hintTimer;
     private Button[] tabButtons;
     private Image[] tabBackgrounds;
 
     private int tabIndex;
+    private bool pausedByUs;
 
     public bool IsOpen { get; private set; }
 
@@ -72,8 +75,21 @@ public class SkillListUI : MonoBehaviour
         BuildTabs(windowRect);
         BuildScroll(windowRect);
 
+        hintLabel = CultivationUIFactory.CreateText("Hint", windowRect, string.Empty, 14f,
+            CultivationUIFactory.Gold, TextAlignmentOptions.Center);
+        CultivationUIFactory.Place(hintLabel.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 10f), new Vector2(windowSize.x - 60f, 26f));
+
         gameObject.SetActive(false);
         Subscribe();
+    }
+
+    private void Update()
+    {
+        if (hintTimer <= 0f) return;
+
+        hintTimer -= Time.unscaledDeltaTime;
+        if (hintTimer <= 0f && hintLabel != null) hintLabel.text = string.Empty;
     }
 
     private void OnDestroy()
@@ -147,6 +163,7 @@ public class SkillListUI : MonoBehaviour
         gameObject.SetActive(true);
         GameMenuController.Instance?.OpenPanel(gameObject);
         transform.SetAsLastSibling();
+        PauseGame();
         Rebuild();
     }
 
@@ -157,6 +174,33 @@ public class SkillListUI : MonoBehaviour
         IsOpen = false;
         gameObject.SetActive(false);
         GameMenuController.Instance?.NotifyClosed(gameObject);
+        ResumeGame();
+    }
+
+    /// <summary>Открытие из панели культивации: паузу уже держит она — не перезаписываем её.</summary>
+    public void OpenFromPanel()
+    {
+        IsOpen = true;
+        gameObject.SetActive(true);
+        GameMenuController.Instance?.OpenPanel(gameObject);
+        transform.SetAsLastSibling();
+        pausedByUs = false;
+        Rebuild();
+    }
+
+    /// <summary>Ставит паузу, как CultivationUI: иначе можно умереть в открытом меню.</summary>
+    private void PauseGame()
+    {
+        if (Time.timeScale <= 0f) return;
+        Time.timeScale = 0f;
+        pausedByUs = true;
+    }
+
+    private void ResumeGame()
+    {
+        if (!pausedByUs) return;
+        pausedByUs = false;
+        Time.timeScale = 1f;
     }
 
     public void Toggle()
@@ -211,8 +255,10 @@ public class SkillListUI : MonoBehaviour
 
         bool learned = dao.HasLearnedTechnique(technique);
         bool available = dao.IsTechniqueAvailable(technique);
-        Color accent = learned ? CultivationUIFactory.Gold : CultivationUIFactory.GoldDim;
-        CultivationUIFactory.AddGoldBorder(background, learned ? 0.75f : 0.3f, 1.2f);
+        bool passive = technique.Kind == TechniqueKind.Passive;
+        bool passiveActive = passive && passives != null && passives.IsPassiveActive(technique);
+        Color accent = learned || passiveActive ? CultivationUIFactory.Gold : CultivationUIFactory.GoldDim;
+        CultivationUIFactory.AddGoldBorder(background, learned || passiveActive ? 0.75f : 0.3f, 1.2f);
 
         var icon = CultivationUIFactory.CreateImage("Icon", rowRect,
             technique.Icon != null ? Color.white : DaoTypeInfo.GetColor(technique.DaoType),
@@ -231,14 +277,21 @@ public class SkillListUI : MonoBehaviour
         CultivationUIFactory.Place(sub.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(88f, -34f), new Vector2(420f, 20f));
 
-        var description = CultivationUIFactory.CreateText("Description", rowRect,
-            string.IsNullOrEmpty(technique.Description) ? string.Empty : technique.Description,
-            13f, CultivationUIFactory.TextMuted, TextAlignmentOptions.TopLeft);
+        string foreignDao = BuildForeignDaoWarning(technique);
+        string descriptionText = string.IsNullOrEmpty(technique.Description) ? string.Empty : technique.Description;
+        if (!string.IsNullOrEmpty(foreignDao))
+            descriptionText = foreignDao + "\n" + descriptionText;
+
+        var description = CultivationUIFactory.CreateText("Description", rowRect, descriptionText,
+            13f, string.IsNullOrEmpty(foreignDao) ? CultivationUIFactory.TextMuted : CultivationUIFactory.Danger,
+            TextAlignmentOptions.TopLeft);
         CultivationUIFactory.Place(description.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(88f, -54f), new Vector2(560f, 36f));
 
-        var status = CultivationUIFactory.CreateText("Status", rowRect, BuildStatus(technique, learned, available),
-            14f, learned ? CultivationUIFactory.Success : CultivationUIFactory.Danger,
+        var status = CultivationUIFactory.CreateText("Status", rowRect,
+            BuildStatus(technique, learned, available, passiveActive),
+            14f, passive ? (passiveActive ? CultivationUIFactory.Success : CultivationUIFactory.Danger)
+                         : (learned ? CultivationUIFactory.Success : CultivationUIFactory.Danger),
             TextAlignmentOptions.MidlineRight);
         CultivationUIFactory.Place(status.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f),
             new Vector2(-24f, -14f), new Vector2(280f, 24f));
@@ -250,18 +303,96 @@ public class SkillListUI : MonoBehaviour
 
         if (technique.Kind == TechniqueKind.Passive) return;
 
-        var assign = CultivationUIFactory.CreateButton("Assign", rowRect, "Назначить",
-            new Vector2(140f, 34f), () => Assign(technique), CultivationUIFactory.Gold, 14f);
-        CultivationUIFactory.Place((RectTransform)assign.transform, new Vector2(1f, 0f), new Vector2(1f, 0f),
-            new Vector2(-24f, 10f), new Vector2(140f, 34f));
-
-        assign.interactable = learned && bridge != null;
+        BuildAssignControls(technique, rowRect);
     }
 
-    private string BuildStatus(TechniqueData technique, bool learned, bool available)
+    /// <summary>
+    /// Слоты 4 и 5 явными кнопками с пометкой «занято: X» и снятие. Пассив/Block/Aura
+    /// в слот не кладутся — вместо кнопок причина.
+    /// </summary>
+    private void BuildAssignControls(TechniqueData technique, RectTransform rowRect)
     {
+        if (technique.Kind != TechniqueKind.Active)
+        {
+            var note = CultivationUIFactory.CreateText("AssignNote", rowRect, "Механика в разработке",
+                14f, CultivationUIFactory.Danger, TextAlignmentOptions.MidlineRight);
+            CultivationUIFactory.Place(note.rectTransform, new Vector2(1f, 0f), new Vector2(1f, 0f),
+                new Vector2(-24f, 18f), new Vector2(300f, 28f));
+            return;
+        }
+
+        for (int slot = 3; slot < AbilitySystem.SlotCount; slot++)
+        {
+            int captured = slot;
+            TechniqueData occupant = bridge != null ? bridge.GetAssignedTechnique(slot) : null;
+            bool mine = occupant == technique;
+            string label = mine
+                ? "В слоте " + (slot + 1)
+                : "В слот " + (slot + 1) + (occupant != null ? " (занято: " + Shorten(occupant.DisplayName) + ")" : string.Empty);
+
+            var button = CultivationUIFactory.CreateButton("AssignSlot" + (slot + 1), rowRect, label,
+                new Vector2(240f, 30f), () => Assign(technique, captured), CultivationUIFactory.Gold, 13f);
+            CultivationUIFactory.Place((RectTransform)button.transform, new Vector2(1f, 0f), new Vector2(1f, 0f),
+                new Vector2(-24f, 12f + (AbilitySystem.SlotCount - 1 - slot) * 34f), new Vector2(240f, 30f));
+            button.interactable = bridge != null && !mine;
+        }
+
+        var unassign = CultivationUIFactory.CreateButton("Unassign", rowRect, "Снять",
+            new Vector2(90f, 30f), () => Unassign(technique), CultivationUIFactory.Danger, 13f);
+        CultivationUIFactory.Place((RectTransform)unassign.transform, new Vector2(1f, 0f), new Vector2(1f, 0f),
+            new Vector2(-274f, 12f), new Vector2(90f, 30f));
+        unassign.interactable = bridge != null && IsAssigned(technique);
+    }
+
+    /// <summary>Техника чужого Дао назначается, но не сработает — предупреждаем прямо в строке.</summary>
+    private string BuildForeignDaoWarning(TechniqueData technique)
+    {
+        if (technique.Kind != TechniqueKind.Active || dao == null || !dao.ActiveDao.HasValue) return string.Empty;
+        if (dao.ActiveDao.Value == technique.DaoType) return string.Empty;
+
+        return "Техника школы " + DaoTypeInfo.GetDisplayName(technique.DaoType) +
+               "; активный Дао — " + DaoTypeInfo.GetDisplayName(dao.ActiveDao.Value) +
+               ". Не сработает, пока не сменишь Дао у алтаря.";
+    }
+
+    private bool IsAssigned(TechniqueData technique)
+    {
+        if (bridge == null || technique == null) return false;
+
+        for (int slot = 3; slot < AbilitySystem.SlotCount; slot++)
+        {
+            if (bridge.GetAssignedTechnique(slot) == technique) return true;
+        }
+        return false;
+    }
+
+    private static string Shorten(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "?";
+        return value.Length <= 14 ? value : value.Substring(0, 13) + "…";
+    }
+
+    private string BuildStatus(TechniqueData technique, bool learned, bool available, bool passiveActive = false)
+    {
+        if (technique.Kind == TechniqueKind.Passive)
+        {
+            if (passiveActive) return "Активна";
+            if (passives != null)
+            {
+                string reason = passives.GetInactiveReason(technique);
+                if (!string.IsNullOrEmpty(reason)) return reason;
+            }
+            return "Неактивна";
+        }
+
+        if (technique.Kind == TechniqueKind.Block || technique.Kind == TechniqueKind.Aura)
+            return "Механика в разработке";
+
         if (learned) return "Открыто";
-        if (available) return "Можно изучить";
+        if (available) return "Доступно";
+
+        if (dao != null && !dao.IsDaoUnlocked(technique.DaoType))
+            return "Дао " + DaoTypeInfo.GetDisplayName(technique.DaoType) + " не открыт";
 
         int daoLevel = dao.GetLevel(technique.DaoType);
         if (daoLevel < technique.RequiredDaoLevel)
@@ -279,7 +410,12 @@ public class SkillListUI : MonoBehaviour
         if (technique.Kind == TechniqueKind.Passive)
             return DescribePassive(technique.PassiveEffect, technique.PassiveValue);
 
-        return "Ци " + technique.QiCost + "   ·   КД " + technique.Cooldown.ToString("0.#") + " с";
+        string effect = "Ци " + technique.QiCost + "   ·   КД " + technique.Cooldown.ToString("0.#") + " с";
+        if (technique.Power > 0) effect += "   ·   сила " + technique.Power;
+
+        string requirements = "Дао " + technique.RequiredDaoLevel + " ур.   ·   реалм " +
+                              (technique.RequiredRealmIndex + 1);
+        return effect + "\n" + requirements;
     }
 
     private static string DescribePassive(PassiveEffectKind kind, float value)
@@ -301,10 +437,39 @@ public class SkillListUI : MonoBehaviour
         }
     }
 
-    private void Assign(TechniqueData technique)
+    private void Assign(TechniqueData technique, int slotIndex = -1)
     {
         if (bridge == null || technique == null) return;
-        bridge.AssignTechnique(technique);
+
+        TechniqueData occupant = slotIndex >= 3 ? bridge.GetAssignedTechnique(slotIndex) : null;
+        if (occupant != null && occupant != technique)
+            ShowHint("Слот " + (slotIndex + 1) + " занят: " + occupant.DisplayName + ". Нажмите ещё раз, чтобы заменить.");
+
+        string warning = BuildForeignDaoWarning(technique);
+        bridge.AssignTechnique(technique, slotIndex);
+        ShowHint(string.IsNullOrEmpty(warning) ? bridge.LastAssignMessage : warning);
+        if (IsOpen) Rebuild();
+    }
+
+    private void Unassign(TechniqueData technique)
+    {
+        if (bridge == null || technique == null) return;
+
+        for (int slot = 3; slot < AbilitySystem.SlotCount; slot++)
+        {
+            if (bridge.GetAssignedTechnique(slot) != technique) continue;
+            bridge.UnassignTechnique(slot);
+            ShowHint(bridge.LastAssignMessage);
+            if (IsOpen) Rebuild();
+            return;
+        }
+    }
+
+    private void ShowHint(string message)
+    {
+        if (hintLabel == null) return;
+        hintLabel.text = message;
+        hintTimer = 4f;
     }
 
     private void RefreshTabColors()

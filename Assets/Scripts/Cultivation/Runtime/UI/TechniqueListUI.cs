@@ -181,17 +181,29 @@ public class TechniqueListUI : MonoBehaviour
 
         List<TechniqueData> techniques = filter.HasValue ? dao.GetTechniquesForDao(filter.Value) : dao.GetAllTechniques();
         int available = 0;
+        int passives = 0;
+        int shown = 0;
 
         for (int i = 0; i < techniques.Count; i++)
         {
             var technique = techniques[i];
             if (technique == null) continue;
+
+            // Пассивы не назначаются в слот: их место — вкладка «Пассивные» экрана скиллов.
+            if (technique.Kind == TechniqueKind.Passive)
+            {
+                passives++;
+                continue;
+            }
+
             if (dao.IsTechniqueAvailable(technique)) available++;
             BuildCard(technique);
+            shown++;
         }
 
         if (countLabel != null)
-            countLabel.text = "Найдено: " + techniques.Count + "   ·   доступно сейчас: " + available;
+            countLabel.text = "Найдено: " + shown + "   ·   доступно сейчас: " + available +
+                              (passives > 0 ? "   ·   пассивов скрыто: " + passives : string.Empty);
     }
 
     private void RefreshFilterColors()
@@ -250,8 +262,11 @@ public class TechniqueListUI : MonoBehaviour
         CultivationUIFactory.Place(meta.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(112f, -42f), new Vector2(232f, 22f));
 
-        var cost = CultivationUIFactory.CreateText("Cost", card.rectTransform,
-            "Ци " + technique.QiCost + "  ·  КД " + technique.Cooldown.ToString("0.#") + " с", 14f,
+        string costText = technique.Kind == TechniqueKind.Passive
+            ? "Пассивный эффект"
+            : "Ци " + technique.QiCost + "  ·  КД " + technique.Cooldown.ToString("0.#") + " с" +
+              (technique.Power > 0 ? "  ·  сила " + technique.Power : string.Empty);
+        var cost = CultivationUIFactory.CreateText("Cost", card.rectTransform, costText, 14f,
             CultivationUIFactory.TextMuted, TextAlignmentOptions.TopLeft);
         CultivationUIFactory.Place(cost.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(112f, -66f), new Vector2(232f, 22f));

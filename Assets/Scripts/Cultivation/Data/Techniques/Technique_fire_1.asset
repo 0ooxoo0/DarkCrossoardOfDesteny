@@ -16,9 +16,10 @@ MonoBehaviour:
   displayName: "\u041E\u0433\u043D\u0435\u043D\u043D\u044B\u0439 \u0448\u0430\u0440"
   displayNameChinese: "\u706B\u7403"
   icon: {fileID: 0}
-  description: "\u041E\u0433\u043D\u0435\u043D\u043D\u044B\u0439 \u0448\u0430\u0440
-    \u2014 Active \u0442\u0435\u0445\u043D\u0438\u043A\u0430 \u043F\u0443\u0442\u0438
-    \u041F\u0443\u0442\u044C \u041E\u0433\u043D\u044F."
+  description: "\u0414\u0430\u043B\u044C\u043D\u0438\u0439 \u0431\u043E\u0439 \u0448\u043A\u043E\u043B\u044B
+    \xAB\u041F\u0443\u0442\u044C \u041E\u0433\u043D\u044F\xBB: 45 \u0443\u0440\u043E\u043D\u0430
+    \u043F\u043E \u043E\u0431\u043B\u0430\u0441\u0442\u0438 2 \u043C, \u0426\u0438
+    18, \u041A\u0414 6 \u0441."
   daoType: 3
   kind: 0
   rank: 1
@@ -29,3 +30,5 @@ MonoBehaviour:
   power: 45
   castAnimationClip: {fileID: 0}
   vfxPrefab: {fileID: 0}
+  passiveEffect: 0
+  passiveValue: 0

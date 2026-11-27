@@ -8,12 +8,24 @@ public enum CombatTeam
 }
 
 /// <summary>
-/// Everything that can receive combat damage. Implemented by PlayerHealth and EnemyHealth.
+/// Всё, что может получать боевой урон: игрок, враг, ресурс или животное.
 /// </summary>
 public interface IDamageable
 {
     bool IsDead { get; }
+
+    /// <summary>
+    /// Смерть уже запланирована, но доводится в конце кадра. Нужна хитбоксу,
+    /// чтобы отличить добивание от обычного попадания: <see cref="IsDead"/>
+    /// внутри физического колбэка ещё false.
+    /// </summary>
+    bool WillDie { get; }
+
+    /// <summary>Команда цели. Хитбокс не бьёт своих.</summary>
+    CombatTeam Team { get; }
+
     Transform DamageRoot { get; }
+
     void TakeDamage(DamageInfo info);
 }
 

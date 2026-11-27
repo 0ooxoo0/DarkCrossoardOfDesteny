@@ -161,7 +161,9 @@ public class DaoHudBarUI : MonoBehaviour
 
         int next = dao.GetPointsForNextLevel();
         int into = dao.GetPointsIntoLevel(type);
-        pointsLabel.text = dao.IsMaxLevel(type) ? "макс" : into + "/" + next;
+        pointsLabel.text = dao.IsMaxLevel(type)
+            ? "школа освоена"
+            : into + "/" + next + " до ур. " + (level + 1);
 
         if (fill != null) fill.color = color;
         SetFillHeight(dao.IsMaxLevel(type) || next <= 0 ? 1f : Mathf.Clamp01((float)into / next));

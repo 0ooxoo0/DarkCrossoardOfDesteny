@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc95664ff3435dc43a9ab13fa52097c7, type: 3}
+  m_Name: EnemyVisual_Skeleton_Ranger_01
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyVisualData
+  id: 2
+  displayName: Skeleton Ranger
+  characterPrefab: {fileID: 8712517466539974263, guid: 05a0515d31796fe49b7e662dc6ad6acb, type: 3}
+  weaponPrefab: {fileID: 6736456401748270811, guid: 3346f50d780be4142818235f55645340, type: 3}
+  animatorController: {fileID: 0}
+  weaponBoneName: Hand_R
+  weaponLocalPosition: {x: 0, y: 0, z: 0}
+  weaponLocalEuler: {x: 0, y: 0, z: 0}
+  weaponLocalScale: {x: 1, y: 1, z: 1}

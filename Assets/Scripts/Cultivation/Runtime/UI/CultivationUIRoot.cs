@@ -115,6 +115,8 @@ public class CultivationUIRoot : MonoBehaviour
         var cultivationRect = CultivationUIFactory.CreateRect("Cultivation Panel", transform);
         CultivationPanel = cultivationRect.gameObject.AddComponent<CultivationUI>();
         CultivationPanel.Build(cultivation, dao, meditation, breakthrough, config, Techniques, uiManager);
+        // Кнопка «Техники» в панели ведёт в единый экран скиллов.
+        CultivationPanel.SetSkillList(Skills);
 
         var meditationRect = CultivationUIFactory.CreateRect("Meditation Overlay", transform);
         MeditationOverlay = meditationRect.gameObject.AddComponent<MeditationUI>();

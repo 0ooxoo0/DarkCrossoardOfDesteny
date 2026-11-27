@@ -176,12 +176,13 @@ public class CultivationBootstrap : MonoBehaviour
         HandleRealmBonuses(Cultivation.TotalQiBonus, Cultivation.TotalHpBonus, Cultivation.TotalRegenBonus);
 
         CultivationStateCache.LoadFromPrefs();
-        if (CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill))
-            Debug.Log("[Cultivation] Прогресс восстановлен.");
+        bool restored = CultivationStateCache.TryRestore(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
+        if (restored) Debug.Log("[Cultivation] Прогресс восстановлен.");
 
         WirePassives();
 
         SetupTechniqueOutput();
+        RestoreTechniqueAssignments();
         WireInventory();
         Aura.Initialize(Dao, Cultivation);
         WireVfx();
@@ -227,6 +228,7 @@ public class CultivationBootstrap : MonoBehaviour
         WirePassives();
 
         SetupTechniqueOutput();
+        RestoreTechniqueAssignments();
         WireInventory();
         WireVfx();
         WireRespawn();
@@ -252,25 +254,54 @@ public class CultivationBootstrap : MonoBehaviour
         Caster.Initialize(Dao, Qi, Cultivation, Meditation, Config.EnableDemoCasting, Config.DemoDealsDamage);
     }
 
-    /// <summary>Первый запуск: одна доступная техника сразу попадает в хотбар, чтобы нажать «1».</summary>
+    /// <summary>Первый запуск: одна активная техника сразу попадает в слот 4, чтобы нажать «4».</summary>
     private void AutoRegisterStarterTechnique()
     {
         if (Bridge == null || Dao == null) return;
         if (Bridge.RegisteredCount > 0) return;
 
-        var available = Dao.GetAvailableTechniques();
-        if (available.Count > 0)
-            Bridge.RegisterTechnique(available[0]);
+        TechniqueData starter = FindStarterTechnique();
+        if (starter != null) Bridge.AssignTechnique(starter, 3);
     }
+
+    /// <summary>
+    /// Слоты 4–5 восстанавливаются после Dao.RestoreState. Если сохранённых назначений нет
+    /// и мост пуст — выдаём стартовую технику (повторный вызов ничего не дублирует).
+    /// </summary>
+    private void RestoreTechniqueAssignments()
+    {
+        if (Bridge == null) return;
+
+        Bridge.OnTechniqueRegistered -= HandleTechniqueRegisteredPersist;
+        Bridge.OnTechniqueRegistered += HandleTechniqueRegisteredPersist;
+
+        if (Bridge.RegisteredCount > 0) return;
+
+        AutoRegisterStarterTechnique();
+        AutoAssignStarterTechnique();
+    }
+
+    private void HandleTechniqueRegisteredPersist(TechniqueData technique) => Persist();
 
     private void AutoAssignStarterTechnique()
     {
         if (Caster == null || Dao == null) return;
         if (Caster.GetSlot(0) != null) return;
 
+        TechniqueData starter = FindStarterTechnique();
+        if (starter != null) Caster.Assign(starter, 0);
+    }
+
+    /// <summary>Первая доступная техника, которую действительно можно положить в слот (не пассив).</summary>
+    private TechniqueData FindStarterTechnique()
+    {
         var available = Dao.GetAvailableTechniques();
-        if (available.Count > 0)
-            Caster.Assign(available[0], 0);
+        for (int i = 0; i < available.Count; i++)
+        {
+            TechniqueData technique = available[i];
+            if (technique != null && technique.Kind == TechniqueKind.Active) return technique;
+        }
+        return null;
     }
 
     private void HandleRealmBonuses(int qiBonus, int hpBonus, float regenBonus)
@@ -499,7 +530,7 @@ public class CultivationBootstrap : MonoBehaviour
     {
         if (Cultivation == null) return;
 
-        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill, Bridge);
         if (Config != null && Config.PersistBetweenSessions)
             CultivationStateCache.SaveToPrefs();
     }
@@ -552,7 +583,7 @@ public class CultivationBootstrap : MonoBehaviour
 
     private void CaptureState()
     {
-        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill);
+        CultivationStateCache.Capture(Cultivation, Dao, Qi, Debuffs, Health, AlchemySkill, Bridge);
     }
 
     private void HandleRealmChangedCapture(CultivationRealm realm) => CaptureState();

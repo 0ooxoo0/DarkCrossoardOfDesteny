@@ -19,6 +19,7 @@ MonoBehaviour:
   useAnimationEvents: 1
   abilities:
   - {fileID: 11400000, guid: d6eddb96a7af9bc43b71ce7858b5e703, type: 2}
+  damage: 20
   damageTags:
   - DammageObject
   weaponModelPrefab: {fileID: 8814540712764912406, guid: 1805d6341d9e84543af925e938a8f160, type: 3}

@@ -23,6 +23,10 @@ public class AbilityBarUI : MonoBehaviour
     private bool subscribedQi;
     private bool subscribedDao;
     private bool subscribedCultivation;
+    private TMP_Text toastLabel;
+    private TMP_Text tooltipLabel;
+    private RectTransform tooltipRoot;
+    private float toastTimer;
 
     private void Start()
     {
@@ -44,6 +48,7 @@ public class AbilityBarUI : MonoBehaviour
         if (abilitySystem != null)
         {
             abilitySystem.OnAbilitiesChanged += RefreshAbilities;
+            abilitySystem.OnAbilityActivationBlocked += HandleActivationBlocked;
             RefreshAbilities();
         }
     }
@@ -51,7 +56,10 @@ public class AbilityBarUI : MonoBehaviour
     private void OnDestroy()
     {
         if (abilitySystem != null)
+        {
             abilitySystem.OnAbilitiesChanged -= RefreshAbilities;
+            abilitySystem.OnAbilityActivationBlocked -= HandleActivationBlocked;
+        }
 
         if (qi != null && subscribedQi) qi.OnQiChanged -= HandleQiChanged;
         if (dao != null && subscribedDao)
@@ -65,10 +73,16 @@ public class AbilityBarUI : MonoBehaviour
             cultivation.OnRealmChanged -= HandleRealmChanged;
             cultivation.OnStageChanged -= HandleStageChanged;
         }
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (slots[i] != null) slots[i].HoverChanged -= HandleSlotHover;
+        }
     }
 
     private void Update()
     {
+        UpdateToast();
         if (abilitySystem == null) return;
 
         EnsureCultivationRefs();
@@ -175,6 +189,112 @@ public class AbilityBarUI : MonoBehaviour
 
     private void HandleStageChanged(CultivationRealm realm, int stage) => RefreshSlotStates();
 
+    /// <summary>Причина блокировки каста — тостом на 2.5 с, а не только в консоль.</summary>
+    private void HandleActivationBlocked(int slot, AbilityData ability, string reason)
+    {
+        string name = ability != null ? ability.displayName : "Слот " + (slot + 1);
+        ShowToast(name + ": " + reason);
+    }
+
+    private void ShowToast(string message)
+    {
+        EnsureToast();
+        if (toastLabel == null) return;
+
+        toastLabel.text = message;
+        toastLabel.gameObject.SetActive(true);
+        toastTimer = 2.5f;
+    }
+
+    private void UpdateToast()
+    {
+        if (toastTimer <= 0f) return;
+
+        toastTimer -= Time.unscaledDeltaTime;
+        if (toastTimer <= 0f && toastLabel != null)
+            toastLabel.gameObject.SetActive(false);
+    }
+
+    /// <summary>Подсказка слота под курсором: tooltip с требованиями и причиной блокировки.</summary>
+    private void HandleSlotHover(AbilitySlotUI slot, bool entered)
+    {
+        if (!entered)
+        {
+            if (tooltipRoot != null) tooltipRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        EnsureTooltip();
+        if (tooltipRoot == null || tooltipLabel == null) return;
+
+        tooltipLabel.text = slot != null ? slot.Tooltip : string.Empty;
+        tooltipRoot.gameObject.SetActive(!string.IsNullOrEmpty(tooltipLabel.text));
+    }
+
+    private void EnsureToast()
+    {
+        if (toastLabel != null) return;
+
+        GameObject go = new GameObject("AbilityToast", typeof(RectTransform), typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        go.transform.SetParent(targetCanvas.transform, false);
+
+        RectTransform rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.sizeDelta = new Vector2(760f, 34f);
+        rect.anchoredPosition = new Vector2(0f, 132f);
+
+        toastLabel = go.GetComponent<TextMeshProUGUI>();
+        toastLabel.alignment = TextAlignmentOptions.Center;
+        toastLabel.fontSize = 18f;
+        toastLabel.color = new Color(1f, 0.82f, 0.35f, 1f);
+        toastLabel.raycastTarget = false;
+        if (TMP_Settings.defaultFontAsset != null) toastLabel.font = TMP_Settings.defaultFontAsset;
+        toastLabel.gameObject.SetActive(false);
+    }
+
+    private void EnsureTooltip()
+    {
+        if (tooltipRoot != null) return;
+
+        GameObject root = new GameObject("AbilityTooltip", typeof(RectTransform), typeof(CanvasRenderer),
+            typeof(Image));
+        root.transform.SetParent(targetCanvas.transform, false);
+
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(0.5f, 0f);
+        rootRect.anchorMax = new Vector2(0.5f, 0f);
+        rootRect.pivot = new Vector2(0.5f, 0f);
+        rootRect.sizeDelta = new Vector2(420f, 190f);
+        rootRect.anchoredPosition = new Vector2(0f, 180f);
+
+        Image background = root.GetComponent<Image>();
+        background.color = new Color(0.05f, 0.05f, 0.07f, 0.95f);
+        background.raycastTarget = false;
+
+        GameObject textGo = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        textGo.transform.SetParent(root.transform, false);
+
+        RectTransform textRect = textGo.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(12f, 10f);
+        textRect.offsetMax = new Vector2(-12f, -10f);
+
+        tooltipLabel = textGo.GetComponent<TextMeshProUGUI>();
+        tooltipLabel.alignment = TextAlignmentOptions.TopLeft;
+        tooltipLabel.fontSize = 15f;
+        tooltipLabel.color = new Color(0.9f, 0.9f, 0.95f, 1f);
+        tooltipLabel.raycastTarget = false;
+        if (TMP_Settings.defaultFontAsset != null) tooltipLabel.font = TMP_Settings.defaultFontAsset;
+
+        tooltipRoot = rootRect;
+        tooltipRoot.gameObject.SetActive(false);
+    }
+
     private void BuildPanel()
     {
         GameObject panel = new GameObject(
@@ -212,6 +332,11 @@ public class AbilityBarUI : MonoBehaviour
 
         for (int i = 0; i < SlotCount; i++)
             slots[i] = CreateSlot(i, panel.transform);
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (slots[i] != null) slots[i].HoverChanged += HandleSlotHover;
+        }
     }
 
     private AbilitySlotUI CreateSlot(int index, Transform parent)

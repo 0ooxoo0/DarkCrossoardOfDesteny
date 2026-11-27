@@ -20,8 +20,10 @@ MonoBehaviour:
   description: "\u041F\u0443\u0442\u044C Fist: \u0442\u0435\u0445\u043D\u0438\u043A\u0438
     \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043F\u043E
     \u0443\u0440\u043E\u0432\u043D\u044E \u0414\u0430\u043E \u0438 \u0440\u0435\u0430\u043B\u043C\u0443."
-  maxLevel: 10
+  maxLevel: 4
   techniques:
   - {fileID: 11400000, guid: f0a8180f6a2eb7945a5a6892c6ac8c3d, type: 2}
   - {fileID: 11400000, guid: 6862750890be9024dbd49ae38cbc7d2a, type: 2}
   - {fileID: 11400000, guid: 00151fd0042861a4093e77a97f3648d6, type: 2}
+  - {fileID: 11400000, guid: 092acecacdc3b8644a20821cc83828fd, type: 2}
+  - {fileID: 11400000, guid: 6f0c03794697395438a3edcb98d98f59, type: 2}

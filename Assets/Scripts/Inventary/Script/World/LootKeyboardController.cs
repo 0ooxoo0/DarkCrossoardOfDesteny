@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Подбор лута без мыши: R — забрать всё, E — забрать выбранное,
 /// Up/Down — листать список. Работает только если мышь в бою не использовалась.
+/// Движение не блокируется: гасятся только стрелки, WASD ходит всегда.
 /// </summary>
 [DefaultExecutionOrder(1100)]
 [DisallowMultipleComponent]
@@ -14,8 +15,8 @@ public class LootKeyboardController : MonoBehaviour
     [SerializeField] private LootViewArea viewArea;
     [SerializeField] private LootPanelUI panel;
     [SerializeField] private LootPickupController pickupController;
-    [SerializeField] private PlayerController playerController;
     [SerializeField] private InventoryPanelUI inventoryPanel;
+    [SerializeField] private PlayerController playerController;
 
     [Header("Клавиши")]
     [SerializeField] private Key takeAllKey = Key.R;
@@ -69,7 +70,7 @@ public class LootKeyboardController : MonoBehaviour
     }
 
     /// <summary>
-    /// Мышь «взяла управление», если её сдвинули. Тогда меню подбора снова
+    /// Мышь «взяла управление», если её сдвинули. Тогда панель подбора снова
     /// ведёт курсор, а клавиатура молчит — иначе они дрались бы за панель.
     /// </summary>
     private void TrackMouse()
@@ -129,8 +130,7 @@ public class LootKeyboardController : MonoBehaviour
     {
         if (Keyboard.current == null || selected == null) return;
 
-        // WASD отпускает меню: игрок всегда может просто уйти, не выбирая лут.
-        // Стрелки остаются за списком и движение не разблокируют.
+        // WASD закрывает панель: игрок мог просто пойти дальше, не выбирая лут.
         if (MovePressed())
         {
             ReleaseSelection();
@@ -142,15 +142,6 @@ public class LootKeyboardController : MonoBehaviour
 
         if (Keyboard.current[takeAllKey].wasPressedThisFrame) TakeAll();
         if (Keyboard.current[takeOneKey].wasPressedThisFrame) TakeSelected();
-    }
-
-    private static bool MovePressed()
-    {
-        Keyboard keyboard = Keyboard.current;
-        return keyboard.wKey.wasPressedThisFrame
-            || keyboard.aKey.wasPressedThisFrame
-            || keyboard.sKey.wasPressedThisFrame
-            || keyboard.dKey.wasPressedThisFrame;
     }
 
     private void MoveSelection(int step)
@@ -193,7 +184,8 @@ public class LootKeyboardController : MonoBehaviour
         if (viewArea != null && viewArea.Visible != null)
             candidates.AddRange(viewArea.Visible);
 
-        if (playerController != null) playerController.LootLocked = container != null;
+        // Движение не блокируем: гасим только стрелки, которые листают список.
+        if (playerController != null) playerController.SuppressArrowMove = container != null;
 
         // Панель — только подсказка выбора: подбор работает и без неё.
         if (panel == null || container == null) return;
@@ -214,8 +206,17 @@ public class LootKeyboardController : MonoBehaviour
         candidates.Clear();
         lostSelectionTime = float.NegativeInfinity;
 
-        if (playerController != null) playerController.LootLocked = false;
+        if (playerController != null) playerController.SuppressArrowMove = false;
         if (panel != null && panel.IsVisible) panel.Hide();
+    }
+
+    private static bool MovePressed()
+    {
+        Keyboard keyboard = Keyboard.current;
+        return keyboard.wKey.wasPressedThisFrame
+            || keyboard.aKey.wasPressedThisFrame
+            || keyboard.sKey.wasPressedThisFrame
+            || keyboard.dKey.wasPressedThisFrame;
     }
 
     private static bool Contains(IReadOnlyList<WorldLootContainer> list, WorldLootContainer value)

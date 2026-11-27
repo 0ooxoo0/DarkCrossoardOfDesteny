@@ -46,6 +46,8 @@ public class AbilityData : ScriptableObject
     }
 
     [Header("Damage")]
+    [Tooltip("Сила техники (урон). 0 — используется урон оружия.")]
+    [Min(0)] public int power;
     [Tooltip("Сейчас используется только первый тег (по умолчанию DammageObject). Список оставлен для расширения.")]
     public List<string> damageTags = new List<string> { "DammageObject" };
     public LayerMask damageLayers = ~0;

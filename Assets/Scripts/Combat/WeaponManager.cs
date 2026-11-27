@@ -55,6 +55,11 @@ public class WeaponManager : MonoBehaviour
     private AnimatorOverrideController castOverrideInstance;
     private Coroutine castRestoreRoutine;
     private bool suppressHitbox;
+    private float playerDamageMultiplier = 1f;
+    private float? techniqueDamage;
+
+    /// <summary>Сила текущей техники: переживает пересоздание модели оружия внутри каста.</summary>
+    private float? TechniqueDamage => techniqueDamage;
 
     private void Awake()
     {
@@ -79,6 +84,7 @@ public class WeaponManager : MonoBehaviour
             fistHitbox = fistWeapon.GetComponent<CombatHitbox>();
             if (fistHitbox == null)
                 fistHitbox = fistWeapon.gameObject.AddComponent<CombatHitbox>();
+            fistHitbox.DamageMultiplier = playerDamageMultiplier;
         }
 
         EnsureFistRigidbody();
@@ -159,7 +165,10 @@ public class WeaponManager : MonoBehaviour
                 EnsureFistRigidbody();
 
                 if (fistHitbox != null)
+                {
                     fistHitbox.Configure(weapon.damage, CombatTeam.Player, transform);
+                    fistHitbox.DamageMultiplier = playerDamageMultiplier;
+                }
             }
         }
 
@@ -195,6 +204,30 @@ public class WeaponManager : MonoBehaviour
     public void EnableHitbox()
     {
         SetHitboxActive(true, true);
+    }
+
+    /// <summary>Временная замена урона активного хитбокса (сила техники). null — урон оружия.</summary>
+    public void SetDamageOverride(float? value)
+    {
+        techniqueDamage = value;
+        if (fistHitbox != null) fistHitbox.SetDamageOverride(value);
+        if (swordHitbox != null) swordHitbox.SetDamageOverride(value);
+    }
+
+    /// <summary>Открыто ли окно удара: нужно технике, чтобы дождаться попадания.</summary>
+    public bool IsHitboxActive =>
+        (fistHitbox != null && fistHitbox.IsActive) || (swordHitbox != null && swordHitbox.IsActive);
+
+    /// <summary>Множитель урона оружия от пассивов. Override техники не затрагивает.</summary>
+    public float PlayerDamageMultiplier
+    {
+        get => playerDamageMultiplier;
+        set
+        {
+            playerDamageMultiplier = Mathf.Max(0f, value);
+            if (fistHitbox != null) fistHitbox.DamageMultiplier = playerDamageMultiplier;
+            if (swordHitbox != null) swordHitbox.DamageMultiplier = playerDamageMultiplier;
+        }
     }
 
     public void DisableHitbox()
@@ -320,6 +353,8 @@ public class WeaponManager : MonoBehaviour
 
         swordHitbox = hitboxObject.AddComponent<CombatHitbox>();
         swordHitbox.Configure(weapon.damage, CombatTeam.Player, transform);
+        swordHitbox.DamageMultiplier = playerDamageMultiplier;
+        if (TechniqueDamage.HasValue) swordHitbox.SetDamageOverride(TechniqueDamage);
         swordHitbox.SetActive(false);
     }
 
